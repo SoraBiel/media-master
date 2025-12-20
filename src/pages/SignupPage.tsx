@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Send, Mail, Lock, User, ArrowRight, Eye, EyeOff, Building } from "lucide-react";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
+import { addUser, setCurrentUser } from "@/lib/userStore";
 
 const SignupPage = () => {
   const [formData, setFormData] = useState({
@@ -28,7 +29,7 @@ const SignupPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (formData.password !== formData.confirmPassword) {
       toast({
         title: "Erro",
@@ -48,15 +49,29 @@ const SignupPage = () => {
     }
 
     setIsLoading(true);
-    
-    // Simulate signup
+
     setTimeout(() => {
+      const user = addUser({
+        name: formData.name,
+        email: formData.email,
+        company: formData.company,
+        plan: "free",
+        role: "user",
+        status: "active",
+        billingStatus: "free",
+        createdAt: new Date().toISOString(),
+        lastLogin: new Date().toISOString(),
+        usage: { sent: 0, limit: 100 },
+        payments: [],
+      });
+
+      setCurrentUser(user.id);
       setIsLoading(false);
       toast({
         title: "Conta criada!",
-        description: "Bem-vindo ao MediaDrop TG. Vamos configurar seu plano.",
+        description: "Agora vamos te guiar pelo passo a passo do app.",
       });
-      navigate("/billing");
+      navigate("/onboarding");
     }, 1500);
   };
 
@@ -84,7 +99,7 @@ const SignupPage = () => {
                 "Criar sua conta",
                 "Escolher um plano",
                 "Conectar seu Telegram",
-                "Iniciar campanhas"
+                "Iniciar campanhas",
               ].map((step, i) => (
                 <div key={i} className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-sm font-semibold">
@@ -212,8 +227,8 @@ const SignupPage = () => {
             </div>
 
             <div className="flex items-start gap-2">
-              <Checkbox 
-                id="terms" 
+              <Checkbox
+                id="terms"
                 checked={acceptTerms}
                 onCheckedChange={(checked) => setAcceptTerms(checked as boolean)}
               />
@@ -225,10 +240,10 @@ const SignupPage = () => {
               </label>
             </div>
 
-            <Button 
-              type="submit" 
-              variant="gradient" 
-              size="lg" 
+            <Button
+              type="submit"
+              variant="gradient"
+              size="lg"
               className="w-full"
               disabled={isLoading}
             >

@@ -6,6 +6,12 @@ import { Label } from "@/components/ui/label";
 import { Send, Mail, Lock, ArrowRight, Eye, EyeOff } from "lucide-react";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
+import {
+  findOrCreateUserByEmail,
+  seedUsers,
+  setCurrentUser,
+  updateUser,
+} from "@/lib/userStore";
 
 const LoginPage = () => {
   const [email, setEmail] = useState("");
@@ -18,16 +24,21 @@ const LoginPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    // Simulate login
+
+    seedUsers();
+
     setTimeout(() => {
+      const user = findOrCreateUserByEmail(email, "Usuário MediaDrop");
+      updateUser(user.id, { lastLogin: new Date().toISOString() });
+      setCurrentUser(user.id);
+
       setIsLoading(false);
       toast({
         title: "Login realizado!",
         description: "Bem-vindo de volta ao MediaDrop TG.",
       });
-      navigate("/dashboard");
-    }, 1500);
+      navigate(user.role === "admin" ? "/admin" : "/dashboard");
+    }, 1200);
   };
 
   return (
@@ -97,10 +108,10 @@ const LoginPage = () => {
               </div>
             </div>
 
-            <Button 
-              type="submit" 
-              variant="gradient" 
-              size="lg" 
+            <Button
+              type="submit"
+              variant="gradient"
+              size="lg"
               className="w-full"
               disabled={isLoading}
             >
@@ -136,7 +147,7 @@ const LoginPage = () => {
               Automatize suas publicações
             </h2>
             <p className="text-white/80 max-w-md">
-              Gerencie todos os seus grupos e canais do Telegram em um só lugar. 
+              Gerencie todos os seus grupos e canais do Telegram em um só lugar.
               Agende, organize e publique com facilidade.
             </p>
           </motion.div>

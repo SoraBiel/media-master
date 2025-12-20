@@ -1,5 +1,5 @@
-import { ReactNode } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { ReactNode, useMemo, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
   Send,
@@ -7,7 +7,6 @@ import {
   CreditCard,
   MessageCircle,
   Target,
-  Image,
   Megaphone,
   Sparkles,
   Settings,
@@ -16,9 +15,15 @@ import {
   ChevronRight,
   Bell,
   User,
+  ShieldCheck,
+  Users,
+  Music2,
+  ShoppingBag,
+  Menu,
+  Boxes,
+  Library,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,31 +32,91 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { useToast } from "@/hooks/use-toast";
+import { clearCurrentUser } from "@/lib/userStore";
+import { clearAdminSession } from "@/lib/adminAuth";
 
 interface DashboardLayoutProps {
   children: ReactNode;
 }
 
-const navItems = [
+const baseItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
   { icon: CreditCard, label: "Billing", path: "/billing" },
   { icon: MessageCircle, label: "Telegram", path: "/telegram" },
   { icon: Target, label: "Destinos", path: "/destinations" },
-  { icon: Image, label: "Biblioteca", path: "/media-library" },
   { icon: Megaphone, label: "Campanhas", path: "/campaigns" },
   { icon: Sparkles, label: "Model Hub", path: "/model-hub" },
+  { icon: Boxes, label: "Modelos à venda", path: "/models" },
+];
+
+const adminItems = [
+  { icon: ShieldCheck, label: "Dashboard Admin", path: "/admin" },
+  { icon: Users, label: "Usuários", path: "/admin/users" },
+  { icon: Boxes, label: "Modelos (Admin)", path: "/admin/models" },
+  { icon: Music2, label: "TikTok", path: "/admin/tiktok" },
+  { icon: ShoppingBag, label: "Contas TikTok", path: "/admin/tiktok-accounts" },
+  { icon: Library, label: "Biblioteca", path: "/admin/library" },
+  { icon: MessageCircle, label: "Telegram", path: "/admin/telegram" },
 ];
 
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  const isAdminRoute = location.pathname.startsWith("/admin");
+
+  const navItems = useMemo(() => {
+    if (isAdminRoute) {
+      return adminItems;
+    }
+    return baseItems;
+  }, [isAdminRoute]);
+
+  const titleItems = useMemo(() => [...baseItems, ...adminItems], []);
+
+  const handleLogout = () => {
+    if (isAdminRoute) {
+      clearAdminSession();
+      toast({
+        title: "Sessão admin encerrada",
+        description: "Você saiu do painel administrativo.",
+      });
+      navigate("/admin/login");
+      return;
+    }
+    clearCurrentUser();
+    toast({
+      title: "Sessão encerrada",
+      description: "Você saiu da sua conta com segurança.",
+    });
+    navigate("/login");
+  };
+
+  const handleProfileAction = (label: string, target?: string) => {
+    if (target) {
+      navigate(target);
+      return;
+    }
+    toast({
+      title: label,
+      description: "Essa funcionalidade será liberada na próxima atualização.",
+    });
+  };
 
   return (
     <div className="min-h-screen bg-background flex">
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed left-0 top-0 h-full bg-sidebar border-r border-sidebar-border z-40 transition-all duration-300",
+          "fixed left-0 top-0 h-full bg-sidebar border-r border-sidebar-border z-40 transition-all duration-300 hidden md:block",
           collapsed ? "w-16" : "w-64"
         )}
       >
@@ -104,14 +169,15 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
           {/* Bottom Actions */}
           <div className="p-2 border-t border-sidebar-border space-y-1">
-            <Link
-              to="/settings"
+            <button
+              onClick={() => handleProfileAction("Configurações")}
               className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
             >
               <Settings className="w-5 h-5 flex-shrink-0" />
               {!collapsed && <span className="text-sm font-medium">Configurações</span>}
-            </Link>
+            </button>
             <button
+              onClick={handleLogout}
               className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground hover:bg-destructive/10 hover:text-destructive transition-colors w-full"
             >
               <LogOut className="w-5 h-5 flex-shrink-0" />
@@ -125,17 +191,56 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       <div
         className={cn(
           "flex-1 transition-all duration-300",
-          collapsed ? "ml-16" : "ml-64"
+          collapsed ? "md:ml-16" : "md:ml-64"
         )}
       >
         {/* Top Bar */}
         <header className="h-16 border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-30 flex items-center justify-between px-6">
-          <h1 className="text-lg font-semibold">
-            {navItems.find((item) => item.path === location.pathname)?.label || "Dashboard"}
-          </h1>
+          <div className="flex items-center gap-3">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="md:hidden">
+                  <Menu className="w-5 h-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="p-0 w-64">
+                <nav className="p-4 space-y-2">
+                  {navItems.map((item) => (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      className={cn(
+                        "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
+                        location.pathname === item.path
+                          ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                          : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                      )}
+                    >
+                      <item.icon className="w-5 h-5 flex-shrink-0" />
+                      <span className="text-sm font-medium">{item.label}</span>
+                    </Link>
+                  ))}
+                </nav>
+              </SheetContent>
+            </Sheet>
+
+            <h1 className="text-lg font-semibold">
+              {titleItems.find((item) => item.path === location.pathname)?.label || "Dashboard"}
+            </h1>
+          </div>
 
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" className="relative">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative"
+              onClick={() =>
+                toast({
+                  title: "Notificações",
+                  description: "Você está com todas as notificações em dia.",
+                })
+              }
+            >
               <Bell className="w-5 h-5" />
               <span className="absolute top-1 right-1 w-2 h-2 bg-telegram rounded-full" />
             </Button>
@@ -151,20 +256,23 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => handleProfileAction("Perfil")}
+                >
                   <User className="w-4 h-4 mr-2" />
                   Perfil
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => handleProfileAction("Assinatura", "/billing")}
+                >
                   <CreditCard className="w-4 h-4 mr-2" />
                   Assinatura
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => handleProfileAction("Configurações")}
+                >
                   <Settings className="w-4 h-4 mr-2" />
                   Configurações
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive">
+                <DropdownMenuItem className="text-destructive" onSelect={handleLogout}>
                   <LogOut className="w-4 h-4 mr-2" />
                   Sair
                 </DropdownMenuItem>
@@ -174,7 +282,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         </header>
 
         {/* Page Content */}
-        <main className="p-6">{children}</main>
+        <main className="p-4 md:p-6">{children}</main>
       </div>
     </div>
   );
