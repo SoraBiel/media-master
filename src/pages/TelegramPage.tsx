@@ -27,10 +27,20 @@ import {
   MessageSquare,
   Image,
   Users,
+  Lock,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useTelegramIntegration } from "@/hooks/useTelegramIntegration";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+
+interface Plan {
+  id: string;
+  slug: string;
+  name: string;
+  max_destinations: number;
+}
 
 const TelegramPage = () => {
   const [showToken, setShowToken] = useState(false);
@@ -38,6 +48,10 @@ const TelegramPage = () => {
   const [messageText, setMessageText] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [isLoadingChats, setIsLoadingChats] = useState(false);
+  const [connectedBotsCount, setConnectedBotsCount] = useState(0);
+  const [currentPlan, setCurrentPlan] = useState<Plan | null>(null);
+
+  const { user } = useAuth();
 
   const {
     integration,
@@ -50,6 +64,43 @@ const TelegramPage = () => {
     sendMessage,
     disconnect,
   } = useTelegramIntegration();
+
+  useEffect(() => {
+    const fetchPlanAndBots = async () => {
+      if (!user) return;
+
+      // Fetch user's current plan
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("current_plan")
+        .eq("user_id", user.id)
+        .single();
+
+      if (profile?.current_plan) {
+        const { data: plan } = await supabase
+          .from("plans")
+          .select("id, slug, name, max_destinations")
+          .eq("slug", profile.current_plan)
+          .single();
+
+        if (plan) setCurrentPlan(plan);
+      }
+
+      // Count connected telegram integrations
+      const { count } = await supabase
+        .from("telegram_integrations")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("is_connected", true);
+
+      setConnectedBotsCount(count || 0);
+    };
+
+    fetchPlanAndBots();
+  }, [user, integration]);
+
+  const maxBots = currentPlan?.max_destinations === -1 ? Infinity : (currentPlan?.max_destinations || 1);
+  const canAddMoreBots = connectedBotsCount < maxBots;
 
   const handleConnectBot = async () => {
     if (!botToken) return;
@@ -107,6 +158,25 @@ const TelegramPage = () => {
           </CardContent>
         </Card>
 
+        {/* Plan Limit Info */}
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="p-4 flex items-start justify-between">
+            <div className="flex items-center gap-3">
+              <Bot className="w-5 h-5 text-primary" />
+              <div className="text-sm">
+                <p className="font-medium">Bots conectados: {connectedBotsCount} / {maxBots === Infinity ? "∞" : maxBots}</p>
+                <p className="text-muted-foreground">Plano atual: {currentPlan?.name || "Carregando..."}</p>
+              </div>
+            </div>
+            {!canAddMoreBots && (
+              <Badge variant="secondary" className="gap-1">
+                <Lock className="w-3 h-3" />
+                Limite atingido
+              </Badge>
+            )}
+          </CardContent>
+        </Card>
+
         {!integration?.is_connected ? (
           /* Connection Form */
           <Card className="glass-card">
@@ -120,56 +190,71 @@ const TelegramPage = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="bot-token">Token do Bot</Label>
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      id="bot-token"
-                      type={showToken ? "text" : "password"}
-                      placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
-                      value={botToken}
-                      onChange={(e) => setBotToken(e.target.value)}
-                      className="pl-10 pr-10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowToken(!showToken)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    >
-                      {showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
+              {!canAddMoreBots ? (
+                <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/30 text-sm">
+                  <div className="flex items-center gap-2 text-destructive">
+                    <Lock className="w-4 h-4" />
+                    <span className="font-medium">Limite de bots atingido</span>
                   </div>
-                  <Button
-                    variant="gradient"
-                    onClick={handleConnectBot}
-                    disabled={isValidating || !botToken}
-                  >
-                    {isValidating ? (
-                      <>
-                        <RefreshCw className="w-4 h-4 animate-spin" />
-                        Validando...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 className="w-4 h-4" />
-                        Conectar
-                      </>
-                    )}
-                  </Button>
+                  <p className="text-muted-foreground mt-1">
+                    Seu plano {currentPlan?.name} permite no máximo {maxBots} bot(s). 
+                    Faça upgrade para conectar mais bots.
+                  </p>
                 </div>
-              </div>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="bot-token">Token do Bot</Label>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                          id="bot-token"
+                          type={showToken ? "text" : "password"}
+                          placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
+                          value={botToken}
+                          onChange={(e) => setBotToken(e.target.value)}
+                          className="pl-10 pr-10"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowToken(!showToken)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        >
+                          {showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                      <Button
+                        variant="gradient"
+                        onClick={handleConnectBot}
+                        disabled={isValidating || !botToken}
+                      >
+                        {isValidating ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                            Validando...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 className="w-4 h-4" />
+                            Conectar
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
 
-              <div className="p-4 rounded-lg bg-secondary/50 text-sm space-y-2">
-                <p className="font-medium">Como obter o token:</p>
-                <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
-                  <li>Abra o Telegram e procure por @BotFather</li>
-                  <li>Envie /newbot e siga as instruções</li>
-                  <li>Copie o token gerado e cole aqui</li>
-                  <li>Adicione o bot ao grupo/canal como administrador</li>
-                </ol>
-              </div>
+                  <div className="p-4 rounded-lg bg-secondary/50 text-sm space-y-2">
+                    <p className="font-medium">Como obter o token:</p>
+                    <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+                      <li>Abra o Telegram e procure por @BotFather</li>
+                      <li>Envie /newbot e siga as instruções</li>
+                      <li>Copie o token gerado e cole aqui</li>
+                      <li>Adicione o bot ao grupo/canal como administrador</li>
+                    </ol>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         ) : (
