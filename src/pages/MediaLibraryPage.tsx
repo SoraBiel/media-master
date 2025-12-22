@@ -15,12 +15,14 @@ import {
   Package,
   RefreshCw,
   Play,
+  Megaphone,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useNavigate } from "react-router-dom";
 
 interface AdminMedia {
   id: string;
@@ -45,6 +47,7 @@ const MediaLibraryPage = () => {
   
   const { user } = useAuth();
   const { currentPlan, isLoading: isPlanLoading } = useSubscription();
+  const navigate = useNavigate();
 
   const userPlanIndex = PLAN_ORDER.indexOf(currentPlan?.slug || "free");
 
@@ -66,7 +69,27 @@ const MediaLibraryPage = () => {
     };
 
     fetchMediaPacks();
+
+    // Realtime subscription
+    if (user) {
+      const channel = supabase
+        .channel("admin_media_changes")
+        .on("postgres_changes", {
+          event: "*",
+          schema: "public",
+          table: "admin_media",
+        }, () => fetchMediaPacks())
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
   }, [user]);
+
+  const handleUsePack = (pack: AdminMedia) => {
+    navigate(`/campaigns?media_pack_id=${pack.id}`);
+  };
 
   const canAccessPack = (pack: AdminMedia) => {
     const packPlanIndex = PLAN_ORDER.indexOf(pack.min_plan);
@@ -188,19 +211,25 @@ const MediaLibraryPage = () => {
                       {pack.description && (
                         <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{pack.description}</p>
                       )}
-                      <div className="flex items-center justify-between mt-4">
-                        <span className="text-sm text-muted-foreground">{pack.file_count} arquivos</span>
-                        {hasAccess ? (
-                          <Button size="sm" onClick={() => setSelectedPack(pack)}>
+                    <div className="flex items-center justify-between mt-4">
+                      <span className="text-sm text-muted-foreground">{pack.file_count} arquivos</span>
+                      {hasAccess ? (
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline" onClick={() => setSelectedPack(pack)}>
                             Ver Arquivos
                           </Button>
-                        ) : (
-                          <Badge variant="secondary">
-                            <Lock className="w-3 h-3 mr-1" />
-                            Bloqueado
-                          </Badge>
-                        )}
-                      </div>
+                          <Button size="sm" onClick={() => handleUsePack(pack)}>
+                            <Megaphone className="w-4 h-4 mr-1" />
+                            Usar
+                          </Button>
+                        </div>
+                      ) : (
+                        <Badge variant="secondary">
+                          <Lock className="w-3 h-3 mr-1" />
+                          Bloqueado
+                        </Badge>
+                      )}
+                    </div>
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -232,16 +261,22 @@ const MediaLibraryPage = () => {
                       </div>
                       <p className="text-sm text-muted-foreground">{pack.file_count} arquivos</p>
                     </div>
-                    {hasAccess ? (
-                      <Button size="sm" onClick={() => setSelectedPack(pack)}>
+                  {hasAccess ? (
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" onClick={() => setSelectedPack(pack)}>
                         Ver Arquivos
                       </Button>
-                    ) : (
-                      <Badge variant="secondary">
-                        <Lock className="w-3 h-3 mr-1" />
-                        Plano {pack.min_plan}
-                      </Badge>
-                    )}
+                      <Button size="sm" onClick={() => handleUsePack(pack)}>
+                        <Megaphone className="w-4 h-4 mr-1" />
+                        Usar
+                      </Button>
+                    </div>
+                  ) : (
+                    <Badge variant="secondary">
+                      <Lock className="w-3 h-3 mr-1" />
+                      Plano {pack.min_plan}
+                    </Badge>
+                  )}
                   </div>
                 );
               })}

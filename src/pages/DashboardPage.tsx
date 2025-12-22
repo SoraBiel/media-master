@@ -47,6 +47,23 @@ const DashboardPage = () => {
     };
 
     fetchRecentEvents();
+
+    // Realtime subscription for events
+    if (profile?.user_id) {
+      const channel = supabase
+        .channel("user_events_realtime")
+        .on("postgres_changes", {
+          event: "*",
+          schema: "public",
+          table: "user_events",
+          filter: `user_id=eq.${profile.user_id}`,
+        }, () => fetchRecentEvents())
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
   }, [profile?.user_id]);
 
   const stats = [
@@ -210,35 +227,19 @@ const DashboardPage = () => {
               <CardTitle>Ações Rápidas</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {!integration?.is_connected && (
-                <Link to="/telegram" className="block">
-                  <div className="p-4 rounded-lg border border-telegram/30 bg-telegram/5 hover:bg-telegram/10 transition-colors cursor-pointer">
-                    <div className="flex items-center gap-3">
-                      <MessageCircle className="w-5 h-5 text-telegram" />
-                      <div>
-                        <p className="font-medium">Conectar Telegram</p>
-                        <p className="text-sm text-muted-foreground">Configure seu bot</p>
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              )}
+          <Link to="/telegram" className="block">
+            <div className="p-4 rounded-lg border border-telegram/30 bg-telegram/5 hover:bg-telegram/10 transition-colors cursor-pointer">
+              <div className="flex items-center gap-3">
+                <MessageCircle className="w-5 h-5 text-telegram" />
+                <div>
+                  <p className="font-medium">Crie Bot</p>
+                  <p className="text-sm text-muted-foreground">Configure seu bot Telegram</p>
+                </div>
+              </div>
+            </div>
+          </Link>
 
-              {!hasActiveSubscription() && (
-                <Link to="/billing" className="block">
-                  <div className="p-4 rounded-lg border border-warning/30 bg-warning/5 hover:bg-warning/10 transition-colors cursor-pointer">
-                    <div className="flex items-center gap-3">
-                      <CreditCard className="w-5 h-5 text-warning" />
-                      <div>
-                        <p className="font-medium">Escolher Plano</p>
-                        <p className="text-sm text-muted-foreground">Desbloqueie recursos</p>
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              )}
-
-              <Link to="/campaigns" className="block">
+          <Link to="/campaigns" className="block">
                 <div className="p-4 rounded-lg border border-border hover:bg-secondary/50 transition-colors cursor-pointer">
                   <div className="flex items-center gap-3">
                     <Megaphone className="w-5 h-5 text-purple-400" />

@@ -314,49 +314,58 @@ const DestinationsPage = () => {
                     onChange={(e) => setNewDestination({ ...newDestination, name: e.target.value })}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="dest-chat-id">Chat ID</Label>
-                  <Input
-                    id="dest-chat-id"
-                    placeholder="-1001234567890"
-                    value={newDestination.chat_id}
-                    onChange={(e) => setNewDestination({ ...newDestination, chat_id: e.target.value })}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Use o ID do chat (ex: -1001234567890). Busque na aba Telegram.
-                  </p>
+              <div className="space-y-2">
+                <Label htmlFor="dest-chat-id">Chat ID</Label>
+                <Input
+                  id="dest-chat-id"
+                  placeholder="-1001234567890"
+                  value={newDestination.chat_id}
+                  onChange={(e) => setNewDestination({ ...newDestination, chat_id: e.target.value })}
+                />
+                <div className="p-3 rounded-lg bg-secondary/50 text-sm space-y-2 mt-2">
+                  <p className="font-medium">Como obter o Chat ID:</p>
+                  <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+                    <li>Adicione o bot <span className="text-telegram font-mono">@meuchatid_bot</span> ao seu grupo</li>
+                    <li>Envie qualquer mensagem no grupo</li>
+                    <li>O bot responderá com o Chat ID (ex: -1001234567890)</li>
+                    <li>Copie o ID e cole aqui</li>
+                  </ol>
                 </div>
-                <div className="space-y-2">
-                  <Label>Tipo</Label>
-                  <Select
-                    value={newDestination.chat_type}
-                    onValueChange={(value) => setNewDestination({ ...newDestination, chat_type: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="group">
-                        <div className="flex items-center gap-2">
-                          <Users className="w-4 h-4" />
-                          Grupo
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="supergroup">
-                        <div className="flex items-center gap-2">
-                          <Users className="w-4 h-4" />
-                          Supergrupo
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="channel">
-                        <div className="flex items-center gap-2">
-                          <Megaphone className="w-4 h-4" />
-                          Canal
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Tipo</Label>
+                <Select
+                  value={newDestination.chat_type}
+                  onValueChange={(value) => setNewDestination({ ...newDestination, chat_type: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="group">
+                      <div className="flex items-center gap-2">
+                        <Users className="w-4 h-4" />
+                        Grupo
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="supergroup">
+                      <div className="flex items-center gap-2">
+                        <Users className="w-4 h-4" />
+                        Supergrupo
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="channel">
+                      <div className="flex items-center gap-2">
+                        <Megaphone className="w-4 h-4" />
+                        Canal
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  O tipo é informado pelo @meuchatid_bot junto com o Chat ID.
+                </p>
+              </div>
                 
                 {!integration?.is_connected && (
                   <div className="p-3 rounded-lg bg-warning/10 border border-warning/30 text-sm">
