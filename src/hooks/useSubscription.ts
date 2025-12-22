@@ -43,35 +43,7 @@ export const useSubscription = () => {
     }
 
     try {
-      // Fetch active subscription
-      const { data: subData, error: subError } = await supabase
-        .from("subscriptions")
-        .select("*")
-        .eq("user_id", user.id)
-        .eq("status", "active")
-        .maybeSingle();
-
-      if (subError) {
-        console.error("Error fetching subscription:", subError);
-      } else {
-        setSubscription(subData);
-
-        // If there's an active subscription, check if it's expired
-        if (subData && subData.expires_at) {
-          const expiresAt = new Date(subData.expires_at);
-          if (expiresAt < new Date()) {
-            // Subscription expired, update status
-            await supabase
-              .from("subscriptions")
-              .update({ status: "expired" })
-              .eq("id", subData.id);
-            
-            setSubscription(null);
-          }
-        }
-      }
-
-      // Fetch all active plans
+      // Fetch all active plans first
       const { data: plansData, error: plansError } = await supabase
         .from("plans")
         .select("*")
@@ -82,12 +54,73 @@ export const useSubscription = () => {
         console.error("Error fetching plans:", plansError);
       } else {
         setPlans(plansData || []);
+      }
 
-        // Find current plan
-        if (subData) {
+      // Fetch active subscription from subscriptions table
+      const { data: subData, error: subError } = await supabase
+        .from("subscriptions")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("status", "active")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (subError) {
+        console.error("Error fetching subscription:", subError);
+      }
+
+      // If there's an active subscription, check if it's expired
+      if (subData && subData.expires_at) {
+        const expiresAt = new Date(subData.expires_at);
+        if (expiresAt < new Date()) {
+          // Subscription expired, update status
+          await supabase
+            .from("subscriptions")
+            .update({ status: "expired" })
+            .eq("id", subData.id);
+          
+          setSubscription(null);
+        } else {
+          setSubscription(subData);
+          // Find current plan from subscription
           const plan = plansData?.find(p => p.id === subData.plan_id);
           setCurrentPlan(plan || null);
+          setIsLoading(false);
+          return;
         }
+      }
+
+      // If no active subscription in subscriptions table, check profile.current_plan
+      // This handles cases where admin assigns plan directly via profile
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("current_plan")
+        .eq("user_id", user.id)
+        .single();
+
+      if (profileData?.current_plan && profileData.current_plan !== "free") {
+        // Find the plan by slug
+        const plan = plansData?.find(p => p.slug === profileData.current_plan);
+        if (plan) {
+          setCurrentPlan(plan);
+          // Create a virtual subscription object for UI consistency
+          setSubscription({
+            id: "profile-based",
+            user_id: user.id,
+            plan_id: plan.id,
+            status: "active",
+            started_at: null,
+            expires_at: null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          });
+        }
+      } else {
+        // Default to free plan
+        const freePlan = plansData?.find(p => p.slug === "free");
+        setCurrentPlan(freePlan || null);
+        setSubscription(null);
       }
     } catch (error) {
       console.error("Error in useSubscription:", error);
@@ -99,10 +132,10 @@ export const useSubscription = () => {
   const hasActiveSubscription = (): boolean => {
     if (!subscription) return false;
     if (subscription.status !== "active") return false;
-    if (subscription.expires_at) {
-      const expiresAt = new Date(subscription.expires_at);
-      if (expiresAt < new Date()) return false;
-    }
+    // For profile-based subscriptions (no expiry), always active
+    if (!subscription.expires_at) return true;
+    const expiresAt = new Date(subscription.expires_at);
+    if (expiresAt < new Date()) return false;
     return true;
   };
 

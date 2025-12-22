@@ -16,6 +16,7 @@ import CampaignsPage from "./pages/CampaignsPage";
 import ModelHubPage from "./pages/ModelHubPage";
 import OnboardingPage from "./pages/OnboardingPage";
 import CheckoutPage from "./pages/CheckoutPage";
+import ThankYouPage from "./pages/ThankYouPage";
 import TikTokAccountsPage from "./pages/TikTokAccountsPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
 import SettingsPage from "./pages/SettingsPage";
@@ -45,6 +46,7 @@ const App = () => (
             <Route path="/model-hub" element={<ProtectedRoute><ModelHubPage /></ProtectedRoute>} />
             <Route path="/tiktok-accounts" element={<ProtectedRoute><TikTokAccountsPage /></ProtectedRoute>} />
             <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
+            <Route path="/thank-you" element={<ProtectedRoute><ThankYouPage /></ProtectedRoute>} />
             <Route path="/delivery" element={<ProtectedRoute><DeliveryPage /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute requireAdmin><AdminDashboardPage /></ProtectedRoute>} />
             <Route path="/admin/user/:userId" element={<ProtectedRoute requireAdmin><UserDetailsPage /></ProtectedRoute>} />

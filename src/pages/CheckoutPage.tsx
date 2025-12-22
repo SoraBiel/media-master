@@ -158,12 +158,17 @@ const CheckoutPage = () => {
           
           toast({
             title: "Pagamento confirmado!",
-            description: "Seu pagamento foi processado com sucesso.",
+            description: "Sua assinatura foi ativada com sucesso.",
           });
 
+          // Redirect to thank you page for subscriptions, dashboard for other products
           setTimeout(() => {
-            navigate("/dashboard");
-          }, 3000);
+            if (productType === "subscription") {
+              navigate("/thank-you");
+            } else {
+              navigate("/dashboard");
+            }
+          }, 2000);
         }
       } catch (error) {
         console.error("Error checking payment status:", error);
