@@ -185,10 +185,6 @@ serve(async (req) => {
           phone: buyer.phone || undefined,
           document: buyer.document || undefined,
         },
-        product: {
-          id: productIdForDb,
-          name: productName,
-        },
       }),
     });
 
