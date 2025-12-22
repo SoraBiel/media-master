@@ -138,6 +138,7 @@ const AdminDashboardPage = () => {
   const [tiktokAccounts, setTiktokAccounts] = useState<TikTokAccount[]>([]);
   const [models, setModels] = useState<ModelForSale[]>([]);
   const [adminMedia, setAdminMedia] = useState<AdminMedia[]>([]);
+  const [plans, setPlans] = useState<{ id: string; slug: string; name: string }[]>([]);
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("30days");
   const [billingStats, setBillingStats] = useState<BillingStats>({
     today: 0,
@@ -160,6 +161,9 @@ const AdminDashboardPage = () => {
   const [tiktokDialogOpen, setTiktokDialogOpen] = useState(false);
   const [modelDialogOpen, setModelDialogOpen] = useState(false);
   const [mediaDialogOpen, setMediaDialogOpen] = useState(false);
+  const [planDialogOpen, setPlanDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState("");
   const { toast } = useToast();
 
   const [tiktokForm, setTiktokForm] = useState({
@@ -193,6 +197,7 @@ const AdminDashboardPage = () => {
     fetchTikTokAccounts();
     fetchModels();
     fetchAdminMedia();
+    fetchPlans();
 
     const channel = supabase
       .channel("admin-data")
@@ -207,6 +212,19 @@ const AdminDashboardPage = () => {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  const fetchPlans = async () => {
+    try {
+      const { data } = await supabase
+        .from("plans")
+        .select("id, slug, name")
+        .eq("is_active", true)
+        .order("price_cents", { ascending: true });
+      setPlans(data || []);
+    } catch (error) {
+      console.error("Error fetching plans:", error);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -442,6 +460,35 @@ const AdminDashboardPage = () => {
     }
   };
 
+  const handleChangePlan = async () => {
+    if (!selectedUser || !selectedPlan) return;
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ current_plan: selectedPlan as any })
+        .eq("user_id", selectedUser.user_id);
+
+      if (error) throw error;
+
+      toast({ 
+        title: "Plano alterado!", 
+        description: `${selectedUser.email} agora está no plano ${selectedPlan}.` 
+      });
+      setPlanDialogOpen(false);
+      setSelectedUser(null);
+      setSelectedPlan("");
+      fetchData();
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const openPlanDialog = (profile: Profile) => {
+    setSelectedUser(profile);
+    setSelectedPlan(profile.current_plan);
+    setPlanDialogOpen(true);
+  };
+
   const formatPrice = (cents: number) => {
     return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cents / 100);
   };
@@ -574,8 +621,10 @@ const AdminDashboardPage = () => {
                             <Button variant="ghost" size="icon"><MoreVertical className="w-4 h-4" /></Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => openPlanDialog(profile)}>
+                              <CreditCard className="w-4 h-4 mr-2" />Alterar Plano
+                            </DropdownMenuItem>
                             <DropdownMenuItem><Eye className="w-4 h-4 mr-2" />Ver detalhes</DropdownMenuItem>
-                            <DropdownMenuItem><Edit className="w-4 h-4 mr-2" />Editar</DropdownMenuItem>
                             <DropdownMenuItem className="text-destructive"><Ban className="w-4 h-4 mr-2" />Suspender</DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -585,6 +634,47 @@ const AdminDashboardPage = () => {
                 </TableBody>
               </Table>
             </div>
+
+            {/* Plan Change Dialog */}
+            <Dialog open={planDialogOpen} onOpenChange={setPlanDialogOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Alterar Plano do Usuário</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label>Usuário</Label>
+                    <p className="text-sm text-muted-foreground">{selectedUser?.email}</p>
+                  </div>
+                  <div>
+                    <Label>Plano Atual</Label>
+                    <Badge variant="secondary" className="ml-2 capitalize">{selectedUser?.current_plan}</Badge>
+                  </div>
+                  <div>
+                    <Label>Novo Plano</Label>
+                    <Select value={selectedPlan} onValueChange={setSelectedPlan}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Selecione um plano" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {plans.map((plan) => (
+                          <SelectItem key={plan.id} value={plan.slug}>
+                            {plan.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button 
+                    onClick={handleChangePlan} 
+                    className="w-full telegram-gradient text-white"
+                    disabled={!selectedPlan || selectedPlan === selectedUser?.current_plan}
+                  >
+                    Confirmar Alteração
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           {/* Billing Tab */}
