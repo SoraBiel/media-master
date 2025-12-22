@@ -14,6 +14,113 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_media: {
+        Row: {
+          created_at: string
+          description: string | null
+          file_count: number | null
+          id: string
+          image_url: string | null
+          min_plan: string
+          name: string
+          pack_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          file_count?: number | null
+          id?: string
+          image_url?: string | null
+          min_plan?: string
+          name: string
+          pack_type?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          file_count?: number | null
+          id?: string
+          image_url?: string | null
+          min_plan?: string
+          name?: string
+          pack_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      campaigns: {
+        Row: {
+          caption: string | null
+          completed_at: string | null
+          created_at: string
+          delay_seconds: number | null
+          destination_id: string | null
+          error_message: string | null
+          id: string
+          name: string
+          progress: number | null
+          scheduled_end: string | null
+          scheduled_start: string | null
+          send_mode: string | null
+          sent_count: number | null
+          started_at: string | null
+          status: string | null
+          total_count: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          caption?: string | null
+          completed_at?: string | null
+          created_at?: string
+          delay_seconds?: number | null
+          destination_id?: string | null
+          error_message?: string | null
+          id?: string
+          name: string
+          progress?: number | null
+          scheduled_end?: string | null
+          scheduled_start?: string | null
+          send_mode?: string | null
+          sent_count?: number | null
+          started_at?: string | null
+          status?: string | null
+          total_count?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          caption?: string | null
+          completed_at?: string | null
+          created_at?: string
+          delay_seconds?: number | null
+          destination_id?: string | null
+          error_message?: string | null
+          id?: string
+          name?: string
+          progress?: number | null
+          scheduled_end?: string | null
+          scheduled_start?: string | null
+          send_mode?: string | null
+          sent_count?: number | null
+          started_at?: string | null
+          status?: string | null
+          total_count?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaigns_destination_id_fkey"
+            columns: ["destination_id"]
+            isOneToOne: false
+            referencedRelation: "destinations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       catalog_purchases: {
         Row: {
           amount_cents: number
@@ -85,6 +192,59 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      destinations: {
+        Row: {
+          chat_id: string
+          chat_title: string | null
+          chat_type: string | null
+          created_at: string
+          id: string
+          last_sent_at: string | null
+          members_count: number | null
+          name: string
+          status: string | null
+          telegram_integration_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          chat_id: string
+          chat_title?: string | null
+          chat_type?: string | null
+          created_at?: string
+          id?: string
+          last_sent_at?: string | null
+          members_count?: number | null
+          name: string
+          status?: string | null
+          telegram_integration_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          chat_id?: string
+          chat_title?: string | null
+          chat_type?: string | null
+          created_at?: string
+          id?: string
+          last_sent_at?: string | null
+          members_count?: number | null
+          name?: string
+          status?: string | null
+          telegram_integration_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "destinations_telegram_integration_id_fkey"
+            columns: ["telegram_integration_id"]
+            isOneToOne: false
+            referencedRelation: "telegram_integrations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       models_for_sale: {
         Row: {

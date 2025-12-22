@@ -33,67 +33,89 @@ import {
   Edit,
   Send,
   ExternalLink,
+  RefreshCw,
+  Bot,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useTelegramIntegration } from "@/hooks/useTelegramIntegration";
+
+interface Destination {
+  id: string;
+  user_id: string;
+  telegram_integration_id: string | null;
+  name: string;
+  chat_id: string;
+  chat_title: string | null;
+  chat_type: string;
+  status: string;
+  members_count: number;
+  last_sent_at: string | null;
+  created_at: string;
+}
 
 const DestinationsPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingDestination, setEditingDestination] = useState<Destination | null>(null);
+  const [destinations, setDestinations] = useState<Destination[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isTesting, setIsTesting] = useState<string | null>(null);
   const [newDestination, setNewDestination] = useState({
     name: "",
-    link: "",
-    type: "group",
-    credential: "",
+    chat_id: "",
+    chat_type: "group",
+    telegram_integration_id: "",
   });
   const { toast } = useToast();
+  const { user } = useAuth();
+  const { integration, availableChats, fetchAvailableChats, sendMessage } = useTelegramIntegration();
 
-  const destinations = [
-    {
-      id: 1,
-      name: "Promoções Black Friday",
-      link: "t.me/+abc123",
-      type: "group",
-      credential: "MediaDrop Bot",
-      status: "verified",
-      members: 1250,
-      lastSent: "há 2 horas",
-    },
-    {
-      id: 2,
-      name: "Canal de Ofertas",
-      link: "@ofertas_diarias",
-      type: "channel",
-      credential: "Conta Principal",
-      status: "verified",
-      members: 5420,
-      lastSent: "há 30 min",
-    },
-    {
-      id: 3,
-      name: "Grupo VIP",
-      link: "t.me/+xyz789",
-      type: "group",
-      credential: "MediaDrop Bot",
-      status: "pending",
-      members: 0,
-      lastSent: "Nunca",
-    },
-    {
-      id: 4,
-      name: "Newsletter Tech",
-      link: "@tech_news_br",
-      type: "channel",
-      credential: "Conta Principal",
-      status: "error",
-      members: 890,
-      lastSent: "há 3 dias",
-    },
-  ];
+  const fetchDestinations = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from("destinations")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+      
+      if (error) throw error;
+      setDestinations(data || []);
+    } catch (error: any) {
+      console.error("Error fetching destinations:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  const handleAddDestination = () => {
-    if (!newDestination.name || !newDestination.link) {
+  useEffect(() => {
+    fetchDestinations();
+    
+    if (user) {
+      const channel = supabase
+        .channel("destinations_changes")
+        .on("postgres_changes", {
+          event: "*",
+          schema: "public",
+          table: "destinations",
+          filter: `user_id=eq.${user.id}`,
+        }, () => fetchDestinations())
+        .subscribe();
+      
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [user]);
+
+  const handleAddDestination = async () => {
+    if (!newDestination.name || !newDestination.chat_id || !user) {
       toast({
         title: "Erro",
         description: "Preencha todos os campos obrigatórios.",
@@ -102,12 +124,105 @@ const DestinationsPage = () => {
       return;
     }
 
-    toast({
-      title: "Destino adicionado!",
-      description: `${newDestination.name} foi adicionado com sucesso.`,
-    });
-    setIsDialogOpen(false);
-    setNewDestination({ name: "", link: "", type: "group", credential: "" });
+    try {
+      const { error } = await supabase.from("destinations").insert({
+        user_id: user.id,
+        name: newDestination.name,
+        chat_id: newDestination.chat_id,
+        chat_type: newDestination.chat_type,
+        telegram_integration_id: newDestination.telegram_integration_id || null,
+        status: "pending",
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Destino adicionado!",
+        description: `${newDestination.name} foi adicionado com sucesso.`,
+      });
+      setIsDialogOpen(false);
+      setNewDestination({ name: "", chat_id: "", chat_type: "group", telegram_integration_id: "" });
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleUpdateDestination = async () => {
+    if (!editingDestination) return;
+
+    try {
+      const { error } = await supabase
+        .from("destinations")
+        .update({
+          name: editingDestination.name,
+          chat_id: editingDestination.chat_id,
+          chat_type: editingDestination.chat_type,
+        })
+        .eq("id", editingDestination.id);
+
+      if (error) throw error;
+
+      toast({ title: "Destino atualizado!" });
+      setIsEditDialogOpen(false);
+      setEditingDestination(null);
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleDeleteDestination = async (id: string) => {
+    try {
+      const { error } = await supabase.from("destinations").delete().eq("id", id);
+      if (error) throw error;
+      toast({ title: "Destino removido!" });
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleTestDestination = async (dest: Destination) => {
+    if (!integration?.bot_token) {
+      toast({
+        title: "Bot não conectado",
+        description: "Conecte um bot do Telegram primeiro em /telegram",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsTesting(dest.id);
+    try {
+      await sendMessage("✅ Teste de conexão do MediaDrop!", dest.chat_id);
+      
+      // Update status to verified
+      await supabase
+        .from("destinations")
+        .update({ status: "verified" })
+        .eq("id", dest.id);
+      
+      toast({
+        title: "Teste enviado!",
+        description: `Mensagem enviada para ${dest.name}`,
+      });
+    } catch (error: any) {
+      // Update status to error
+      await supabase
+        .from("destinations")
+        .update({ status: "error" })
+        .eq("id", dest.id);
+      
+      toast({
+        title: "Erro no teste",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsTesting(null);
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -141,8 +256,28 @@ const DestinationsPage = () => {
   const filteredDestinations = destinations.filter(
     (d) =>
       d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      d.link.toLowerCase().includes(searchQuery.toLowerCase())
+      d.chat_id.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const formatDate = (date: string | null) => {
+    if (!date) return "Nunca";
+    return new Date(date).toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <RefreshCw className="w-8 h-8 animate-spin text-telegram" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -180,19 +315,22 @@ const DestinationsPage = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="dest-link">Link ou @username</Label>
+                  <Label htmlFor="dest-chat-id">Chat ID</Label>
                   <Input
-                    id="dest-link"
-                    placeholder="t.me/+abc123 ou @meucanal"
-                    value={newDestination.link}
-                    onChange={(e) => setNewDestination({ ...newDestination, link: e.target.value })}
+                    id="dest-chat-id"
+                    placeholder="-1001234567890"
+                    value={newDestination.chat_id}
+                    onChange={(e) => setNewDestination({ ...newDestination, chat_id: e.target.value })}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Use o ID do chat (ex: -1001234567890). Busque na aba Telegram.
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label>Tipo</Label>
                   <Select
-                    value={newDestination.type}
-                    onValueChange={(value) => setNewDestination({ ...newDestination, type: value })}
+                    value={newDestination.chat_type}
+                    onValueChange={(value) => setNewDestination({ ...newDestination, chat_type: value })}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -204,6 +342,12 @@ const DestinationsPage = () => {
                           Grupo
                         </div>
                       </SelectItem>
+                      <SelectItem value="supergroup">
+                        <div className="flex items-center gap-2">
+                          <Users className="w-4 h-4" />
+                          Supergrupo
+                        </div>
+                      </SelectItem>
                       <SelectItem value="channel">
                         <div className="flex items-center gap-2">
                           <Megaphone className="w-4 h-4" />
@@ -213,21 +357,15 @@ const DestinationsPage = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label>Credencial</Label>
-                  <Select
-                    value={newDestination.credential}
-                    onValueChange={(value) => setNewDestination({ ...newDestination, credential: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione uma conexão" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="bot-1">MediaDrop Bot</SelectItem>
-                      <SelectItem value="session-1">Conta Principal</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                
+                {!integration?.is_connected && (
+                  <div className="p-3 rounded-lg bg-warning/10 border border-warning/30 text-sm">
+                    <div className="flex items-center gap-2 text-warning">
+                      <Bot className="w-4 h-4" />
+                      <span>Conecte um bot primeiro em /telegram</span>
+                    </div>
+                  </div>
+                )}
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
@@ -253,70 +391,89 @@ const DestinationsPage = () => {
         </div>
 
         {/* Destinations Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredDestinations.map((dest, index) => (
-            <motion.div
-              key={dest.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-            >
-              <Card className="glass-card h-full hover:border-telegram/30 transition-colors">
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-lg ${dest.type === "group" ? "bg-telegram/20" : "bg-purple-500/20"}`}>
-                        {dest.type === "group" ? (
-                          <Users className="w-5 h-5 text-telegram" />
-                        ) : (
-                          <Megaphone className="w-5 h-5 text-purple-400" />
-                        )}
+        {filteredDestinations.length > 0 ? (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredDestinations.map((dest, index) => (
+              <motion.div
+                key={dest.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+              >
+                <Card className="glass-card h-full hover:border-telegram/30 transition-colors">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-lg ${dest.chat_type === "channel" ? "bg-purple-500/20" : "bg-telegram/20"}`}>
+                          {dest.chat_type === "channel" ? (
+                            <Megaphone className="w-5 h-5 text-purple-400" />
+                          ) : (
+                            <Users className="w-5 h-5 text-telegram" />
+                          )}
+                        </div>
+                        <div>
+                          <CardTitle className="text-base">{dest.name}</CardTitle>
+                          <CardDescription className="flex items-center gap-1 text-xs">
+                            {dest.chat_id}
+                          </CardDescription>
+                        </div>
                       </div>
-                      <div>
-                        <CardTitle className="text-base">{dest.name}</CardTitle>
-                        <CardDescription className="flex items-center gap-1">
-                          {dest.link}
-                          <ExternalLink className="w-3 h-3" />
-                        </CardDescription>
+                      {getStatusBadge(dest.status)}
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Tipo</span>
+                        <span className="capitalize">{dest.chat_type}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Último envio</span>
+                        <span>{formatDate(dest.last_sent_at)}</span>
+                      </div>
+                      <div className="flex gap-2 pt-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="flex-1"
+                          onClick={() => handleTestDestination(dest)}
+                          disabled={isTesting === dest.id}
+                        >
+                          {isTesting === dest.id ? (
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <>
+                              <Send className="w-4 h-4 mr-1" />
+                              Testar
+                            </>
+                          )}
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => {
+                            setEditingDestination(dest);
+                            setIsEditDialogOpen(true);
+                          }}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => handleDeleteDestination(dest.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </div>
                     </div>
-                    {getStatusBadge(dest.status)}
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Credencial</span>
-                      <span>{dest.credential}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Membros</span>
-                      <span>{dest.members.toLocaleString()}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Último envio</span>
-                      <span>{dest.lastSent}</span>
-                    </div>
-                    <div className="flex gap-2 pt-2">
-                      <Button variant="outline" size="sm" className="flex-1">
-                        <Send className="w-4 h-4 mr-1" />
-                        Testar
-                      </Button>
-                      <Button variant="ghost" size="icon">
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
-
-        {filteredDestinations.length === 0 && (
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        ) : (
           <Card className="glass-card">
             <CardContent className="p-12 text-center">
               <Target className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
@@ -336,6 +493,55 @@ const DestinationsPage = () => {
           </Card>
         )}
       </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Destino</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Nome interno</Label>
+              <Input
+                value={editingDestination?.name || ""}
+                onChange={(e) => setEditingDestination(prev => prev ? { ...prev, name: e.target.value } : null)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Chat ID</Label>
+              <Input
+                value={editingDestination?.chat_id || ""}
+                onChange={(e) => setEditingDestination(prev => prev ? { ...prev, chat_id: e.target.value } : null)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Tipo</Label>
+              <Select
+                value={editingDestination?.chat_type || "group"}
+                onValueChange={(value) => setEditingDestination(prev => prev ? { ...prev, chat_type: value } : null)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="group">Grupo</SelectItem>
+                  <SelectItem value="supergroup">Supergrupo</SelectItem>
+                  <SelectItem value="channel">Canal</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button variant="gradient" onClick={handleUpdateDestination}>
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 };
