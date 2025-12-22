@@ -17,7 +17,7 @@ import {
   User,
   Shield,
   Menu,
-  X,
+  Video,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -50,6 +50,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     { icon: Target, label: "Destinos", path: "/destinations" },
     { icon: Megaphone, label: "Campanhas", path: "/campaigns" },
     { icon: Sparkles, label: "Model Hub", path: "/model-hub" },
+    { icon: Video, label: "TikTok Accounts", path: "/tiktok-accounts" },
   ];
 
   // Admin-only items
