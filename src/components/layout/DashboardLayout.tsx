@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
@@ -18,6 +18,7 @@ import {
   Shield,
   Menu,
   Video,
+  Crown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,6 +31,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/AuthContext";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { useSubscription } from "@/hooks/useSubscription";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -41,17 +43,38 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut, isAdmin, profile } = useAuth();
+  const { hasActiveSubscription, currentPlan } = useSubscription();
 
-  // Base navigation items
-  const navItems = [
-    { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
-    { icon: CreditCard, label: "Billing", path: "/billing" },
-    { icon: MessageCircle, label: "Telegram", path: "/telegram" },
-    { icon: Target, label: "Destinos", path: "/destinations" },
-    { icon: Megaphone, label: "Campanhas", path: "/campaigns" },
-    { icon: Sparkles, label: "Model Hub", path: "/model-hub" },
-    { icon: Video, label: "TikTok Accounts", path: "/tiktok-accounts" },
-  ];
+  // Build navigation items dynamically based on subscription status
+  const getNavItems = () => {
+    const items = [
+      { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
+    ];
+
+    // Show "Planos" only if user doesn't have an active subscription
+    // Show "Meu Plano" if user has an active subscription
+    if (hasActiveSubscription()) {
+      items.push({ 
+        icon: Crown, 
+        label: `Plano ${currentPlan?.name || "Ativo"}`, 
+        path: "/billing" 
+      });
+    } else {
+      items.push({ icon: CreditCard, label: "Planos", path: "/billing" });
+    }
+
+    items.push(
+      { icon: MessageCircle, label: "Telegram", path: "/telegram" },
+      { icon: Target, label: "Destinos", path: "/destinations" },
+      { icon: Megaphone, label: "Campanhas", path: "/campaigns" },
+      { icon: Sparkles, label: "Model Hub", path: "/model-hub" },
+      { icon: Video, label: "TikTok Accounts", path: "/tiktok-accounts" },
+    );
+
+    return items;
+  };
+
+  const navItems = getNavItems();
 
   // Admin-only items
   const adminItems = [
