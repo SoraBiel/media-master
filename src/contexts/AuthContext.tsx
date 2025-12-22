@@ -8,9 +8,14 @@ interface Profile {
   user_id: string;
   email: string;
   full_name: string | null;
+  phone: string | null;
+  avatar_url: string | null;
   current_plan: "free" | "basic" | "pro" | "agency";
   onboarding_completed: boolean;
   is_online: boolean;
+  created_at: string | null;
+  updated_at: string | null;
+  last_seen_at: string | null;
 }
 
 interface AuthContextType {
