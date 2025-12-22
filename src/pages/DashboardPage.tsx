@@ -13,87 +13,101 @@ import {
   Clock,
   ArrowUpRight,
   Plus,
+  MessageCircle,
+  CreditCard,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { useUserMetrics } from "@/hooks/useUserMetrics";
+import { useSubscription } from "@/hooks/useSubscription";
+import { useTelegramIntegration } from "@/hooks/useTelegramIntegration";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 const DashboardPage = () => {
+  const { profile } = useAuth();
+  const { metrics, isLoading: metricsLoading } = useUserMetrics();
+  const { currentPlan, hasActiveSubscription, getDaysRemaining } = useSubscription();
+  const { integration } = useTelegramIntegration();
+  const [recentEvents, setRecentEvents] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchRecentEvents = async () => {
+      if (!profile?.user_id) return;
+      
+      const { data } = await supabase
+        .from("user_events")
+        .select("*")
+        .eq("user_id", profile.user_id)
+        .order("created_at", { ascending: false })
+        .limit(5);
+      
+      if (data) setRecentEvents(data);
+    };
+
+    fetchRecentEvents();
+  }, [profile?.user_id]);
+
   const stats = [
     {
-      title: "Envios este mês",
-      value: "2,847",
-      change: "+12%",
+      title: "Ações realizadas",
+      value: metrics?.total_actions?.toString() || "0",
+      change: "+0",
       icon: Send,
       color: "text-telegram",
       bgColor: "bg-telegram/10",
     },
     {
-      title: "Destinos ativos",
-      value: "8",
-      change: "+2",
-      icon: Target,
-      color: "text-success",
-      bgColor: "bg-success/10",
+      title: "Telegram ativo",
+      value: integration?.is_connected ? "1" : "0",
+      change: integration?.is_connected ? "Conectado" : "Desconectado",
+      icon: MessageCircle,
+      color: integration?.is_connected ? "text-success" : "text-muted-foreground",
+      bgColor: integration?.is_connected ? "bg-success/10" : "bg-muted/10",
     },
     {
-      title: "Mídias na biblioteca",
-      value: "1,234",
-      change: "+48",
+      title: "Mídias enviadas",
+      value: metrics?.media_sent?.toString() || "0",
+      change: "+0",
       icon: Image,
       color: "text-warning",
       bgColor: "bg-warning/10",
     },
     {
-      title: "Campanhas ativas",
-      value: "3",
-      change: "0",
-      icon: Megaphone,
+      title: "Plano atual",
+      value: currentPlan?.name || profile?.current_plan || "Free",
+      change: hasActiveSubscription() ? `${getDaysRemaining()} dias` : "Sem assinatura",
+      icon: CreditCard,
       color: "text-purple-400",
       bgColor: "bg-purple-400/10",
     },
   ];
 
-  const recentJobs = [
-    { name: "Campanha Black Friday", status: "running", progress: 68, sent: 342, total: 500 },
-    { name: "Promo Dezembro", status: "queued", progress: 0, sent: 0, total: 200 },
-    { name: "Newsletter Semanal", status: "completed", progress: 100, sent: 150, total: 150 },
-    { name: "Ofertas Relâmpago", status: "paused", progress: 45, sent: 90, total: 200 },
-  ];
-
-  const alerts = [
-    { type: "warning", message: "FloodWait detectado no canal @promocoes", time: "há 5 min" },
-    { type: "success", message: "Campanha 'Newsletter' concluída com sucesso", time: "há 1 hora" },
-    { type: "error", message: "Falha de permissão no grupo 'Vendas'", time: "há 2 horas" },
-  ];
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "running":
-        return <div className="w-2 h-2 rounded-full bg-success animate-pulse" />;
-      case "completed":
-        return <CheckCircle2 className="w-4 h-4 text-success" />;
-      case "queued":
-        return <Clock className="w-4 h-4 text-muted-foreground" />;
-      case "paused":
-        return <AlertTriangle className="w-4 h-4 text-warning" />;
-      default:
-        return null;
-    }
+  const formatEventType = (type: string) => {
+    const types: Record<string, string> = {
+      telegram_message_sent: "Mensagem enviada",
+      telegram_photo_sent: "Foto enviada",
+      telegram_video_sent: "Vídeo enviado",
+      telegram_media_group_sent: "Mídia em grupo enviada",
+      login: "Login realizado",
+      signup: "Conta criada",
+    };
+    return types[type] || type;
   };
 
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case "running":
-        return "Em execução";
-      case "completed":
-        return "Concluído";
-      case "queued":
-        return "Na fila";
-      case "paused":
-        return "Pausado";
-      default:
-        return status;
-    }
+  const formatTimeAgo = (date: string) => {
+    const now = new Date();
+    const eventDate = new Date(date);
+    const diffMs = now.getTime() - eventDate.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMins < 1) return "agora";
+    if (diffMins < 60) return `há ${diffMins} min`;
+    if (diffHours < 24) return `há ${diffHours}h`;
+    return `há ${diffDays}d`;
   };
 
   return (
@@ -102,7 +116,9 @@ const DashboardPage = () => {
         {/* Welcome Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Bem-vindo de volta! 👋</h1>
+            <h1 className="text-2xl font-bold">
+              Bem-vindo, {profile?.full_name?.split(" ")[0] || "usuário"}! 👋
+            </h1>
             <p className="text-muted-foreground">
               Aqui está um resumo da sua atividade no MediaDrop TG.
             </p>
@@ -130,8 +146,7 @@ const DashboardPage = () => {
                     <div className={`p-2 rounded-lg ${stat.bgColor}`}>
                       <stat.icon className={`w-5 h-5 ${stat.color}`} />
                     </div>
-                    <div className="flex items-center gap-1 text-success text-sm">
-                      <TrendingUp className="w-3 h-3" />
+                    <div className="flex items-center gap-1 text-muted-foreground text-sm">
                       {stat.change}
                     </div>
                   </div>
@@ -147,11 +162,11 @@ const DashboardPage = () => {
 
         {/* Main Content Grid */}
         <div className="grid gap-6 lg:grid-cols-3">
-          {/* Recent Jobs */}
+          {/* Recent Activity */}
           <Card className="lg:col-span-2 glass-card">
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Campanhas Recentes</CardTitle>
-              <Link to="/campaigns">
+              <CardTitle>Atividade Recente</CardTitle>
+              <Link to="/settings">
                 <Button variant="ghost" size="sm">
                   Ver todas
                   <ArrowUpRight className="w-4 h-4 ml-1" />
@@ -160,82 +175,136 @@ const DashboardPage = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {recentJobs.map((job, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center gap-4 p-4 rounded-lg bg-secondary/50 hover:bg-secondary/70 transition-colors"
-                  >
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="font-medium">{job.name}</span>
-                        <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-xs">
-                          {getStatusIcon(job.status)}
-                          <span>{getStatusLabel(job.status)}</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <Progress value={job.progress} className="flex-1 h-2" />
-                        <span className="text-sm text-muted-foreground whitespace-nowrap">
-                          {job.sent} / {job.total}
-                        </span>
-                      </div>
-                    </div>
+                {recentEvents.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Clock className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                    <p>Nenhuma atividade recente</p>
+                    <p className="text-sm">Comece conectando seu Telegram!</p>
                   </div>
-                ))}
+                ) : (
+                  recentEvents.map((event, index) => (
+                    <div
+                      key={event.id}
+                      className="flex items-center gap-4 p-4 rounded-lg bg-secondary/50 hover:bg-secondary/70 transition-colors"
+                    >
+                      <div className="p-2 rounded-lg bg-telegram/20">
+                        <Send className="w-4 h-4 text-telegram" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium">{formatEventType(event.event_type)}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {formatTimeAgo(event.created_at)}
+                        </p>
+                      </div>
+                      <CheckCircle2 className="w-4 h-4 text-success" />
+                    </div>
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>
 
-          {/* Alerts */}
+          {/* Quick Actions */}
           <Card className="glass-card">
             <CardHeader>
-              <CardTitle>Alertas</CardTitle>
+              <CardTitle>Ações Rápidas</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {alerts.map((alert, index) => (
-                  <div
-                    key={index}
-                    className={`p-3 rounded-lg border ${
-                      alert.type === "warning"
-                        ? "border-warning/30 bg-warning/5"
-                        : alert.type === "success"
-                        ? "border-success/30 bg-success/5"
-                        : "border-destructive/30 bg-destructive/5"
-                    }`}
-                  >
-                    <p className="text-sm">{alert.message}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{alert.time}</p>
+            <CardContent className="space-y-3">
+              {!integration?.is_connected && (
+                <Link to="/telegram" className="block">
+                  <div className="p-4 rounded-lg border border-telegram/30 bg-telegram/5 hover:bg-telegram/10 transition-colors cursor-pointer">
+                    <div className="flex items-center gap-3">
+                      <MessageCircle className="w-5 h-5 text-telegram" />
+                      <div>
+                        <p className="font-medium">Conectar Telegram</p>
+                        <p className="text-sm text-muted-foreground">Configure seu bot</p>
+                      </div>
+                    </div>
                   </div>
-                ))}
-              </div>
+                </Link>
+              )}
+
+              {!hasActiveSubscription() && (
+                <Link to="/billing" className="block">
+                  <div className="p-4 rounded-lg border border-warning/30 bg-warning/5 hover:bg-warning/10 transition-colors cursor-pointer">
+                    <div className="flex items-center gap-3">
+                      <CreditCard className="w-5 h-5 text-warning" />
+                      <div>
+                        <p className="font-medium">Escolher Plano</p>
+                        <p className="text-sm text-muted-foreground">Desbloqueie recursos</p>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              )}
+
+              <Link to="/campaigns" className="block">
+                <div className="p-4 rounded-lg border border-border hover:bg-secondary/50 transition-colors cursor-pointer">
+                  <div className="flex items-center gap-3">
+                    <Megaphone className="w-5 h-5 text-purple-400" />
+                    <div>
+                      <p className="font-medium">Criar Campanha</p>
+                      <p className="text-sm text-muted-foreground">Automatize envios</p>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+
+              <Link to="/model-hub" className="block">
+                <div className="p-4 rounded-lg border border-border hover:bg-secondary/50 transition-colors cursor-pointer">
+                  <div className="flex items-center gap-3">
+                    <Image className="w-5 h-5 text-pink-400" />
+                    <div>
+                      <p className="font-medium">Explorar Modelos</p>
+                      <p className="text-sm text-muted-foreground">IA e mais</p>
+                    </div>
+                  </div>
+                </div>
+              </Link>
             </CardContent>
           </Card>
         </div>
 
         {/* Usage Card */}
-        <Card className="glass-card">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="font-semibold">Uso do Plano Pro</h3>
-                <p className="text-sm text-muted-foreground">
-                  2,847 de 10,000 mídias usadas este mês
-                </p>
+        {currentPlan && (
+          <Card className="glass-card">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="font-semibold">Uso do Plano {currentPlan.name}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {metrics?.media_sent || 0} de {currentPlan.max_media_per_month || "∞"} mídias usadas este mês
+                  </p>
+                </div>
+                {!hasActiveSubscription() && (
+                  <Link to="/billing">
+                    <Button variant="outline" size="sm">
+                      Upgrade
+                    </Button>
+                  </Link>
+                )}
               </div>
-              <Link to="/billing">
-                <Button variant="outline" size="sm">
-                  Upgrade
-                </Button>
-              </Link>
-            </div>
-            <Progress value={28.47} className="h-3" />
-            <div className="flex justify-between mt-2 text-xs text-muted-foreground">
-              <span>28.47% usado</span>
-              <span>Renova em 15 dias</span>
-            </div>
-          </CardContent>
-        </Card>
+              <Progress 
+                value={currentPlan.max_media_per_month 
+                  ? ((metrics?.media_sent || 0) / currentPlan.max_media_per_month) * 100 
+                  : 0
+                } 
+                className="h-3" 
+              />
+              <div className="flex justify-between mt-2 text-xs text-muted-foreground">
+                <span>
+                  {currentPlan.max_media_per_month 
+                    ? `${(((metrics?.media_sent || 0) / currentPlan.max_media_per_month) * 100).toFixed(1)}% usado`
+                    : "Ilimitado"
+                  }
+                </span>
+                {hasActiveSubscription() && getDaysRemaining() !== null && (
+                  <span>Renova em {getDaysRemaining()} dias</span>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </DashboardLayout>
   );

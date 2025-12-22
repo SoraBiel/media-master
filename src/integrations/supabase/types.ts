@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      catalog_purchases: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          id: string
+          item_id: string
+          item_type: string
+          payment_id: string | null
+          status: string | null
+          transaction_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          id?: string
+          item_id: string
+          item_type: string
+          payment_id?: string | null
+          status?: string | null
+          transaction_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          id?: string
+          item_id?: string
+          item_type?: string
+          payment_id?: string | null
+          status?: string | null
+          transaction_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       checkout_sessions: {
         Row: {
           amount_cents: number
@@ -229,6 +268,51 @@ export type Database = {
           },
         ]
       }
+      telegram_integrations: {
+        Row: {
+          bot_name: string | null
+          bot_token: string
+          bot_username: string | null
+          chat_id: string | null
+          chat_title: string | null
+          created_at: string
+          id: string
+          is_connected: boolean | null
+          is_validated: boolean | null
+          last_validated_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bot_name?: string | null
+          bot_token: string
+          bot_username?: string | null
+          chat_id?: string | null
+          chat_title?: string | null
+          created_at?: string
+          id?: string
+          is_connected?: boolean | null
+          is_validated?: boolean | null
+          last_validated_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bot_name?: string | null
+          bot_token?: string
+          bot_username?: string | null
+          chat_id?: string | null
+          chat_title?: string | null
+          created_at?: string
+          id?: string
+          is_connected?: boolean | null
+          is_validated?: boolean | null
+          last_validated_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       tiktok_accounts: {
         Row: {
           created_at: string | null
@@ -369,6 +453,63 @@ export type Database = {
           id?: string
           ip_address?: string | null
           user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_events: {
+        Row: {
+          created_at: string
+          event_data: Json | null
+          event_type: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_data?: Json | null
+          event_type: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_data?: Json | null
+          event_type?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_metrics: {
+        Row: {
+          created_at: string
+          id: string
+          last_activity_at: string | null
+          media_sent: number | null
+          telegram_integrations_active: number | null
+          total_actions: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_activity_at?: string | null
+          media_sent?: number | null
+          telegram_integrations_active?: number | null
+          total_actions?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_activity_at?: string | null
+          media_sent?: number | null
+          telegram_integrations_active?: number | null
+          total_actions?: number | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
