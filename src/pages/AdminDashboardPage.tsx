@@ -16,6 +16,7 @@ import {
   DollarSign,
   Filter,
   Trash2,
+  Image,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -100,6 +101,17 @@ interface ModelForSale {
   created_at: string;
 }
 
+interface AdminMedia {
+  id: string;
+  name: string;
+  description: string | null;
+  pack_type: string;
+  min_plan: string;
+  file_count: number;
+  image_url: string | null;
+  created_at: string;
+}
+
 interface Stats {
   totalUsers: number;
   onlineUsers: number;
@@ -125,6 +137,7 @@ const AdminDashboardPage = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [tiktokAccounts, setTiktokAccounts] = useState<TikTokAccount[]>([]);
   const [models, setModels] = useState<ModelForSale[]>([]);
+  const [adminMedia, setAdminMedia] = useState<AdminMedia[]>([]);
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("30days");
   const [billingStats, setBillingStats] = useState<BillingStats>({
     today: 0,
@@ -146,6 +159,7 @@ const AdminDashboardPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [tiktokDialogOpen, setTiktokDialogOpen] = useState(false);
   const [modelDialogOpen, setModelDialogOpen] = useState(false);
+  const [mediaDialogOpen, setMediaDialogOpen] = useState(false);
   const { toast } = useToast();
 
   const [tiktokForm, setTiktokForm] = useState({
@@ -165,11 +179,20 @@ const AdminDashboardPage = () => {
     price: "",
   });
 
+  const [mediaForm, setMediaForm] = useState({
+    name: "",
+    description: "",
+    pack_type: "10k",
+    min_plan: "basic",
+    file_count: "",
+  });
+
   useEffect(() => {
     fetchData();
     fetchTransactions();
     fetchTikTokAccounts();
     fetchModels();
+    fetchAdminMedia();
 
     const channel = supabase
       .channel("admin-data")
@@ -177,6 +200,7 @@ const AdminDashboardPage = () => {
       .on("postgres_changes", { event: "*", schema: "public", table: "transactions" }, () => fetchTransactions())
       .on("postgres_changes", { event: "*", schema: "public", table: "tiktok_accounts" }, () => fetchTikTokAccounts())
       .on("postgres_changes", { event: "*", schema: "public", table: "models_for_sale" }, () => fetchModels())
+      .on("postgres_changes", { event: "*", schema: "public", table: "admin_media" }, () => fetchAdminMedia())
       .subscribe();
 
     return () => {
@@ -263,6 +287,18 @@ const AdminDashboardPage = () => {
       setModels(data || []);
     } catch (error) {
       console.error("Error fetching models:", error);
+    }
+  };
+
+  const fetchAdminMedia = async () => {
+    try {
+      const { data } = await supabase
+        .from("admin_media")
+        .select("*")
+        .order("created_at", { ascending: false });
+      setAdminMedia(data || []);
+    } catch (error) {
+      console.error("Error fetching admin media:", error);
     }
   };
 
@@ -376,6 +412,36 @@ const AdminDashboardPage = () => {
     }
   };
 
+  const handleAddMedia = async () => {
+    try {
+      const { error } = await supabase.from("admin_media").insert({
+        name: mediaForm.name,
+        description: mediaForm.description,
+        pack_type: mediaForm.pack_type,
+        min_plan: mediaForm.min_plan,
+        file_count: parseInt(mediaForm.file_count) || 0,
+      });
+
+      if (error) throw error;
+
+      toast({ title: "Pacote de mídia adicionado!", description: `${mediaForm.name} foi adicionado.` });
+      setMediaForm({ name: "", description: "", pack_type: "10k", min_plan: "basic", file_count: "" });
+      setMediaDialogOpen(false);
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleDeleteMedia = async (id: string) => {
+    try {
+      const { error } = await supabase.from("admin_media").delete().eq("id", id);
+      if (error) throw error;
+      toast({ title: "Pacote removido!" });
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    }
+  };
+
   const formatPrice = (cents: number) => {
     return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cents / 100);
   };
@@ -455,6 +521,7 @@ const AdminDashboardPage = () => {
           <TabsList>
             <TabsTrigger value="users">Usuários</TabsTrigger>
             <TabsTrigger value="billing">Faturamento</TabsTrigger>
+            <TabsTrigger value="media">Mídias</TabsTrigger>
             <TabsTrigger value="tiktok">Contas TikTok</TabsTrigger>
             <TabsTrigger value="models">Modelos</TabsTrigger>
           </TabsList>
@@ -621,6 +688,109 @@ const AdminDashboardPage = () => {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Media Tab */}
+          <TabsContent value="media" className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Pacotes de Mídias ({adminMedia.length})</h3>
+              <Dialog open={mediaDialogOpen} onOpenChange={setMediaDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="telegram-gradient text-white gap-2">
+                    <Plus className="w-4 h-4" />
+                    Adicionar Pacote
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Novo Pacote de Mídias</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label>Nome do Pacote</Label>
+                      <Input value={mediaForm.name} onChange={(e) => setMediaForm({ ...mediaForm, name: e.target.value })} placeholder="Ex: Pack Premium 10K" />
+                    </div>
+                    <div>
+                      <Label>Descrição</Label>
+                      <Textarea value={mediaForm.description} onChange={(e) => setMediaForm({ ...mediaForm, description: e.target.value })} placeholder="Descreva o pacote..." />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Tipo do Pacote</Label>
+                        <Select value={mediaForm.pack_type} onValueChange={(v) => setMediaForm({ ...mediaForm, pack_type: v })}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="10k">10K</SelectItem>
+                            <SelectItem value="50k">50K</SelectItem>
+                            <SelectItem value="full">Full</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label>Plano Mínimo</Label>
+                        <Select value={mediaForm.min_plan} onValueChange={(v) => setMediaForm({ ...mediaForm, min_plan: v })}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="free">Free</SelectItem>
+                            <SelectItem value="basic">Basic</SelectItem>
+                            <SelectItem value="pro">Pro</SelectItem>
+                            <SelectItem value="agency">Agency</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div>
+                      <Label>Quantidade de Arquivos</Label>
+                      <Input type="number" value={mediaForm.file_count} onChange={(e) => setMediaForm({ ...mediaForm, file_count: e.target.value })} placeholder="100" />
+                    </div>
+                    <Button onClick={handleAddMedia} className="w-full telegram-gradient text-white">Adicionar Pacote</Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            <div className="glass-card overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Plano Mínimo</TableHead>
+                    <TableHead>Arquivos</TableHead>
+                    <TableHead>Criado em</TableHead>
+                    <TableHead></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {adminMedia.map((media) => (
+                    <TableRow key={media.id}>
+                      <TableCell className="font-medium">{media.name}</TableCell>
+                      <TableCell>
+                        <Badge variant="default">{media.pack_type}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="capitalize">{media.min_plan}</Badge>
+                      </TableCell>
+                      <TableCell>{media.file_count} arquivos</TableCell>
+                      <TableCell className="text-muted-foreground">{formatDate(media.created_at)}</TableCell>
+                      <TableCell>
+                        <Button variant="ghost" size="icon" onClick={() => handleDeleteMedia(media.id)}>
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {adminMedia.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                        <Image className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                        <p>Nenhum pacote de mídia cadastrado</p>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </TabsContent>
 
           {/* TikTok Accounts Tab */}

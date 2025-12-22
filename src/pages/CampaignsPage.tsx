@@ -22,6 +22,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Megaphone,
   Plus,
@@ -37,79 +38,218 @@ import {
   Calendar,
   Image,
   Target,
+  RefreshCw,
+  Trash2,
+  Lock,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useSubscription } from "@/hooks/useSubscription";
+
+interface Campaign {
+  id: string;
+  user_id: string;
+  destination_id: string | null;
+  name: string;
+  status: string;
+  progress: number;
+  sent_count: number;
+  total_count: number;
+  delay_seconds: number;
+  send_mode: string;
+  caption: string | null;
+  error_message: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  scheduled_start: string | null;
+  scheduled_end: string | null;
+  created_at: string;
+}
+
+interface Destination {
+  id: string;
+  name: string;
+  chat_id: string;
+}
+
+interface AdminMedia {
+  id: string;
+  name: string;
+  description: string | null;
+  pack_type: string;
+  min_plan: string;
+  file_count: number;
+  image_url: string | null;
+}
 
 const CampaignsPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [destinations, setDestinations] = useState<Destination[]>([]);
+  const [adminMedia, setAdminMedia] = useState<AdminMedia[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("campaigns");
+  const [newCampaign, setNewCampaign] = useState({
+    name: "",
+    destination_id: "",
+    media_pack_id: "",
+    delay_seconds: 10,
+    send_mode: "media",
+    caption: "",
+    scheduled_start: "",
+    scheduled_end: "",
+  });
   const { toast } = useToast();
+  const { user } = useAuth();
+  const { currentPlan } = useSubscription();
 
-  const campaigns = [
-    {
-      id: 1,
-      name: "Black Friday 2024",
-      status: "running",
-      destination: "Promoções Black Friday",
-      progress: 68,
-      sent: 342,
-      total: 500,
-      delay: "10s",
-      startTime: "2024-12-15 10:00",
-      endTime: "2024-12-15 18:00",
-    },
-    {
-      id: 2,
-      name: "Newsletter Dezembro",
-      status: "queued",
-      destination: "Canal de Ofertas",
-      progress: 0,
-      sent: 0,
-      total: 200,
-      delay: "15s",
-      startTime: "2024-12-16 09:00",
-      endTime: null,
-    },
-    {
-      id: 3,
-      name: "Ofertas Relâmpago",
-      status: "paused",
-      destination: "Grupo VIP",
-      progress: 45,
-      sent: 90,
-      total: 200,
-      delay: "5s",
-      startTime: "2024-12-14 14:00",
-      endTime: null,
-    },
-    {
-      id: 4,
-      name: "Lançamento Natal",
-      status: "completed",
-      destination: "Newsletter Tech",
-      progress: 100,
-      sent: 150,
-      total: 150,
-      delay: "10s",
-      startTime: "2024-12-13 08:00",
-      endTime: "2024-12-13 12:30",
-    },
-    {
-      id: 5,
-      name: "Cyber Monday",
-      status: "failed",
-      destination: "Promoções Black Friday",
-      progress: 23,
-      sent: 46,
-      total: 200,
-      delay: "10s",
-      startTime: "2024-12-02 10:00",
-      endTime: null,
-      error: "FloodWait: aguarde 2 horas",
-    },
-  ];
+  const fetchCampaigns = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("campaigns")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setCampaigns(data || []);
+    } catch (error: any) {
+      console.error("Error fetching campaigns:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchDestinations = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("destinations")
+        .select("id, name, chat_id")
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+      setDestinations(data || []);
+    } catch (error: any) {
+      console.error("Error fetching destinations:", error);
+    }
+  };
+
+  const fetchAdminMedia = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("admin_media")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setAdminMedia(data || []);
+    } catch (error: any) {
+      console.error("Error fetching admin media:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchCampaigns();
+    fetchDestinations();
+    fetchAdminMedia();
+
+    if (user) {
+      const channel = supabase
+        .channel("campaigns_changes")
+        .on("postgres_changes", {
+          event: "*",
+          schema: "public",
+          table: "campaigns",
+          filter: `user_id=eq.${user.id}`,
+        }, () => fetchCampaigns())
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [user]);
+
+  const handleCreateCampaign = async () => {
+    if (!newCampaign.name || !newCampaign.destination_id || !user) {
+      toast({
+        title: "Erro",
+        description: "Preencha o nome e selecione um destino.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase.from("campaigns").insert({
+        user_id: user.id,
+        name: newCampaign.name,
+        destination_id: newCampaign.destination_id,
+        delay_seconds: newCampaign.delay_seconds,
+        send_mode: newCampaign.send_mode,
+        caption: newCampaign.caption || null,
+        scheduled_start: newCampaign.scheduled_start || null,
+        scheduled_end: newCampaign.scheduled_end || null,
+        status: "queued",
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Campanha criada!",
+        description: "Sua campanha foi agendada com sucesso.",
+      });
+      setIsDialogOpen(false);
+      setNewCampaign({
+        name: "",
+        destination_id: "",
+        media_pack_id: "",
+        delay_seconds: 10,
+        send_mode: "media",
+        caption: "",
+        scheduled_start: "",
+        scheduled_end: "",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteCampaign = async (id: string) => {
+    try {
+      const { error } = await supabase.from("campaigns").delete().eq("id", id);
+      if (error) throw error;
+      toast({ title: "Campanha removida!" });
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleUpdateStatus = async (id: string, newStatus: string) => {
+    try {
+      const updates: any = { status: newStatus };
+      if (newStatus === "running") updates.started_at = new Date().toISOString();
+      if (newStatus === "completed") updates.completed_at = new Date().toISOString();
+
+      const { error } = await supabase.from("campaigns").update(updates).eq("id", id);
+      if (error) throw error;
+      toast({ title: `Status atualizado para ${newStatus}` });
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -153,16 +293,16 @@ const CampaignsPage = () => {
     }
   };
 
-  const getActionButtons = (status: string) => {
-    switch (status) {
+  const getActionButtons = (campaign: Campaign) => {
+    switch (campaign.status) {
       case "running":
         return (
           <div className="flex gap-2">
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={() => handleUpdateStatus(campaign.id, "paused")}>
               <Pause className="w-4 h-4 mr-1" />
               Pausar
             </Button>
-            <Button variant="destructive" size="sm">
+            <Button variant="destructive" size="sm" onClick={() => handleUpdateStatus(campaign.id, "failed")}>
               <StopCircle className="w-4 h-4 mr-1" />
               Parar
             </Button>
@@ -171,47 +311,38 @@ const CampaignsPage = () => {
       case "queued":
         return (
           <div className="flex gap-2">
-            <Button variant="gradient" size="sm">
+            <Button variant="gradient" size="sm" onClick={() => handleUpdateStatus(campaign.id, "running")}>
               <Play className="w-4 h-4 mr-1" />
-              Iniciar agora
+              Iniciar
             </Button>
-            <Button variant="outline" size="sm">
-              <Settings className="w-4 h-4" />
+            <Button variant="ghost" size="icon" onClick={() => handleDeleteCampaign(campaign.id)}>
+              <Trash2 className="w-4 h-4" />
             </Button>
           </div>
         );
       case "paused":
         return (
           <div className="flex gap-2">
-            <Button variant="gradient" size="sm">
+            <Button variant="gradient" size="sm" onClick={() => handleUpdateStatus(campaign.id, "running")}>
               <Play className="w-4 h-4 mr-1" />
               Retomar
             </Button>
-            <Button variant="destructive" size="sm">
+            <Button variant="destructive" size="sm" onClick={() => handleDeleteCampaign(campaign.id)}>
               <StopCircle className="w-4 h-4 mr-1" />
               Cancelar
             </Button>
           </div>
         );
       case "completed":
+      case "failed":
         return (
           <div className="flex gap-2">
             <Button variant="outline" size="sm">
               <BarChart3 className="w-4 h-4 mr-1" />
               Relatório
             </Button>
-          </div>
-        );
-      case "failed":
-        return (
-          <div className="flex gap-2">
-            <Button variant="gradient" size="sm">
-              <Play className="w-4 h-4 mr-1" />
-              Tentar novamente
-            </Button>
-            <Button variant="outline" size="sm">
-              <BarChart3 className="w-4 h-4 mr-1" />
-              Ver logs
+            <Button variant="ghost" size="icon" onClick={() => handleDeleteCampaign(campaign.id)}>
+              <Trash2 className="w-4 h-4" />
             </Button>
           </div>
         );
@@ -220,9 +351,44 @@ const CampaignsPage = () => {
     }
   };
 
+  const getDestinationName = (destId: string | null) => {
+    if (!destId) return "Sem destino";
+    const dest = destinations.find(d => d.id === destId);
+    return dest?.name || "Destino não encontrado";
+  };
+
+  const canAccessMedia = (minPlan: string) => {
+    const planOrder = ["free", "basic", "pro", "agency"];
+    const userPlanSlug = currentPlan?.slug || "free";
+    const userPlanIndex = planOrder.indexOf(userPlanSlug);
+    const requiredPlanIndex = planOrder.indexOf(minPlan);
+    return userPlanIndex >= requiredPlanIndex;
+  };
+
   const filteredCampaigns = campaigns.filter((c) =>
     c.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const formatDate = (date: string | null) => {
+    if (!date) return "—";
+    return new Date(date).toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <RefreshCw className="w-8 h-8 animate-spin text-telegram" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -252,56 +418,43 @@ const CampaignsPage = () => {
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
                   <Label>Nome da campanha</Label>
-                  <Input placeholder="Ex: Promoção Natal 2024" />
+                  <Input
+                    placeholder="Ex: Promoção Natal 2024"
+                    value={newCampaign.name}
+                    onChange={(e) => setNewCampaign({ ...newCampaign, name: e.target.value })}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Destino</Label>
-                  <Select>
+                  <Select
+                    value={newCampaign.destination_id}
+                    onValueChange={(value) => setNewCampaign({ ...newCampaign, destination_id: value })}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione um destino" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="dest-1">
-                        <div className="flex items-center gap-2">
-                          <Target className="w-4 h-4" />
-                          Promoções Black Friday
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="dest-2">
-                        <div className="flex items-center gap-2">
-                          <Target className="w-4 h-4" />
-                          Canal de Ofertas
-                        </div>
-                      </SelectItem>
+                      {destinations.map((dest) => (
+                        <SelectItem key={dest.id} value={dest.id}>
+                          <div className="flex items-center gap-2">
+                            <Target className="w-4 h-4" />
+                            {dest.name}
+                          </div>
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Mídias</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione uma pasta ou tag" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="folder-1">
-                        <div className="flex items-center gap-2">
-                          <Image className="w-4 h-4" />
-                          Black Friday 2024 (48 arquivos)
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="folder-2">
-                        <div className="flex items-center gap-2">
-                          <Image className="w-4 h-4" />
-                          Natal (32 arquivos)
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
+                  {destinations.length === 0 && (
+                    <p className="text-xs text-warning">Adicione destinos em /destinations primeiro</p>
+                  )}
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Delay entre envios</Label>
-                    <Select defaultValue="10">
+                    <Select
+                      value={String(newCampaign.delay_seconds)}
+                      onValueChange={(value) => setNewCampaign({ ...newCampaign, delay_seconds: parseInt(value) })}
+                    >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -316,7 +469,10 @@ const CampaignsPage = () => {
                   </div>
                   <div className="space-y-2">
                     <Label>Modo de envio</Label>
-                    <Select defaultValue="media">
+                    <Select
+                      value={newCampaign.send_mode}
+                      onValueChange={(value) => setNewCampaign({ ...newCampaign, send_mode: value })}
+                    >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -331,18 +487,28 @@ const CampaignsPage = () => {
                 <div className="space-y-2">
                   <Label>Caption (opcional)</Label>
                   <Textarea
-                    placeholder="Texto que acompanha a mídia. Use {{nome}}, {{data}} para variáveis."
+                    placeholder="Texto que acompanha a mídia."
                     rows={3}
+                    value={newCampaign.caption}
+                    onChange={(e) => setNewCampaign({ ...newCampaign, caption: e.target.value })}
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Início</Label>
-                    <Input type="datetime-local" />
+                    <Input
+                      type="datetime-local"
+                      value={newCampaign.scheduled_start}
+                      onChange={(e) => setNewCampaign({ ...newCampaign, scheduled_start: e.target.value })}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>Fim (opcional)</Label>
-                    <Input type="datetime-local" />
+                    <Input
+                      type="datetime-local"
+                      value={newCampaign.scheduled_end}
+                      onChange={(e) => setNewCampaign({ ...newCampaign, scheduled_end: e.target.value })}
+                    />
                   </div>
                 </div>
               </div>
@@ -350,16 +516,7 @@ const CampaignsPage = () => {
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Cancelar
                 </Button>
-                <Button
-                  variant="gradient"
-                  onClick={() => {
-                    setIsDialogOpen(false);
-                    toast({
-                      title: "Campanha criada!",
-                      description: "Sua campanha foi agendada com sucesso.",
-                    });
-                  }}
-                >
+                <Button variant="gradient" onClick={handleCreateCampaign}>
                   <Calendar className="w-4 h-4 mr-2" />
                   Criar Campanha
                 </Button>
@@ -368,104 +525,196 @@ const CampaignsPage = () => {
           </Dialog>
         </div>
 
-        {/* Search */}
-        <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar campanhas..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="campaigns" className="gap-2">
+              <Megaphone className="w-4 h-4" />
+              Campanhas
+            </TabsTrigger>
+            <TabsTrigger value="media" className="gap-2">
+              <Image className="w-4 h-4" />
+              Mídias
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Campaigns List */}
-        <div className="space-y-4">
-          {filteredCampaigns.map((campaign, index) => (
-            <motion.div
-              key={campaign.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-            >
+          <TabsContent value="campaigns" className="space-y-4">
+            {/* Search */}
+            <div className="relative max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar campanhas..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
+            {/* Campaigns List */}
+            {filteredCampaigns.length > 0 ? (
+              <div className="space-y-4">
+                {filteredCampaigns.map((campaign, index) => (
+                  <motion.div
+                    key={campaign.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                  >
+                    <Card className="glass-card">
+                      <CardContent className="p-6">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 space-y-4">
+                            <div className="flex items-center gap-3">
+                              <div className="p-2 rounded-lg bg-telegram/20">
+                                <Megaphone className="w-5 h-5 text-telegram" />
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <h3 className="font-semibold">{campaign.name}</h3>
+                                  {getStatusBadge(campaign.status)}
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                  Destino: {getDestinationName(campaign.destination_id)} • Delay: {campaign.delay_seconds}s
+                                </p>
+                              </div>
+                            </div>
+
+                            {campaign.status !== "queued" && (
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between text-sm">
+                                  <span>Progresso</span>
+                                  <span className="text-muted-foreground">
+                                    {campaign.sent_count} / {campaign.total_count} enviados
+                                  </span>
+                                </div>
+                                <Progress value={campaign.progress} className="h-2" />
+                              </div>
+                            )}
+
+                            {campaign.error_message && (
+                              <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-sm">
+                                <p className="text-destructive">{campaign.error_message}</p>
+                              </div>
+                            )}
+
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                              {campaign.scheduled_start && (
+                                <div className="flex items-center gap-1">
+                                  <Calendar className="w-4 h-4" />
+                                  Início: {formatDate(campaign.scheduled_start)}
+                                </div>
+                              )}
+                              {campaign.completed_at && (
+                                <div className="flex items-center gap-1">
+                                  <Clock className="w-4 h-4" />
+                                  Fim: {formatDate(campaign.completed_at)}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div>{getActionButtons(campaign)}</div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                ))}
+              </div>
+            ) : (
               <Card className="glass-card">
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 space-y-4">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-telegram/20">
-                          <Megaphone className="w-5 h-5 text-telegram" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-semibold">{campaign.name}</h3>
-                            {getStatusBadge(campaign.status)}
-                          </div>
-                          <p className="text-sm text-muted-foreground">
-                            Destino: {campaign.destination} • Delay: {campaign.delay}
-                          </p>
-                        </div>
-                      </div>
-
-                      {campaign.status !== "queued" && (
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between text-sm">
-                            <span>Progresso</span>
-                            <span className="text-muted-foreground">
-                              {campaign.sent} / {campaign.total} enviados
-                            </span>
-                          </div>
-                          <Progress value={campaign.progress} className="h-2" />
-                        </div>
-                      )}
-
-                      {campaign.error && (
-                        <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-sm">
-                          <p className="text-destructive">{campaign.error}</p>
-                        </div>
-                      )}
-
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <Calendar className="w-4 h-4" />
-                          Início: {campaign.startTime}
-                        </div>
-                        {campaign.endTime && (
-                          <div className="flex items-center gap-1">
-                            <Clock className="w-4 h-4" />
-                            Fim: {campaign.endTime}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div>{getActionButtons(campaign.status)}</div>
-                  </div>
+                <CardContent className="p-12 text-center">
+                  <Megaphone className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Nenhuma campanha encontrada</h3>
+                  <p className="text-muted-foreground mb-4">
+                    {searchQuery
+                      ? "Tente buscar por outro termo."
+                      : "Crie sua primeira campanha para começar a enviar mídias."}
+                  </p>
+                  {!searchQuery && (
+                    <Button variant="gradient" onClick={() => setIsDialogOpen(true)}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Nova Campanha
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
-            </motion.div>
-          ))}
-        </div>
+            )}
+          </TabsContent>
 
-        {filteredCampaigns.length === 0 && (
-          <Card className="glass-card">
-            <CardContent className="p-12 text-center">
-              <Megaphone className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Nenhuma campanha encontrada</h3>
-              <p className="text-muted-foreground mb-4">
-                {searchQuery
-                  ? "Tente buscar por outro termo."
-                  : "Crie sua primeira campanha para começar a enviar mídias."}
+          <TabsContent value="media" className="space-y-6">
+            <div>
+              <h2 className="text-lg font-semibold mb-2">Pacotes de Mídias</h2>
+              <p className="text-muted-foreground text-sm">
+                Pacotes de mídias disponíveis de acordo com seu plano ({currentPlan?.name || "Free"}).
               </p>
-              {!searchQuery && (
-                <Button variant="gradient" onClick={() => setIsDialogOpen(true)}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Nova Campanha
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        )}
+            </div>
+
+            {adminMedia.length > 0 ? (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {adminMedia.map((media, index) => {
+                  const hasAccess = canAccessMedia(media.min_plan);
+                  return (
+                    <motion.div
+                      key={media.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                    >
+                      <Card className={`glass-card h-full ${!hasAccess ? "opacity-60" : ""}`}>
+                        <CardHeader>
+                          <div className="flex items-center justify-between">
+                            <Badge variant={hasAccess ? "default" : "secondary"}>
+                              {media.pack_type}
+                            </Badge>
+                            {!hasAccess && <Lock className="w-4 h-4 text-muted-foreground" />}
+                          </div>
+                          <CardTitle className="mt-2">{media.name}</CardTitle>
+                          <CardDescription>{media.description}</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="flex items-center justify-between text-sm mb-4">
+                            <span className="text-muted-foreground">Arquivos</span>
+                            <span>{media.file_count} mídias</span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm mb-4">
+                            <span className="text-muted-foreground">Plano mínimo</span>
+                            <Badge variant="outline" className="capitalize">{media.min_plan}</Badge>
+                          </div>
+                          <Button
+                            variant={hasAccess ? "gradient" : "outline"}
+                            className="w-full"
+                            disabled={!hasAccess}
+                          >
+                            {hasAccess ? (
+                              <>
+                                <Image className="w-4 h-4 mr-2" />
+                                Usar Pacote
+                              </>
+                            ) : (
+                              <>
+                                <Lock className="w-4 h-4 mr-2" />
+                                Upgrade para {media.min_plan}
+                              </>
+                            )}
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            ) : (
+              <Card className="glass-card">
+                <CardContent className="p-12 text-center">
+                  <Image className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Nenhum pacote disponível</h3>
+                  <p className="text-muted-foreground">
+                    Pacotes de mídias serão adicionados em breve.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </DashboardLayout>
   );
