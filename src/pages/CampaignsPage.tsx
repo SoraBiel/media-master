@@ -48,6 +48,8 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useSearchParams } from "react-router-dom";
+import { Switch } from "@/components/ui/switch";
 
 interface Campaign {
   id: string;
@@ -94,6 +96,7 @@ interface TelegramIntegration {
 }
 
 const CampaignsPage = () => {
+  const [searchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -101,6 +104,7 @@ const CampaignsPage = () => {
   const [adminMedia, setAdminMedia] = useState<AdminMedia[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("campaigns");
+  const [startImmediately, setStartImmediately] = useState(true);
   const [newCampaign, setNewCampaign] = useState({
     name: "",
     destination_id: "",
@@ -114,6 +118,15 @@ const CampaignsPage = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const { currentPlan } = useSubscription();
+
+  // Check if coming from media library with a pack pre-selected
+  useEffect(() => {
+    const mediaPackId = searchParams.get("media_pack_id");
+    if (mediaPackId) {
+      setNewCampaign(prev => ({ ...prev, media_pack_id: mediaPackId }));
+      setIsDialogOpen(true);
+    }
+  }, [searchParams]);
 
   const fetchCampaigns = async () => {
     if (!user) return;
@@ -170,7 +183,8 @@ const CampaignsPage = () => {
     fetchAdminMedia();
 
     if (user) {
-      const channel = supabase
+      // Realtime for campaigns
+      const campaignsChannel = supabase
         .channel("campaigns_changes")
         .on("postgres_changes", {
           event: "*",
@@ -180,8 +194,31 @@ const CampaignsPage = () => {
         }, () => fetchCampaigns())
         .subscribe();
 
+      // Realtime for destinations
+      const destinationsChannel = supabase
+        .channel("destinations_changes_campaigns")
+        .on("postgres_changes", {
+          event: "*",
+          schema: "public",
+          table: "destinations",
+          filter: `user_id=eq.${user.id}`,
+        }, () => fetchDestinations())
+        .subscribe();
+
+      // Realtime for admin media
+      const mediaChannel = supabase
+        .channel("admin_media_changes_campaigns")
+        .on("postgres_changes", {
+          event: "*",
+          schema: "public",
+          table: "admin_media",
+        }, () => fetchAdminMedia())
+        .subscribe();
+
       return () => {
-        supabase.removeChannel(channel);
+        supabase.removeChannel(campaignsChannel);
+        supabase.removeChannel(destinationsChannel);
+        supabase.removeChannel(mediaChannel);
       };
     }
   }, [user]);
@@ -212,6 +249,9 @@ const CampaignsPage = () => {
     const totalMediaCount = selectedPack.file_count || 0;
 
     try {
+      const campaignStatus = startImmediately ? "running" : "queued";
+      const startedAt = startImmediately ? new Date().toISOString() : null;
+
       const { data: campaignData, error } = await supabase.from("campaigns").insert({
         user_id: user.id,
         name: newCampaign.name,
@@ -220,18 +260,29 @@ const CampaignsPage = () => {
         delay_seconds: newCampaign.delay_seconds,
         send_mode: newCampaign.send_mode,
         caption: newCampaign.caption || null,
-        scheduled_start: newCampaign.scheduled_start || null,
-        scheduled_end: newCampaign.scheduled_end || null,
-        status: "queued",
+        scheduled_start: startImmediately ? null : newCampaign.scheduled_start || null,
+        scheduled_end: startImmediately ? null : newCampaign.scheduled_end || null,
+        status: campaignStatus,
         total_count: totalMediaCount,
+        started_at: startedAt,
       }).select().single();
 
       if (error) throw error;
 
-      toast({
-        title: "Campanha criada!",
-        description: "Sua campanha foi criada. Clique em 'Iniciar' para começar o envio.",
-      });
+      // If starting immediately, trigger dispatch
+      if (startImmediately && campaignData) {
+        startMediaDispatch(campaignData as Campaign);
+        toast({
+          title: "Campanha iniciada!",
+          description: "Sua campanha foi criada e está enviando mídias.",
+        });
+      } else {
+        toast({
+          title: "Campanha criada!",
+          description: "Sua campanha foi agendada. Clique em 'Iniciar' quando quiser começar.",
+        });
+      }
+
       setIsDialogOpen(false);
       setNewCampaign({
         name: "",
@@ -243,6 +294,7 @@ const CampaignsPage = () => {
         scheduled_start: "",
         scheduled_end: "",
       });
+      setStartImmediately(true);
     } catch (error: any) {
       toast({
         title: "Erro",
@@ -303,10 +355,10 @@ const CampaignsPage = () => {
       return;
     }
 
-    // Get destination with telegram integration
+    // Get destination
     const { data: destination, error: destError } = await supabase
       .from("destinations")
-      .select("*, telegram_integration:telegram_integrations(*)")
+      .select("*")
       .eq("id", campaign.destination_id)
       .single();
 
@@ -315,9 +367,39 @@ const CampaignsPage = () => {
       return;
     }
 
-    const telegramIntegration = destination.telegram_integration as TelegramIntegration | null;
-    if (!telegramIntegration?.bot_token || !destination.chat_id) {
-      toast({ title: "Erro", description: "Bot ou chat não configurado no destino.", variant: "destructive" });
+    if (!destination.chat_id) {
+      toast({ title: "Erro", description: "Chat ID não configurado no destino.", variant: "destructive" });
+      return;
+    }
+
+    // Get telegram integration - first try from destination, then get any connected bot
+    let telegramIntegration: TelegramIntegration | null = null;
+    
+    if (destination.telegram_integration_id) {
+      const { data: integration } = await supabase
+        .from("telegram_integrations")
+        .select("id, bot_token, chat_id")
+        .eq("id", destination.telegram_integration_id)
+        .single();
+      telegramIntegration = integration;
+    }
+    
+    // If no integration linked to destination, get the first connected bot for this user
+    if (!telegramIntegration) {
+      const { data: integrations } = await supabase
+        .from("telegram_integrations")
+        .select("id, bot_token, chat_id")
+        .eq("user_id", user!.id)
+        .eq("is_connected", true)
+        .limit(1);
+      
+      if (integrations && integrations.length > 0) {
+        telegramIntegration = integrations[0];
+      }
+    }
+
+    if (!telegramIntegration?.bot_token) {
+      toast({ title: "Erro", description: "Nenhum bot conectado. Conecte um bot em /telegram primeiro.", variant: "destructive" });
       return;
     }
 
@@ -671,23 +753,40 @@ const CampaignsPage = () => {
                     onChange={(e) => setNewCampaign({ ...newCampaign, caption: e.target.value })}
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Início</Label>
-                    <Input
-                      type="datetime-local"
-                      value={newCampaign.scheduled_start}
-                      onChange={(e) => setNewCampaign({ ...newCampaign, scheduled_start: e.target.value })}
+                <div className="space-y-4 p-4 rounded-lg bg-secondary/50">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>Iniciar imediatamente</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Começa a enviar assim que criar a campanha
+                      </p>
+                    </div>
+                    <Switch
+                      checked={startImmediately}
+                      onCheckedChange={setStartImmediately}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label>Fim (opcional)</Label>
-                    <Input
-                      type="datetime-local"
-                      value={newCampaign.scheduled_end}
-                      onChange={(e) => setNewCampaign({ ...newCampaign, scheduled_end: e.target.value })}
-                    />
-                  </div>
+                  
+                  {!startImmediately && (
+                    <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border">
+                      <div className="space-y-2">
+                        <Label>Início programado</Label>
+                        <Input
+                          type="datetime-local"
+                          value={newCampaign.scheduled_start}
+                          onChange={(e) => setNewCampaign({ ...newCampaign, scheduled_start: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Fim (opcional)</Label>
+                        <Input
+                          type="datetime-local"
+                          value={newCampaign.scheduled_end}
+                          onChange={(e) => setNewCampaign({ ...newCampaign, scheduled_end: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
               <DialogFooter>
@@ -695,8 +794,17 @@ const CampaignsPage = () => {
                   Cancelar
                 </Button>
                 <Button variant="gradient" onClick={handleCreateCampaign}>
-                  <Calendar className="w-4 h-4 mr-2" />
-                  Criar Campanha
+                  {startImmediately ? (
+                    <>
+                      <Play className="w-4 h-4 mr-2" />
+                      Criar e Iniciar
+                    </>
+                  ) : (
+                    <>
+                      <Calendar className="w-4 h-4 mr-2" />
+                      Agendar Campanha
+                    </>
+                  )}
                 </Button>
               </DialogFooter>
             </DialogContent>
