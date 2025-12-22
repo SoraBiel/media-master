@@ -22,6 +22,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   UserCog,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -232,12 +233,13 @@ const AdminDashboardPage = () => {
     description: "",
     niche: "",
     price: "",
-    image_url: "",
     deliverable_login: "",
     deliverable_password: "",
     deliverable_email: "",
     deliverable_notes: "",
   });
+  const [tiktokImageFile, setTiktokImageFile] = useState<File | null>(null);
+  const tiktokImageInputRef = useRef<HTMLInputElement>(null);
 
   const [modelForm, setModelForm] = useState({
     name: "",
@@ -245,19 +247,25 @@ const AdminDashboardPage = () => {
     niche: "",
     category: "ia",
     price: "",
-    image_url: "",
     deliverable_link: "",
     deliverable_notes: "",
   });
+  const [modelImageFile, setModelImageFile] = useState<File | null>(null);
+  const modelImageInputRef = useRef<HTMLInputElement>(null);
 
   const [mediaForm, setMediaForm] = useState({
     name: "",
     description: "",
     pack_type: "10k",
     min_plan: "basic",
-    file_count: "",
-    image_url: "",
   });
+  const [mediaFiles, setMediaFiles] = useState<File[]>([]);
+  const [mediaCoverFile, setMediaCoverFile] = useState<File | null>(null);
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+  const [isUploadingTiktok, setIsUploadingTiktok] = useState(false);
+  const [isUploadingModel, setIsUploadingModel] = useState(false);
+  const mediaFilesInputRef = useRef<HTMLInputElement>(null);
+  const mediaCoverInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchAllData();
@@ -484,7 +492,13 @@ const AdminDashboardPage = () => {
   };
 
   const handleAddTikTokAccount = async () => {
+    setIsUploadingTiktok(true);
     try {
+      let imageUrl: string | null = null;
+      if (tiktokImageFile) {
+        imageUrl = await handleUploadImage(tiktokImageFile, "product-images");
+      }
+
       const { error } = await supabase.from("tiktok_accounts").insert({
         username: tiktokForm.username,
         followers: parseInt(tiktokForm.followers) || 0,
@@ -492,7 +506,7 @@ const AdminDashboardPage = () => {
         description: tiktokForm.description,
         niche: tiktokForm.niche,
         price_cents: Math.round(parseFloat(tiktokForm.price) * 100),
-        image_url: tiktokForm.image_url || null,
+        image_url: imageUrl,
         deliverable_login: tiktokForm.deliverable_login || null,
         deliverable_password: tiktokForm.deliverable_password || null,
         deliverable_email: tiktokForm.deliverable_email || null,
@@ -504,11 +518,14 @@ const AdminDashboardPage = () => {
       toast({ title: "Conta adicionada!", description: `@${tiktokForm.username} foi adicionada.` });
       setTiktokForm({
         username: "", followers: "", likes: "", description: "", niche: "", price: "",
-        image_url: "", deliverable_login: "", deliverable_password: "", deliverable_email: "", deliverable_notes: "",
+        deliverable_login: "", deliverable_password: "", deliverable_email: "", deliverable_notes: "",
       });
+      setTiktokImageFile(null);
       setTiktokDialogOpen(false);
     } catch (error: any) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
+    } finally {
+      setIsUploadingTiktok(false);
     }
   };
 
@@ -518,14 +535,20 @@ const AdminDashboardPage = () => {
   };
 
   const handleAddModel = async () => {
+    setIsUploadingModel(true);
     try {
+      let imageUrl: string | null = null;
+      if (modelImageFile) {
+        imageUrl = await handleUploadImage(modelImageFile, "product-images");
+      }
+
       const { error } = await supabase.from("models_for_sale").insert({
         name: modelForm.name,
         bio: modelForm.bio,
         niche: modelForm.niche,
         category: modelForm.category,
         price_cents: Math.round(parseFloat(modelForm.price) * 100),
-        image_url: modelForm.image_url || null,
+        image_url: imageUrl,
         deliverable_link: modelForm.deliverable_link || null,
         deliverable_notes: modelForm.deliverable_notes || null,
       });
@@ -535,11 +558,14 @@ const AdminDashboardPage = () => {
       toast({ title: "Modelo adicionado!", description: `${modelForm.name} foi adicionado.` });
       setModelForm({
         name: "", bio: "", niche: "", category: "ia", price: "",
-        image_url: "", deliverable_link: "", deliverable_notes: "",
+        deliverable_link: "", deliverable_notes: "",
       });
+      setModelImageFile(null);
       setModelDialogOpen(false);
     } catch (error: any) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
+    } finally {
+      setIsUploadingModel(false);
     }
   };
 
@@ -549,23 +575,64 @@ const AdminDashboardPage = () => {
   };
 
   const handleAddMedia = async () => {
+    if (!mediaForm.name) {
+      toast({ title: "Erro", description: "Nome do pacote é obrigatório", variant: "destructive" });
+      return;
+    }
+
+    setIsUploadingMedia(true);
     try {
+      // Upload cover image if provided
+      let coverUrl: string | null = null;
+      if (mediaCoverFile) {
+        coverUrl = await handleUploadImage(mediaCoverFile, "product-images");
+      }
+
+      // Upload media files
+      const uploadedFiles: { name: string; url: string; type: string; size: number }[] = [];
+      for (const file of mediaFiles) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `media/${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from("media-packs")
+          .upload(fileName, file);
+
+        if (uploadError) {
+          console.error("Upload error:", uploadError);
+          continue;
+        }
+
+        const { data: urlData } = supabase.storage.from("media-packs").getPublicUrl(fileName);
+        uploadedFiles.push({
+          name: file.name,
+          url: urlData.publicUrl,
+          type: file.type,
+          size: file.size,
+        });
+      }
+
       const { error } = await supabase.from("admin_media").insert({
         name: mediaForm.name,
         description: mediaForm.description,
         pack_type: mediaForm.pack_type,
         min_plan: mediaForm.min_plan,
-        file_count: parseInt(mediaForm.file_count) || 0,
-        image_url: mediaForm.image_url || null,
+        file_count: uploadedFiles.length,
+        image_url: coverUrl,
+        media_files: uploadedFiles,
       });
 
       if (error) throw error;
 
-      toast({ title: "Pacote adicionado!", description: `${mediaForm.name} foi adicionado.` });
-      setMediaForm({ name: "", description: "", pack_type: "10k", min_plan: "basic", file_count: "", image_url: "" });
+      toast({ title: "Pacote adicionado!", description: `${mediaForm.name} foi adicionado com ${uploadedFiles.length} arquivos.` });
+      setMediaForm({ name: "", description: "", pack_type: "10k", min_plan: "basic" });
+      setMediaFiles([]);
+      setMediaCoverFile(null);
       setMediaDialogOpen(false);
     } catch (error: any) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
+    } finally {
+      setIsUploadingMedia(false);
     }
   };
 
@@ -1030,15 +1097,89 @@ const AdminDashboardPage = () => {
                         </Select>
                       </div>
                     </div>
+                    
+                    {/* Cover Image Upload */}
                     <div>
-                      <Label>Quantidade de Arquivos</Label>
-                      <Input type="number" value={mediaForm.file_count} onChange={(e) => setMediaForm({ ...mediaForm, file_count: e.target.value })} placeholder="100" />
+                      <Label>Imagem de Capa</Label>
+                      <input
+                        type="file"
+                        ref={mediaCoverInputRef}
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) setMediaCoverFile(file);
+                        }}
+                      />
+                      <div className="mt-2">
+                        {mediaCoverFile ? (
+                          <div className="flex items-center gap-2 p-2 bg-secondary/50 rounded-lg">
+                            <Image className="w-4 h-4" />
+                            <span className="text-sm flex-1 truncate">{mediaCoverFile.name}</span>
+                            <Button variant="ghost" size="sm" onClick={() => setMediaCoverFile(null)}>
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button variant="outline" className="w-full" onClick={() => mediaCoverInputRef.current?.click()}>
+                            <Upload className="w-4 h-4 mr-2" />
+                            Selecionar Imagem de Capa
+                          </Button>
+                        )}
+                      </div>
                     </div>
+
+                    {/* Media Files Upload */}
                     <div>
-                      <Label>URL da Imagem (opcional)</Label>
-                      <Input value={mediaForm.image_url} onChange={(e) => setMediaForm({ ...mediaForm, image_url: e.target.value })} placeholder="https://..." />
+                      <Label>Arquivos de Mídia</Label>
+                      <input
+                        type="file"
+                        ref={mediaFilesInputRef}
+                        accept="image/*,video/*"
+                        multiple
+                        className="hidden"
+                        onChange={(e) => {
+                          const files = Array.from(e.target.files || []);
+                          setMediaFiles(prev => [...prev, ...files]);
+                        }}
+                      />
+                      <div className="mt-2 space-y-2">
+                        <Button variant="outline" className="w-full" onClick={() => mediaFilesInputRef.current?.click()}>
+                          <Upload className="w-4 h-4 mr-2" />
+                          Adicionar Arquivos ({mediaFiles.length} selecionados)
+                        </Button>
+                        
+                        {mediaFiles.length > 0 && (
+                          <div className="max-h-40 overflow-y-auto space-y-1 p-2 bg-secondary/30 rounded-lg">
+                            {mediaFiles.map((file, index) => (
+                              <div key={index} className="flex items-center gap-2 text-sm p-1 bg-background/50 rounded">
+                                <Image className="w-3 h-3" />
+                                <span className="flex-1 truncate">{file.name}</span>
+                                <span className="text-muted-foreground text-xs">{(file.size / 1024 / 1024).toFixed(2)} MB</span>
+                                <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setMediaFiles(prev => prev.filter((_, i) => i !== index))}>
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <Button onClick={handleAddMedia} className="w-full telegram-gradient text-white">Adicionar Pacote</Button>
+                    
+                    <Button 
+                      onClick={handleAddMedia} 
+                      className="w-full telegram-gradient text-white"
+                      disabled={isUploadingMedia || !mediaForm.name}
+                    >
+                      {isUploadingMedia ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                          Enviando...
+                        </>
+                      ) : (
+                        "Adicionar Pacote"
+                      )}
+                    </Button>
                   </div>
                 </DialogContent>
               </Dialog>
@@ -1126,8 +1267,33 @@ const AdminDashboardPage = () => {
                       <Input type="number" step="0.01" value={tiktokForm.price} onChange={(e) => setTiktokForm({ ...tiktokForm, price: e.target.value })} placeholder="299.90" />
                     </div>
                     <div>
-                      <Label>URL da Foto (opcional)</Label>
-                      <Input value={tiktokForm.image_url} onChange={(e) => setTiktokForm({ ...tiktokForm, image_url: e.target.value })} placeholder="https://..." />
+                      <Label>Foto da Conta</Label>
+                      <input
+                        type="file"
+                        ref={tiktokImageInputRef}
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) setTiktokImageFile(file);
+                        }}
+                      />
+                      <div className="mt-2">
+                        {tiktokImageFile ? (
+                          <div className="flex items-center gap-2 p-2 bg-secondary/50 rounded-lg">
+                            <Image className="w-4 h-4" />
+                            <span className="text-sm flex-1 truncate">{tiktokImageFile.name}</span>
+                            <Button variant="ghost" size="sm" onClick={() => setTiktokImageFile(null)}>
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button variant="outline" className="w-full" onClick={() => tiktokImageInputRef.current?.click()}>
+                            <Upload className="w-4 h-4 mr-2" />
+                            Selecionar Foto
+                          </Button>
+                        )}
+                      </div>
                     </div>
                     
                     <div className="border-t pt-4 mt-4">
@@ -1248,8 +1414,33 @@ const AdminDashboardPage = () => {
                       <Input type="number" step="0.01" value={modelForm.price} onChange={(e) => setModelForm({ ...modelForm, price: e.target.value })} placeholder="499.90" />
                     </div>
                     <div>
-                      <Label>URL da Imagem (opcional)</Label>
-                      <Input value={modelForm.image_url} onChange={(e) => setModelForm({ ...modelForm, image_url: e.target.value })} placeholder="https://..." />
+                      <Label>Foto do Modelo</Label>
+                      <input
+                        type="file"
+                        ref={modelImageInputRef}
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) setModelImageFile(file);
+                        }}
+                      />
+                      <div className="mt-2">
+                        {modelImageFile ? (
+                          <div className="flex items-center gap-2 p-2 bg-secondary/50 rounded-lg">
+                            <Image className="w-4 h-4" />
+                            <span className="text-sm flex-1 truncate">{modelImageFile.name}</span>
+                            <Button variant="ghost" size="sm" onClick={() => setModelImageFile(null)}>
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button variant="outline" className="w-full" onClick={() => modelImageInputRef.current?.click()}>
+                            <Upload className="w-4 h-4 mr-2" />
+                            Selecionar Foto
+                          </Button>
+                        )}
+                      </div>
                     </div>
                     
                     <div className="border-t pt-4 mt-4">

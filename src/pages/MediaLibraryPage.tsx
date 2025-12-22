@@ -3,78 +3,102 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Image,
   Video,
   FileText,
-  Upload,
   Search,
-  Folder,
   Grid,
   List,
-  MoreVertical,
-  Trash2,
   Download,
-  Tag,
-  Plus,
+  Lock,
+  Package,
+  RefreshCw,
+  Play,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useSubscription } from "@/hooks/useSubscription";
+
+interface AdminMedia {
+  id: string;
+  name: string;
+  description: string | null;
+  pack_type: string;
+  min_plan: string;
+  file_count: number;
+  image_url: string | null;
+  media_files: any;
+  created_at: string;
+}
+
+const PLAN_ORDER = ["free", "basic", "pro", "agency"];
 
 const MediaLibraryPage = () => {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedItems, setSelectedItems] = useState<number[]>([]);
+  const [mediaPacks, setMediaPacks] = useState<AdminMedia[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedPack, setSelectedPack] = useState<AdminMedia | null>(null);
+  
+  const { user } = useAuth();
+  const { currentPlan, isLoading: isPlanLoading } = useSubscription();
 
-  const folders = [
-    { id: 1, name: "Black Friday 2024", count: 48 },
-    { id: 2, name: "Natal", count: 32 },
-    { id: 3, name: "Stories", count: 156 },
-    { id: 4, name: "Produtos", count: 89 },
-  ];
+  const userPlanIndex = PLAN_ORDER.indexOf(currentPlan?.slug || "free");
 
-  const mediaItems = [
-    { id: 1, name: "promo-001.jpg", type: "image", size: "2.4 MB", date: "2024-12-15" },
-    { id: 2, name: "video-oferta.mp4", type: "video", size: "15.8 MB", date: "2024-12-14" },
-    { id: 3, name: "catalogo.pdf", type: "document", size: "4.2 MB", date: "2024-12-13" },
-    { id: 4, name: "banner-natal.png", type: "image", size: "1.8 MB", date: "2024-12-12" },
-    { id: 5, name: "unboxing.mp4", type: "video", size: "28.4 MB", date: "2024-12-11" },
-    { id: 6, name: "preco-lista.xlsx", type: "document", size: "156 KB", date: "2024-12-10" },
-    { id: 7, name: "story-01.jpg", type: "image", size: "890 KB", date: "2024-12-09" },
-    { id: 8, name: "review.mp4", type: "video", size: "42.1 MB", date: "2024-12-08" },
-  ];
+  useEffect(() => {
+    const fetchMediaPacks = async () => {
+      if (!user) return;
+      
+      const { data, error } = await supabase
+        .from("admin_media")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Error fetching media packs:", error);
+      } else {
+        setMediaPacks(data || []);
+      }
+      setIsLoading(false);
+    };
+
+    fetchMediaPacks();
+  }, [user]);
+
+  const canAccessPack = (pack: AdminMedia) => {
+    const packPlanIndex = PLAN_ORDER.indexOf(pack.min_plan);
+    return userPlanIndex >= packPlanIndex;
+  };
+
+  const filteredPacks = mediaPacks.filter((pack) =>
+    pack.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    pack.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const getMediaIcon = (type: string) => {
-    switch (type) {
-      case "image":
-        return <Image className="w-5 h-5 text-telegram" />;
-      case "video":
-        return <Video className="w-5 h-5 text-purple-400" />;
-      case "document":
-        return <FileText className="w-5 h-5 text-warning" />;
-      default:
-        return <FileText className="w-5 h-5" />;
-    }
+    if (type.startsWith("image")) return <Image className="w-5 h-5 text-telegram" />;
+    if (type.startsWith("video")) return <Video className="w-5 h-5 text-purple-400" />;
+    return <FileText className="w-5 h-5 text-warning" />;
   };
 
-  const toggleSelect = (id: number) => {
-    setSelectedItems((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+  const formatSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+    return (bytes / 1024 / 1024).toFixed(2) + " MB";
+  };
+
+  if (isLoading || isPlanLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <RefreshCw className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
     );
-  };
-
-  const filteredMedia = mediaItems.filter((item) =>
-    item.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  }
 
   return (
     <DashboardLayout>
@@ -83,228 +107,209 @@ const MediaLibraryPage = () => {
           <div>
             <h1 className="text-2xl font-bold">Biblioteca de Mídias</h1>
             <p className="text-muted-foreground">
-              Organize e gerencie seus arquivos para campanhas.
+              Acesse os pacotes de mídia disponíveis para o seu plano.
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline">
-              <Tag className="w-4 h-4 mr-2" />
-              Tags
+          <Badge variant="outline" className="text-sm">
+            Plano: <span className="font-semibold ml-1 capitalize">{currentPlan?.name || "Free"}</span>
+          </Badge>
+        </div>
+
+        {/* Search and View Toggle */}
+        <div className="flex items-center gap-4">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar pacotes..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <div className="flex border rounded-lg">
+            <Button
+              variant={viewMode === "grid" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("grid")}
+            >
+              <Grid className="w-4 h-4" />
             </Button>
-            <Button variant="gradient">
-              <Upload className="w-4 h-4 mr-2" />
-              Upload
+            <Button
+              variant={viewMode === "list" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("list")}
+            >
+              <List className="w-4 h-4" />
             </Button>
           </div>
         </div>
 
-        {/* Storage Usage */}
-        <Card className="glass-card">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Armazenamento usado</p>
-                <p className="text-2xl font-bold">2.4 GB <span className="text-sm font-normal text-muted-foreground">/ 10 GB</span></p>
-              </div>
-              <div className="flex items-center gap-6 text-sm">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-telegram" />
-                  <span>Imagens: 1.2 GB</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-purple-400" />
-                  <span>Vídeos: 1.0 GB</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-warning" />
-                  <span>Documentos: 0.2 GB</span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="grid lg:grid-cols-4 gap-6">
-          {/* Folders Sidebar */}
-          <Card className="glass-card lg:col-span-1">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base">Pastas</CardTitle>
-                <Button variant="ghost" size="icon">
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-1">
-                <button className="w-full flex items-center gap-3 p-2 rounded-lg bg-telegram/10 text-telegram">
-                  <Folder className="w-4 h-4" />
-                  <span className="flex-1 text-left text-sm">Todos os arquivos</span>
-                  <Badge variant="secondary">325</Badge>
-                </button>
-                {folders.map((folder) => (
-                  <button
-                    key={folder.id}
-                    className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-secondary/50 transition-colors"
-                  >
-                    <Folder className="w-4 h-4 text-muted-foreground" />
-                    <span className="flex-1 text-left text-sm">{folder.name}</span>
-                    <Badge variant="secondary">{folder.count}</Badge>
-                  </button>
-                ))}
-              </div>
+        {/* Media Packs Grid/List */}
+        {filteredPacks.length === 0 ? (
+          <Card className="glass-card">
+            <CardContent className="py-12 text-center text-muted-foreground">
+              <Package className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p className="text-lg font-medium">Nenhum pacote disponível</p>
+              <p>Aguarde novos pacotes serem adicionados.</p>
             </CardContent>
           </Card>
-
-          {/* Main Content */}
-          <div className="lg:col-span-3 space-y-4">
-            {/* Toolbar */}
-            <div className="flex items-center gap-4">
-              <div className="relative flex-1 max-w-sm">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar arquivos..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "grid" | "list")}>
-                <TabsList>
-                  <TabsTrigger value="grid">
-                    <Grid className="w-4 h-4" />
-                  </TabsTrigger>
-                  <TabsTrigger value="list">
-                    <List className="w-4 h-4" />
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
-              {selectedItems.length > 0 && (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">
-                    {selectedItems.length} selecionados
-                  </span>
-                  <Button variant="outline" size="sm">
-                    <Download className="w-4 h-4 mr-1" />
-                    Baixar
-                  </Button>
-                  <Button variant="destructive" size="sm">
-                    <Trash2 className="w-4 h-4 mr-1" />
-                    Excluir
-                  </Button>
-                </div>
-              )}
-            </div>
-
-            {/* Media Grid/List */}
-            {viewMode === "grid" ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {filteredMedia.map((item, index) => (
-                  <motion.div
-                    key={item.id}
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: index * 0.05 }}
-                  >
-                    <Card
-                      className={`glass-card overflow-hidden cursor-pointer group ${
-                        selectedItems.includes(item.id) ? "ring-2 ring-telegram" : ""
-                      }`}
-                      onClick={() => toggleSelect(item.id)}
-                    >
-                      <div className="aspect-square bg-secondary/50 flex items-center justify-center relative">
-                        <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Checkbox checked={selectedItems.includes(item.id)} />
+        ) : viewMode === "grid" ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredPacks.map((pack, index) => {
+              const hasAccess = canAccessPack(pack);
+              return (
+                <motion.div
+                  key={pack.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                >
+                  <Card className={`glass-card overflow-hidden ${!hasAccess ? "opacity-70" : ""}`}>
+                    <div className="aspect-video bg-secondary/50 relative">
+                      {pack.image_url ? (
+                        <img src={pack.image_url} alt={pack.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Package className="w-12 h-12 text-muted-foreground" />
                         </div>
-                        {item.type === "image" ? (
-                          <div className="w-full h-full bg-gradient-to-br from-telegram/20 to-purple-500/20" />
+                      )}
+                      {!hasAccess && (
+                        <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
+                          <div className="text-center">
+                            <Lock className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                            <p className="text-sm font-medium">Plano {pack.min_plan.toUpperCase()} necessário</p>
+                          </div>
+                        </div>
+                      )}
+                      <Badge className="absolute top-2 right-2">{pack.pack_type}</Badge>
+                    </div>
+                    <CardContent className="p-4">
+                      <h3 className="font-semibold text-lg">{pack.name}</h3>
+                      {pack.description && (
+                        <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{pack.description}</p>
+                      )}
+                      <div className="flex items-center justify-between mt-4">
+                        <span className="text-sm text-muted-foreground">{pack.file_count} arquivos</span>
+                        {hasAccess ? (
+                          <Button size="sm" onClick={() => setSelectedPack(pack)}>
+                            Ver Arquivos
+                          </Button>
                         ) : (
-                          getMediaIcon(item.type)
+                          <Badge variant="secondary">
+                            <Lock className="w-3 h-3 mr-1" />
+                            Bloqueado
+                          </Badge>
                         )}
-                        <div className="absolute top-2 right-2">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100">
-                                <MoreVertical className="w-4 h-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                              <DropdownMenuItem>
-                                <Download className="w-4 h-4 mr-2" />
-                                Baixar
-                              </DropdownMenuItem>
-                              <DropdownMenuItem>
-                                <Tag className="w-4 h-4 mr-2" />
-                                Adicionar tag
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem className="text-destructive">
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                Excluir
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
                       </div>
-                      <CardContent className="p-3">
-                        <p className="text-sm font-medium truncate">{item.name}</p>
-                        <p className="text-xs text-muted-foreground">{item.size}</p>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                ))}
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              );
+            })}
+          </div>
+        ) : (
+          <Card className="glass-card">
+            <CardContent className="p-0 divide-y divide-border">
+              {filteredPacks.map((pack) => {
+                const hasAccess = canAccessPack(pack);
+                return (
+                  <div
+                    key={pack.id}
+                    className={`flex items-center gap-4 p-4 ${!hasAccess ? "opacity-70" : ""}`}
+                  >
+                    <div className="w-16 h-16 rounded-lg bg-secondary/50 flex items-center justify-center overflow-hidden">
+                      {pack.image_url ? (
+                        <img src={pack.image_url} alt={pack.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <Package className="w-8 h-8 text-muted-foreground" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold">{pack.name}</h3>
+                        <Badge variant="outline">{pack.pack_type}</Badge>
+                        <Badge variant="secondary" className="capitalize">{pack.min_plan}</Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{pack.file_count} arquivos</p>
+                    </div>
+                    {hasAccess ? (
+                      <Button size="sm" onClick={() => setSelectedPack(pack)}>
+                        Ver Arquivos
+                      </Button>
+                    ) : (
+                      <Badge variant="secondary">
+                        <Lock className="w-3 h-3 mr-1" />
+                        Plano {pack.min_plan}
+                      </Badge>
+                    )}
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Selected Pack Modal */}
+        {selectedPack && (
+          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-card border rounded-lg shadow-lg w-full max-w-4xl max-h-[80vh] overflow-hidden"
+            >
+              <div className="p-6 border-b flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold">{selectedPack.name}</h2>
+                  <p className="text-sm text-muted-foreground">{selectedPack.file_count} arquivos</p>
+                </div>
+                <Button variant="ghost" onClick={() => setSelectedPack(null)}>
+                  Fechar
+                </Button>
               </div>
-            ) : (
-              <Card className="glass-card">
-                <CardContent className="p-0">
-                  <div className="divide-y divide-border">
-                    {filteredMedia.map((item) => (
-                      <div
-                        key={item.id}
-                        className={`flex items-center gap-4 p-4 hover:bg-secondary/30 cursor-pointer ${
-                          selectedItems.includes(item.id) ? "bg-telegram/10" : ""
-                        }`}
-                        onClick={() => toggleSelect(item.id)}
-                      >
-                        <Checkbox checked={selectedItems.includes(item.id)} />
-                        <div className="p-2 rounded-lg bg-secondary/50">
-                          {getMediaIcon(item.type)}
+              <div className="p-6 overflow-y-auto max-h-[calc(80vh-100px)]">
+                {selectedPack.media_files && selectedPack.media_files.length > 0 ? (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {selectedPack.media_files.map((file, index) => (
+                      <div key={index} className="group relative">
+                        <div className="aspect-square bg-secondary/50 rounded-lg overflow-hidden">
+                          {file.type.startsWith("image") ? (
+                            <img src={file.url} alt={file.name} className="w-full h-full object-cover" />
+                          ) : file.type.startsWith("video") ? (
+                            <div className="w-full h-full flex items-center justify-center relative">
+                              <video src={file.url} className="w-full h-full object-cover" />
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                                <Play className="w-8 h-8 text-white" />
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <FileText className="w-12 h-12 text-muted-foreground" />
+                            </div>
+                          )}
                         </div>
-                        <div className="flex-1">
-                          <p className="font-medium">{item.name}</p>
-                          <p className="text-sm text-muted-foreground">{item.date}</p>
-                        </div>
-                        <p className="text-sm text-muted-foreground">{item.size}</p>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                            <Button variant="ghost" size="icon">
-                              <MoreVertical className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent>
-                            <DropdownMenuItem>
-                              <Download className="w-4 h-4 mr-2" />
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg">
+                          <Button size="sm" asChild>
+                            <a href={file.url} download={file.name} target="_blank" rel="noopener noreferrer">
+                              <Download className="w-4 h-4 mr-1" />
                               Baixar
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Tag className="w-4 h-4 mr-2" />
-                              Adicionar tag
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-destructive">
-                              <Trash2 className="w-4 h-4 mr-2" />
-                              Excluir
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                            </a>
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1 truncate">{file.name}</p>
+                        <p className="text-xs text-muted-foreground">{formatSize(file.size)}</p>
                       </div>
                     ))}
                   </div>
-                </CardContent>
-              </Card>
-            )}
+                ) : (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Package className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>Nenhum arquivo neste pacote.</p>
+                  </div>
+                )}
+              </div>
+            </motion.div>
           </div>
-        </div>
+        )}
       </div>
     </DashboardLayout>
   );
