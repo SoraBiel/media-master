@@ -15,6 +15,7 @@ import {
   Calendar,
   DollarSign,
   Filter,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -77,6 +78,28 @@ interface Transaction {
   buyer_email: string | null;
 }
 
+interface TikTokAccount {
+  id: string;
+  username: string;
+  followers: number;
+  likes: number;
+  niche: string | null;
+  price_cents: number;
+  is_sold: boolean;
+  created_at: string;
+}
+
+interface ModelForSale {
+  id: string;
+  name: string;
+  bio: string | null;
+  niche: string | null;
+  category: string | null;
+  price_cents: number;
+  is_sold: boolean;
+  created_at: string;
+}
+
 interface Stats {
   totalUsers: number;
   onlineUsers: number;
@@ -100,6 +123,8 @@ type BillingPeriod = "today" | "7days" | "15days" | "30days" | "all";
 const AdminDashboardPage = () => {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [tiktokAccounts, setTiktokAccounts] = useState<TikTokAccount[]>([]);
+  const [models, setModels] = useState<ModelForSale[]>([]);
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("30days");
   const [billingStats, setBillingStats] = useState<BillingStats>({
     today: 0,
@@ -119,9 +144,10 @@ const AdminDashboardPage = () => {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [tiktokDialogOpen, setTiktokDialogOpen] = useState(false);
+  const [modelDialogOpen, setModelDialogOpen] = useState(false);
   const { toast } = useToast();
 
-  // TikTok Account Form
   const [tiktokForm, setTiktokForm] = useState({
     username: "",
     followers: "",
@@ -131,7 +157,6 @@ const AdminDashboardPage = () => {
     price: "",
   });
 
-  // Model Form
   const [modelForm, setModelForm] = useState({
     name: "",
     bio: "",
@@ -143,19 +168,15 @@ const AdminDashboardPage = () => {
   useEffect(() => {
     fetchData();
     fetchTransactions();
+    fetchTikTokAccounts();
+    fetchModels();
 
     const channel = supabase
-      .channel("admin-profiles")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "profiles" },
-        () => fetchData()
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "transactions" },
-        () => fetchTransactions()
-      )
+      .channel("admin-data")
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => fetchData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "transactions" }, () => fetchTransactions())
+      .on("postgres_changes", { event: "*", schema: "public", table: "tiktok_accounts" }, () => fetchTikTokAccounts())
+      .on("postgres_changes", { event: "*", schema: "public", table: "models_for_sale" }, () => fetchModels())
       .subscribe();
 
     return () => {
@@ -185,11 +206,7 @@ const AdminDashboardPage = () => {
         .select("amount_cents")
         .eq("status", "paid");
 
-      const totalRevenue = transactionsData?.reduce(
-        (sum, t) => sum + (t.amount_cents || 0),
-        0
-      ) || 0;
-
+      const totalRevenue = transactionsData?.reduce((sum, t) => sum + (t.amount_cents || 0), 0) || 0;
       const onlineUsers = profilesData?.filter((p) => p.is_online).length || 0;
 
       setProfiles(profilesData || []);
@@ -222,6 +239,30 @@ const AdminDashboardPage = () => {
       }
     } catch (error) {
       console.error("Error fetching transactions:", error);
+    }
+  };
+
+  const fetchTikTokAccounts = async () => {
+    try {
+      const { data } = await supabase
+        .from("tiktok_accounts")
+        .select("*")
+        .order("created_at", { ascending: false });
+      setTiktokAccounts(data || []);
+    } catch (error) {
+      console.error("Error fetching TikTok accounts:", error);
+    }
+  };
+
+  const fetchModels = async () => {
+    try {
+      const { data } = await supabase
+        .from("models_for_sale")
+        .select("*")
+        .order("created_at", { ascending: false });
+      setModels(data || []);
+    } catch (error) {
+      console.error("Error fetching models:", error);
     }
   };
 
@@ -287,12 +328,19 @@ const AdminDashboardPage = () => {
 
       if (error) throw error;
 
-      toast({
-        title: "Conta adicionada!",
-        description: `@${tiktokForm.username} foi adicionada com sucesso.`,
-      });
-
+      toast({ title: "Conta adicionada!", description: `@${tiktokForm.username} foi adicionada com sucesso.` });
       setTiktokForm({ username: "", followers: "", likes: "", description: "", niche: "", price: "" });
+      setTiktokDialogOpen(false);
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleDeleteTikTokAccount = async (id: string) => {
+    try {
+      const { error } = await supabase.from("tiktok_accounts").delete().eq("id", id);
+      if (error) throw error;
+      toast({ title: "Conta removida!" });
     } catch (error: any) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
     }
@@ -310,22 +358,26 @@ const AdminDashboardPage = () => {
 
       if (error) throw error;
 
-      toast({
-        title: "Modelo adicionado!",
-        description: `${modelForm.name} foi adicionado com sucesso.`,
-      });
-
+      toast({ title: "Modelo adicionado!", description: `${modelForm.name} foi adicionado com sucesso.` });
       setModelForm({ name: "", bio: "", niche: "", category: "ia", price: "" });
+      setModelDialogOpen(false);
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleDeleteModel = async (id: string) => {
+    try {
+      const { error } = await supabase.from("models_for_sale").delete().eq("id", id);
+      if (error) throw error;
+      toast({ title: "Modelo removido!" });
     } catch (error: any) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
     }
   };
 
   const formatPrice = (cents: number) => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(cents / 100);
+    return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cents / 100);
   };
 
   const formatDate = (date: string) => {
@@ -336,6 +388,12 @@ const AdminDashboardPage = () => {
       hour: "2-digit",
       minute: "2-digit",
     });
+  };
+
+  const formatNumber = (num: number) => {
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + "M";
+    if (num >= 1000) return (num / 1000).toFixed(1) + "K";
+    return num.toString();
   };
 
   const filteredProfiles = profiles.filter(
@@ -464,7 +522,6 @@ const AdminDashboardPage = () => {
 
           {/* Billing Tab */}
           <TabsContent value="billing" className="space-y-6">
-            {/* Billing Summary Cards */}
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               <Card className={`cursor-pointer transition-all ${billingPeriod === "today" ? "border-telegram" : ""}`} onClick={() => setBillingPeriod("today")}>
                 <CardContent className="p-4">
@@ -513,7 +570,6 @@ const AdminDashboardPage = () => {
               </Card>
             </div>
 
-            {/* Transactions Table */}
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -570,8 +626,8 @@ const AdminDashboardPage = () => {
           {/* TikTok Accounts Tab */}
           <TabsContent value="tiktok" className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Contas TikTok à Venda</h3>
-              <Dialog>
+              <h3 className="text-lg font-semibold">Contas TikTok ({tiktokAccounts.length})</h3>
+              <Dialog open={tiktokDialogOpen} onOpenChange={setTiktokDialogOpen}>
                 <DialogTrigger asChild>
                   <Button className="telegram-gradient text-white gap-2">
                     <Plus className="w-4 h-4" />
@@ -614,13 +670,57 @@ const AdminDashboardPage = () => {
                 </DialogContent>
               </Dialog>
             </div>
+
+            <div className="glass-card overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Username</TableHead>
+                    <TableHead>Seguidores</TableHead>
+                    <TableHead>Curtidas</TableHead>
+                    <TableHead>Nicho</TableHead>
+                    <TableHead>Preço</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {tiktokAccounts.map((account) => (
+                    <TableRow key={account.id}>
+                      <TableCell className="font-medium">@{account.username}</TableCell>
+                      <TableCell>{formatNumber(account.followers)}</TableCell>
+                      <TableCell>{formatNumber(account.likes)}</TableCell>
+                      <TableCell>{account.niche || "—"}</TableCell>
+                      <TableCell className="font-semibold">{formatPrice(account.price_cents)}</TableCell>
+                      <TableCell>
+                        <Badge variant={account.is_sold ? "secondary" : "default"}>
+                          {account.is_sold ? "Vendida" : "Disponível"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Button variant="ghost" size="icon" onClick={() => handleDeleteTikTokAccount(account.id)}>
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {tiktokAccounts.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                        Nenhuma conta cadastrada
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </TabsContent>
 
           {/* Models Tab */}
           <TabsContent value="models" className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Modelos à Venda</h3>
-              <Dialog>
+              <h3 className="text-lg font-semibold">Modelos ({models.length})</h3>
+              <Dialog open={modelDialogOpen} onOpenChange={setModelDialogOpen}>
                 <DialogTrigger asChild>
                   <Button className="telegram-gradient text-white gap-2">
                     <Plus className="w-4 h-4" />
@@ -662,6 +762,50 @@ const AdminDashboardPage = () => {
                   </div>
                 </DialogContent>
               </Dialog>
+            </div>
+
+            <div className="glass-card overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Categoria</TableHead>
+                    <TableHead>Nicho</TableHead>
+                    <TableHead>Preço</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {models.map((model) => (
+                    <TableRow key={model.id}>
+                      <TableCell className="font-medium">{model.name}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="capitalize">{model.category}</Badge>
+                      </TableCell>
+                      <TableCell>{model.niche || "—"}</TableCell>
+                      <TableCell className="font-semibold">{formatPrice(model.price_cents)}</TableCell>
+                      <TableCell>
+                        <Badge variant={model.is_sold ? "secondary" : "default"}>
+                          {model.is_sold ? "Vendido" : "Disponível"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Button variant="ghost" size="icon" onClick={() => handleDeleteModel(model.id)}>
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {models.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                        Nenhum modelo cadastrado
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
             </div>
           </TabsContent>
         </Tabs>

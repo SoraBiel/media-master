@@ -32,13 +32,6 @@ const CheckoutPage = () => {
   const [productInfo, setProductInfo] = useState<any>(null);
   const [copied, setCopied] = useState(false);
 
-  const [formData, setFormData] = useState({
-    name: profile?.full_name || "",
-    email: profile?.email || "",
-    phone: "",
-    document: "",
-  });
-
   // Fetch product info
   useEffect(() => {
     const fetchProductInfo = async () => {
@@ -73,10 +66,10 @@ const CheckoutPage = () => {
   }, [productType, productId, planSlug]);
 
   const handleGeneratePix = async () => {
-    if (!formData.name || !formData.email) {
+    if (!profile?.full_name || !profile?.email) {
       toast({
         title: "Erro",
-        description: "Preencha nome e email para continuar",
+        description: "Complete seu perfil para continuar",
         variant: "destructive",
       });
       return;
@@ -91,10 +84,9 @@ const CheckoutPage = () => {
           product_id: productId || undefined,
           plan_slug: planSlug || undefined,
           buyer: {
-            name: formData.name,
-            email: formData.email,
-            phone: formData.phone || undefined,
-            document: formData.document || undefined,
+            name: profile.full_name,
+            email: profile.email,
+            phone: profile.phone || undefined,
           },
         },
       });
@@ -113,8 +105,13 @@ const CheckoutPage = () => {
           external_id: data.external_id,
         });
 
-        // Start polling for payment status
         startPolling(data.external_id);
+      } else if (data.success && productType === "subscription" && planSlug === "free") {
+        toast({
+          title: "Plano ativado!",
+          description: "Seu plano Free foi ativado com sucesso.",
+        });
+        navigate("/dashboard");
       }
     } catch (error: any) {
       console.error("Error generating PIX:", error);
@@ -155,7 +152,6 @@ const CheckoutPage = () => {
       }
     }, 5000);
 
-    // Clear interval after 30 minutes
     setTimeout(() => clearInterval(interval), 30 * 60 * 1000);
   };
 
@@ -217,72 +213,45 @@ const CheckoutPage = () => {
           </motion.div>
         )}
 
-        {/* Payment Form or PIX Display */}
-        {!pixData ? (
+        {/* User Info Display */}
+        {!pixData && profile && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
             className="glass-card p-6"
           >
-            <h3 className="text-lg font-semibold mb-4">Dados para pagamento</h3>
+            <h3 className="text-lg font-semibold mb-4">Seus dados</h3>
             
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="name">Nome completo *</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Seu nome"
-                  className="mt-1"
-                />
+            <div className="space-y-4 mb-6">
+              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                <span className="text-muted-foreground">Nome</span>
+                <span className="font-medium">{profile.full_name || "Não informado"}</span>
               </div>
-
-              <div>
-                <Label htmlFor="email">Email *</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="seu@email.com"
-                  className="mt-1"
-                />
+              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                <span className="text-muted-foreground">Email</span>
+                <span className="font-medium">{profile.email}</span>
               </div>
-
-              <div>
-                <Label htmlFor="phone">Telefone</Label>
-                <Input
-                  id="phone"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  placeholder="11999999999"
-                  className="mt-1"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="document">CPF</Label>
-                <Input
-                  id="document"
-                  value={formData.document}
-                  onChange={(e) => setFormData({ ...formData, document: e.target.value })}
-                  placeholder="12345678900"
-                  className="mt-1"
-                />
-              </div>
-
-              <Button
-                onClick={handleGeneratePix}
-                disabled={isLoading}
-                className="w-full telegram-gradient text-white"
-              >
-                {isLoading ? "Gerando PIX..." : "Gerar PIX"}
-              </Button>
+              {profile.phone && (
+                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                  <span className="text-muted-foreground">Telefone</span>
+                  <span className="font-medium">{profile.phone}</span>
+                </div>
+              )}
             </div>
+
+            <Button
+              onClick={handleGeneratePix}
+              disabled={isLoading}
+              className="w-full telegram-gradient text-white"
+            >
+              {isLoading ? "Gerando PIX..." : productInfo?.price_cents === 0 ? "Ativar Plano Grátis" : "Gerar PIX"}
+            </Button>
           </motion.div>
-        ) : (
+        )}
+
+        {/* PIX Display */}
+        {pixData && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
