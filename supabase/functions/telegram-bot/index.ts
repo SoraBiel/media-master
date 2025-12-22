@@ -82,6 +82,8 @@ serve(async (req) => {
       }
 
       case "getUpdates": {
+        // Delete webhook first to allow getUpdates
+        await callTelegramAPI(botToken, "deleteWebhook").catch(() => {});
         result = await callTelegramAPI(botToken, "getUpdates", {
           offset: -10,
           limit: 100,
@@ -90,6 +92,8 @@ serve(async (req) => {
       }
 
       case "getChats": {
+        // Delete webhook first to allow getUpdates
+        await callTelegramAPI(botToken, "deleteWebhook").catch(() => {});
         // Get updates to find chats the bot is in
         const updates = await callTelegramAPI(botToken, "getUpdates", {
           offset: -100,
