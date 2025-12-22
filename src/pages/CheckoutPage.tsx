@@ -31,10 +31,28 @@ const CheckoutPage = () => {
   const [paymentStatus, setPaymentStatus] = useState<"pending" | "paid" | "failed">("pending");
   const [productInfo, setProductInfo] = useState<any>(null);
   const [copied, setCopied] = useState(false);
+  const [isValidCheckout, setIsValidCheckout] = useState(true);
 
-  // Fetch product info
+  // Validate checkout params and fetch product info
   useEffect(() => {
     const fetchProductInfo = async () => {
+      // Check if we have valid checkout params
+      const hasValidParams = 
+        (productType === "subscription" && planSlug) ||
+        (productType === "tiktok_account" && productId) ||
+        (productType === "model" && productId);
+
+      if (!hasValidParams) {
+        setIsValidCheckout(false);
+        toast({
+          title: "Checkout inválido",
+          description: "Selecione um produto para continuar",
+          variant: "destructive",
+        });
+        navigate("/billing");
+        return;
+      }
+
       if (productType === "subscription" && planSlug) {
         const validSlugs = ["free", "basic", "pro", "agency"] as const;
         if (validSlugs.includes(planSlug as any)) {
@@ -63,7 +81,7 @@ const CheckoutPage = () => {
     };
 
     fetchProductInfo();
-  }, [productType, productId, planSlug]);
+  }, [productType, productId, planSlug, navigate, toast]);
 
   const handleGeneratePix = async () => {
     if (!profile?.full_name || !profile?.email) {
