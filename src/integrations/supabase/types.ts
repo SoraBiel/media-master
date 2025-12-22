@@ -62,6 +62,7 @@ export type Database = {
           destination_id: string | null
           error_message: string | null
           id: string
+          media_pack_id: string | null
           name: string
           progress: number | null
           scheduled_end: string | null
@@ -82,6 +83,7 @@ export type Database = {
           destination_id?: string | null
           error_message?: string | null
           id?: string
+          media_pack_id?: string | null
           name: string
           progress?: number | null
           scheduled_end?: string | null
@@ -102,6 +104,7 @@ export type Database = {
           destination_id?: string | null
           error_message?: string | null
           id?: string
+          media_pack_id?: string | null
           name?: string
           progress?: number | null
           scheduled_end?: string | null
@@ -120,6 +123,13 @@ export type Database = {
             columns: ["destination_id"]
             isOneToOne: false
             referencedRelation: "destinations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_media_pack_id_fkey"
+            columns: ["media_pack_id"]
+            isOneToOne: false
+            referencedRelation: "admin_media"
             referencedColumns: ["id"]
           },
         ]

@@ -53,6 +53,7 @@ interface Campaign {
   id: string;
   user_id: string;
   destination_id: string | null;
+  media_pack_id: string | null;
   name: string;
   status: string;
   progress: number;
@@ -83,6 +84,13 @@ interface AdminMedia {
   min_plan: string;
   file_count: number;
   image_url: string | null;
+  media_files: any;
+}
+
+interface TelegramIntegration {
+  id: string;
+  bot_token: string;
+  chat_id: string | null;
 }
 
 const CampaignsPage = () => {
@@ -179,33 +187,50 @@ const CampaignsPage = () => {
   }, [user]);
 
   const handleCreateCampaign = async () => {
-    if (!newCampaign.name || !newCampaign.destination_id || !user) {
+    if (!newCampaign.name || !newCampaign.destination_id || !newCampaign.media_pack_id || !user) {
       toast({
         title: "Erro",
-        description: "Preencha o nome e selecione um destino.",
+        description: "Preencha o nome, selecione um destino e um pacote de mídia.",
         variant: "destructive",
       });
       return;
     }
 
+    // Get media pack info
+    const selectedPack = adminMedia.find(m => m.id === newCampaign.media_pack_id);
+    if (!selectedPack) {
+      toast({ title: "Erro", description: "Pacote de mídia não encontrado.", variant: "destructive" });
+      return;
+    }
+
+    // Check if user can access this pack
+    if (!canAccessMedia(selectedPack.min_plan)) {
+      toast({ title: "Erro", description: "Seu plano não permite usar este pacote.", variant: "destructive" });
+      return;
+    }
+
+    const totalMediaCount = selectedPack.file_count || 0;
+
     try {
-      const { error } = await supabase.from("campaigns").insert({
+      const { data: campaignData, error } = await supabase.from("campaigns").insert({
         user_id: user.id,
         name: newCampaign.name,
         destination_id: newCampaign.destination_id,
+        media_pack_id: newCampaign.media_pack_id,
         delay_seconds: newCampaign.delay_seconds,
         send_mode: newCampaign.send_mode,
         caption: newCampaign.caption || null,
         scheduled_start: newCampaign.scheduled_start || null,
         scheduled_end: newCampaign.scheduled_end || null,
         status: "queued",
-      });
+        total_count: totalMediaCount,
+      }).select().single();
 
       if (error) throw error;
 
       toast({
         title: "Campanha criada!",
-        description: "Sua campanha foi agendada com sucesso.",
+        description: "Sua campanha foi criada. Clique em 'Iniciar' para começar o envio.",
       });
       setIsDialogOpen(false);
       setNewCampaign({
@@ -245,10 +270,139 @@ const CampaignsPage = () => {
 
       const { error } = await supabase.from("campaigns").update(updates).eq("id", id);
       if (error) throw error;
+      
+      // If starting campaign, trigger media dispatch
+      if (newStatus === "running") {
+        const campaign = campaigns.find(c => c.id === id);
+        if (campaign) {
+          startMediaDispatch(campaign);
+        }
+      }
+      
       toast({ title: `Status atualizado para ${newStatus}` });
     } catch (error: any) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
     }
+  };
+
+  const startMediaDispatch = async (campaign: Campaign) => {
+    if (!campaign.media_pack_id || !campaign.destination_id) {
+      toast({ title: "Erro", description: "Campanha sem pacote de mídia ou destino configurado.", variant: "destructive" });
+      return;
+    }
+
+    // Get media pack with files
+    const { data: mediaPack, error: mediaError } = await supabase
+      .from("admin_media")
+      .select("*")
+      .eq("id", campaign.media_pack_id)
+      .single();
+
+    if (mediaError || !mediaPack) {
+      toast({ title: "Erro", description: "Pacote de mídia não encontrado.", variant: "destructive" });
+      return;
+    }
+
+    // Get destination with telegram integration
+    const { data: destination, error: destError } = await supabase
+      .from("destinations")
+      .select("*, telegram_integration:telegram_integrations(*)")
+      .eq("id", campaign.destination_id)
+      .single();
+
+    if (destError || !destination) {
+      toast({ title: "Erro", description: "Destino não encontrado.", variant: "destructive" });
+      return;
+    }
+
+    const telegramIntegration = destination.telegram_integration as TelegramIntegration | null;
+    if (!telegramIntegration?.bot_token || !destination.chat_id) {
+      toast({ title: "Erro", description: "Bot ou chat não configurado no destino.", variant: "destructive" });
+      return;
+    }
+
+    const mediaFiles = mediaPack.media_files as string[] || [];
+    if (mediaFiles.length === 0) {
+      toast({ title: "Erro", description: "Pacote de mídia sem arquivos.", variant: "destructive" });
+      return;
+    }
+
+    toast({ 
+      title: "Campanha iniciada!",
+      description: `Enviando ${mediaFiles.length} mídias para ${destination.name}...`
+    });
+
+    // Dispatch media in background
+    dispatchMediaSequentially(campaign.id, mediaFiles, telegramIntegration.bot_token, destination.chat_id, campaign.delay_seconds, campaign.caption);
+  };
+
+  const dispatchMediaSequentially = async (
+    campaignId: string, 
+    mediaFiles: string[], 
+    botToken: string, 
+    chatId: string, 
+    delaySeconds: number,
+    caption: string | null
+  ) => {
+    let sentCount = 0;
+    
+    for (let i = 0; i < mediaFiles.length; i++) {
+      // Check if campaign is still running
+      const { data: currentCampaign } = await supabase
+        .from("campaigns")
+        .select("status")
+        .eq("id", campaignId)
+        .single();
+      
+      if (currentCampaign?.status !== "running") {
+        console.log("Campaign stopped, aborting dispatch");
+        break;
+      }
+
+      const mediaUrl = mediaFiles[i];
+      const isVideo = mediaUrl.includes(".mp4") || mediaUrl.includes(".mov") || mediaUrl.includes(".webm");
+      
+      try {
+        const response = await supabase.functions.invoke("telegram-bot", {
+          body: {
+            action: isVideo ? "sendVideo" : "sendPhoto",
+            botToken,
+            chatId,
+            mediaUrl,
+            message: i === 0 ? caption : undefined,
+          },
+        });
+
+        if (response.error) {
+          console.error("Error sending media:", response.error);
+        } else {
+          sentCount++;
+        }
+
+        // Update progress
+        const progress = Math.round(((i + 1) / mediaFiles.length) * 100);
+        await supabase.from("campaigns").update({
+          sent_count: sentCount,
+          progress,
+        }).eq("id", campaignId);
+
+        // Wait for delay before next send (if not last item)
+        if (i < mediaFiles.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, delaySeconds * 1000));
+        }
+      } catch (error) {
+        console.error("Error dispatching media:", error);
+      }
+    }
+
+    // Mark campaign as completed
+    await supabase.from("campaigns").update({
+      status: "completed",
+      completed_at: new Date().toISOString(),
+      progress: 100,
+    }).eq("id", campaignId);
+
+    toast({ title: "Campanha concluída!", description: `${sentCount} mídias enviadas com sucesso.` });
   };
 
   const getStatusBadge = (status: string) => {
@@ -446,6 +600,30 @@ const CampaignsPage = () => {
                   </Select>
                   {destinations.length === 0 && (
                     <p className="text-xs text-warning">Adicione destinos em /destinations primeiro</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label>Pacote de Mídia</Label>
+                  <Select
+                    value={newCampaign.media_pack_id}
+                    onValueChange={(value) => setNewCampaign({ ...newCampaign, media_pack_id: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um pacote de mídia" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {adminMedia.filter(m => canAccessMedia(m.min_plan)).map((media) => (
+                        <SelectItem key={media.id} value={media.id}>
+                          <div className="flex items-center gap-2">
+                            <Image className="w-4 h-4" />
+                            {media.name} ({media.file_count} arquivos)
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {adminMedia.filter(m => canAccessMedia(m.min_plan)).length === 0 && (
+                    <p className="text-xs text-warning">Nenhum pacote disponível para seu plano. Faça upgrade!</p>
                   )}
                 </div>
                 <div className="grid grid-cols-2 gap-4">
