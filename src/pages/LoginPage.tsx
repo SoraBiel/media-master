@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Send, Mail, Lock, ArrowRight, Eye, EyeOff } from "lucide-react";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 const LoginPage = () => {
   const [email, setEmail] = useState("");
@@ -14,26 +15,59 @@ const LoginPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { signIn, user, isLoading: authLoading } = useAuth();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (!authLoading && user) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [user, authLoading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
-    // Simulate login
-    setTimeout(() => {
+    const { error } = await signIn(email, password);
+    
+    if (error) {
       setIsLoading(false);
       toast({
-        title: "Login realizado!",
-        description: "Bem-vindo de volta ao MediaDrop TG.",
+        title: "Erro ao entrar",
+        description: error.message === "Invalid login credentials" 
+          ? "Email ou senha incorretos." 
+          : error.message,
+        variant: "destructive",
       });
-      navigate("/dashboard");
-    }, 1500);
+      return;
+    }
+    
+    setIsLoading(false);
+    toast({
+      title: "Login realizado!",
+      description: "Bem-vindo de volta ao MediaDrop TG.",
+    });
+    navigate("/dashboard", { replace: true });
   };
+
+  // Show loading while checking auth state
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-pulse flex flex-col items-center gap-4">
+          <div className="w-12 h-12 rounded-full bg-telegram/20 flex items-center justify-center">
+            <div className="w-6 h-6 rounded-full bg-telegram animate-ping" />
+          </div>
+          <p className="text-muted-foreground">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex">
       {/* Left Side - Form */}
-      <div className="flex-1 flex items-center justify-center p-8">
+      <div className="flex-1 flex items-center justify-center p-4 md:p-8">
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -47,7 +81,7 @@ const LoginPage = () => {
             <span className="font-bold text-xl">MediaDrop TG</span>
           </Link>
 
-          <h1 className="text-3xl font-bold mb-2">Bem-vindo de volta</h1>
+          <h1 className="text-2xl md:text-3xl font-bold mb-2">Bem-vindo de volta</h1>
           <p className="text-muted-foreground mb-8">
             Entre na sua conta para continuar
           </p>

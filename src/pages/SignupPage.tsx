@@ -1,18 +1,18 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Send, Mail, Lock, User, ArrowRight, Eye, EyeOff, Building } from "lucide-react";
+import { Send, Mail, Lock, User, ArrowRight, Eye, EyeOff } from "lucide-react";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 const SignupPage = () => {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    company: "",
     password: "",
     confirmPassword: "",
   });
@@ -21,6 +21,14 @@ const SignupPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { signUp, user, isLoading: authLoading } = useAuth();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (!authLoading && user) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [user, authLoading, navigate]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -47,18 +55,54 @@ const SignupPage = () => {
       return;
     }
 
+    if (formData.password.length < 6) {
+      toast({
+        title: "Erro",
+        description: "A senha deve ter pelo menos 6 caracteres.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
     
-    // Simulate signup
-    setTimeout(() => {
+    const { error } = await signUp(formData.email, formData.password, formData.name);
+    
+    if (error) {
       setIsLoading(false);
+      let message = error.message;
+      if (error.message.includes("already registered")) {
+        message = "Este email já está cadastrado. Tente fazer login.";
+      }
       toast({
-        title: "Conta criada!",
-        description: "Bem-vindo ao MediaDrop TG. Vamos configurar seu plano.",
+        title: "Erro ao criar conta",
+        description: message,
+        variant: "destructive",
       });
-      navigate("/billing");
-    }, 1500);
+      return;
+    }
+    
+    setIsLoading(false);
+    toast({
+      title: "Conta criada!",
+      description: "Bem-vindo ao MediaDrop TG.",
+    });
+    navigate("/dashboard", { replace: true });
   };
+
+  // Show loading while checking auth state
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-pulse flex flex-col items-center gap-4">
+          <div className="w-12 h-12 rounded-full bg-telegram/20 flex items-center justify-center">
+            <div className="w-6 h-6 rounded-full bg-telegram animate-ping" />
+          </div>
+          <p className="text-muted-foreground">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -99,7 +143,7 @@ const SignupPage = () => {
       </div>
 
       {/* Right Side - Form */}
-      <div className="flex-1 flex items-center justify-center p-8">
+      <div className="flex-1 flex items-center justify-center p-4 md:p-8">
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -113,7 +157,7 @@ const SignupPage = () => {
             <span className="font-bold text-xl">MediaDrop TG</span>
           </Link>
 
-          <h1 className="text-3xl font-bold mb-2">Criar conta</h1>
+          <h1 className="text-2xl md:text-3xl font-bold mb-2">Criar conta</h1>
           <p className="text-muted-foreground mb-8">
             Preencha os dados para começar
           </p>
@@ -154,22 +198,6 @@ const SignupPage = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="company">Empresa (opcional)</Label>
-              <div className="relative">
-                <Building className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  id="company"
-                  name="company"
-                  type="text"
-                  placeholder="Nome da empresa"
-                  value={formData.company}
-                  onChange={handleChange}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
               <Label htmlFor="password">Senha</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -177,12 +205,12 @@ const SignupPage = () => {
                   id="password"
                   name="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="Mínimo 8 caracteres"
+                  placeholder="Mínimo 6 caracteres"
                   value={formData.password}
                   onChange={handleChange}
                   className="pl-10 pr-10"
                   required
-                  minLength={8}
+                  minLength={6}
                 />
                 <button
                   type="button"
