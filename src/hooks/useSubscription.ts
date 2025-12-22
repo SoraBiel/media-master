@@ -153,7 +153,7 @@ export const useSubscription = () => {
 
     // Set up realtime subscription for subscription changes
     if (user) {
-      const channel = supabase
+      const subscriptionChannel = supabase
         .channel("subscription_changes")
         .on(
           "postgres_changes",
@@ -169,8 +169,26 @@ export const useSubscription = () => {
         )
         .subscribe();
 
+      // Also listen to profile changes for admin-assigned plans
+      const profileChannel = supabase
+        .channel("profile_plan_changes")
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "profiles",
+            filter: `user_id=eq.${user.id}`,
+          },
+          () => {
+            fetchSubscription();
+          }
+        )
+        .subscribe();
+
       return () => {
-        supabase.removeChannel(channel);
+        supabase.removeChannel(subscriptionChannel);
+        supabase.removeChannel(profileChannel);
       };
     }
   }, [user]);
