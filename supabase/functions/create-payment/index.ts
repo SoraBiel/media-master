@@ -52,7 +52,22 @@ serve(async (req) => {
 
     const { product_type, product_id, plan_slug, buyer }: PaymentRequest = await req.json();
 
-    console.log("Payment request:", { product_type, product_id, plan_slug, buyer });
+    // Sanitize buyer name: remove numbers and invalid characters, keep only letters, spaces, hyphens, apostrophes
+    const sanitizeName = (name: string): string => {
+      // Remove numbers and special characters, keep only letters (including accented), spaces, hyphens, apostrophes
+      let sanitized = name.replace(/[^a-zA-ZÀ-ÿ\s\-']/g, '').trim();
+      // Remove multiple consecutive spaces
+      sanitized = sanitized.replace(/\s+/g, ' ');
+      // If name becomes empty or too short, use a default
+      if (sanitized.length < 2) {
+        sanitized = "Cliente";
+      }
+      return sanitized;
+    };
+
+    const sanitizedBuyerName = sanitizeName(buyer.name);
+
+    console.log("Payment request:", { product_type, product_id, plan_slug, buyer, sanitizedBuyerName });
 
     // Determine amount based on product type
     let amountCents = 0;
@@ -165,7 +180,7 @@ serve(async (req) => {
         payment_method: "pix",
         amount: amountCents,
         buyer: {
-          name: buyer.name,
+          name: sanitizedBuyerName,
           email: buyer.email,
           phone: buyer.phone || undefined,
           document: buyer.document || undefined,
