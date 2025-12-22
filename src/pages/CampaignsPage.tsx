@@ -403,19 +403,25 @@ const CampaignsPage = () => {
       return;
     }
 
-    const mediaFiles = mediaPack.media_files as string[] || [];
-    if (mediaFiles.length === 0) {
+    // Extract URLs from media files - they can be strings or objects with url property
+    const rawMediaFiles = mediaPack.media_files as (string | { url: string; type?: string; name?: string })[] || [];
+    const mediaUrls = rawMediaFiles.map(file => {
+      if (typeof file === 'string') return file;
+      return file.url;
+    }).filter(Boolean);
+    
+    if (mediaUrls.length === 0) {
       toast({ title: "Erro", description: "Pacote de mídia sem arquivos.", variant: "destructive" });
       return;
     }
 
     toast({ 
       title: "Campanha iniciada!",
-      description: `Enviando ${mediaFiles.length} mídias para ${destination.name}...`
+      description: `Enviando ${mediaUrls.length} mídias para ${destination.name}...`
     });
 
     // Dispatch media in background
-    dispatchMediaSequentially(campaign.id, mediaFiles, telegramIntegration.bot_token, destination.chat_id, campaign.delay_seconds, campaign.caption);
+    dispatchMediaSequentially(campaign.id, mediaUrls, telegramIntegration.bot_token, destination.chat_id, campaign.delay_seconds, campaign.caption);
   };
 
   const dispatchMediaSequentially = async (
