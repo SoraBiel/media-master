@@ -55,12 +55,15 @@ export type Database = {
       }
       campaigns: {
         Row: {
+          avg_send_time_ms: number | null
           caption: string | null
           completed_at: string | null
           created_at: string
           delay_seconds: number | null
           destination_id: string | null
+          error_count: number | null
           error_message: string | null
+          errors_log: Json | null
           id: string
           media_pack_id: string | null
           name: string
@@ -71,17 +74,21 @@ export type Database = {
           sent_count: number | null
           started_at: string | null
           status: string | null
+          success_count: number | null
           total_count: number | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          avg_send_time_ms?: number | null
           caption?: string | null
           completed_at?: string | null
           created_at?: string
           delay_seconds?: number | null
           destination_id?: string | null
+          error_count?: number | null
           error_message?: string | null
+          errors_log?: Json | null
           id?: string
           media_pack_id?: string | null
           name: string
@@ -92,17 +99,21 @@ export type Database = {
           sent_count?: number | null
           started_at?: string | null
           status?: string | null
+          success_count?: number | null
           total_count?: number | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          avg_send_time_ms?: number | null
           caption?: string | null
           completed_at?: string | null
           created_at?: string
           delay_seconds?: number | null
           destination_id?: string | null
+          error_count?: number | null
           error_message?: string | null
+          errors_log?: Json | null
           id?: string
           media_pack_id?: string | null
           name?: string
@@ -113,6 +124,7 @@ export type Database = {
           sent_count?: number | null
           started_at?: string | null
           status?: string | null
+          success_count?: number | null
           total_count?: number | null
           updated_at?: string
           user_id?: string

@@ -70,6 +70,10 @@ interface Campaign {
   scheduled_start: string | null;
   scheduled_end: string | null;
   created_at: string;
+  success_count?: number;
+  error_count?: number;
+  errors_log?: any;
+  avg_send_time_ms?: number;
 }
 
 interface Destination {
@@ -271,7 +275,7 @@ const CampaignsPage = () => {
 
       // If starting immediately, trigger dispatch
       if (startImmediately && campaignData) {
-        startMediaDispatch(campaignData as Campaign);
+        startMediaDispatch(campaignData as unknown as Campaign);
         toast({
           title: "Campanha iniciada!",
           description: "Sua campanha foi criada e está enviando mídias.",
@@ -343,154 +347,37 @@ const CampaignsPage = () => {
       return;
     }
 
-    // Get media pack with files
-    const { data: mediaPack, error: mediaError } = await supabase
-      .from("admin_media")
-      .select("*")
-      .eq("id", campaign.media_pack_id)
-      .single();
+    try {
+      // Call the edge function to handle dispatch in background
+      const response = await supabase.functions.invoke("campaign-dispatch", {
+        body: { campaignId: campaign.id },
+      });
 
-    if (mediaError || !mediaPack) {
-      toast({ title: "Erro", description: "Pacote de mídia não encontrado.", variant: "destructive" });
-      return;
-    }
-
-    // Get destination
-    const { data: destination, error: destError } = await supabase
-      .from("destinations")
-      .select("*")
-      .eq("id", campaign.destination_id)
-      .single();
-
-    if (destError || !destination) {
-      toast({ title: "Erro", description: "Destino não encontrado.", variant: "destructive" });
-      return;
-    }
-
-    if (!destination.chat_id) {
-      toast({ title: "Erro", description: "Chat ID não configurado no destino.", variant: "destructive" });
-      return;
-    }
-
-    // Get telegram integration - first try from destination, then get any connected bot
-    let telegramIntegration: TelegramIntegration | null = null;
-    
-    if (destination.telegram_integration_id) {
-      const { data: integration } = await supabase
-        .from("telegram_integrations")
-        .select("id, bot_token, chat_id")
-        .eq("id", destination.telegram_integration_id)
-        .single();
-      telegramIntegration = integration;
-    }
-    
-    // If no integration linked to destination, get the first connected bot for this user
-    if (!telegramIntegration) {
-      const { data: integrations } = await supabase
-        .from("telegram_integrations")
-        .select("id, bot_token, chat_id")
-        .eq("user_id", user!.id)
-        .eq("is_connected", true)
-        .limit(1);
-      
-      if (integrations && integrations.length > 0) {
-        telegramIntegration = integrations[0];
+      if (response.error) {
+        console.error("Error starting dispatch:", response.error);
+        toast({ title: "Erro", description: response.error.message || "Erro ao iniciar disparo", variant: "destructive" });
+        return;
       }
+
+      toast({ 
+        title: "Campanha iniciada!",
+        description: response.data?.message || "O envio de mídias foi iniciado em segundo plano."
+      });
+    } catch (error: any) {
+      console.error("Error dispatching:", error);
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
     }
-
-    if (!telegramIntegration?.bot_token) {
-      toast({ title: "Erro", description: "Nenhum bot conectado. Conecte um bot em /telegram primeiro.", variant: "destructive" });
-      return;
-    }
-
-    // Extract URLs from media files - they can be strings or objects with url property
-    const rawMediaFiles = mediaPack.media_files as (string | { url: string; type?: string; name?: string })[] || [];
-    const mediaUrls = rawMediaFiles.map(file => {
-      if (typeof file === 'string') return file;
-      return file.url;
-    }).filter(Boolean);
-    
-    if (mediaUrls.length === 0) {
-      toast({ title: "Erro", description: "Pacote de mídia sem arquivos.", variant: "destructive" });
-      return;
-    }
-
-    toast({ 
-      title: "Campanha iniciada!",
-      description: `Enviando ${mediaUrls.length} mídias para ${destination.name}...`
-    });
-
-    // Dispatch media in background
-    dispatchMediaSequentially(campaign.id, mediaUrls, telegramIntegration.bot_token, destination.chat_id, campaign.delay_seconds, campaign.caption);
   };
 
-  const dispatchMediaSequentially = async (
-    campaignId: string, 
-    mediaFiles: string[], 
-    botToken: string, 
-    chatId: string, 
-    delaySeconds: number,
-    caption: string | null
-  ) => {
-    let sentCount = 0;
-    
-    for (let i = 0; i < mediaFiles.length; i++) {
-      // Check if campaign is still running
-      const { data: currentCampaign } = await supabase
-        .from("campaigns")
-        .select("status")
-        .eq("id", campaignId)
-        .single();
-      
-      if (currentCampaign?.status !== "running") {
-        console.log("Campaign stopped, aborting dispatch");
-        break;
-      }
+  const formatDuration = (ms: number) => {
+    if (ms < 1000) return `${ms}ms`;
+    return `${(ms / 1000).toFixed(1)}s`;
+  };
 
-      const mediaUrl = mediaFiles[i];
-      const isVideo = mediaUrl.includes(".mp4") || mediaUrl.includes(".mov") || mediaUrl.includes(".webm");
-      
-      try {
-        const response = await supabase.functions.invoke("telegram-bot", {
-          body: {
-            action: isVideo ? "sendVideo" : "sendPhoto",
-            botToken,
-            chatId,
-            mediaUrl,
-            message: i === 0 ? caption : undefined,
-          },
-        });
-
-        if (response.error) {
-          console.error("Error sending media:", response.error);
-        } else {
-          sentCount++;
-        }
-
-        // Update progress
-        const progress = Math.round(((i + 1) / mediaFiles.length) * 100);
-        await supabase.from("campaigns").update({
-          sent_count: sentCount,
-          progress,
-        }).eq("id", campaignId);
-
-        // Wait for delay before next send (if not last item)
-        if (i < mediaFiles.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, delaySeconds * 1000));
-        }
-      } catch (error) {
-        console.error("Error dispatching media:", error);
-      }
-    }
-
-    // Mark campaign as completed
-    await supabase.from("campaigns").update({
-      status: "completed",
-      completed_at: new Date().toISOString(),
-      progress: 100,
-    }).eq("id", campaignId);
-
-    toast({ title: "Campanha concluída!", description: `${sentCount} mídias enviadas com sucesso.` });
+  const getSuccessRate = (campaign: Campaign) => {
+    const total = (campaign.success_count || 0) + (campaign.error_count || 0);
+    if (total === 0) return 0;
+    return Math.round(((campaign.success_count || 0) / total) * 100);
   };
 
   const getStatusBadge = (status: string) => {
@@ -882,6 +769,44 @@ const CampaignsPage = () => {
                               </div>
                             )}
 
+                            {/* Statistics */}
+                            {(campaign.status === "running" || campaign.status === "completed" || campaign.status === "failed") && (
+                              <div className="grid grid-cols-3 gap-4 p-3 rounded-lg bg-secondary/50">
+                                <div className="text-center">
+                                  <div className="flex items-center justify-center gap-1">
+                                    <CheckCircle2 className="w-4 h-4 text-success" />
+                                    <span className="text-lg font-semibold text-success">{campaign.success_count || 0}</span>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground">Sucesso</p>
+                                </div>
+                                <div className="text-center">
+                                  <div className="flex items-center justify-center gap-1">
+                                    <AlertCircle className="w-4 h-4 text-destructive" />
+                                    <span className="text-lg font-semibold text-destructive">{campaign.error_count || 0}</span>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground">Erros</p>
+                                </div>
+                                <div className="text-center">
+                                  <div className="flex items-center justify-center gap-1">
+                                    <Clock className="w-4 h-4 text-telegram" />
+                                    <span className="text-lg font-semibold text-telegram">
+                                      {campaign.avg_send_time_ms ? formatDuration(campaign.avg_send_time_ms) : '—'}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground">Tempo médio</p>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Success Rate Badge */}
+                            {campaign.status === "completed" && (campaign.success_count || 0) > 0 && (
+                              <div className="flex items-center gap-2">
+                                <Badge variant={getSuccessRate(campaign) >= 90 ? "default" : getSuccessRate(campaign) >= 50 ? "secondary" : "destructive"}>
+                                  Taxa de sucesso: {getSuccessRate(campaign)}%
+                                </Badge>
+                              </div>
+                            )}
+
                             {campaign.error_message && (
                               <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-sm">
                                 <p className="text-destructive">{campaign.error_message}</p>
@@ -899,6 +824,12 @@ const CampaignsPage = () => {
                                 <div className="flex items-center gap-1">
                                   <Clock className="w-4 h-4" />
                                   Fim: {formatDate(campaign.completed_at)}
+                                </div>
+                              )}
+                              {campaign.started_at && !campaign.completed_at && (
+                                <div className="flex items-center gap-1">
+                                  <Play className="w-4 h-4" />
+                                  Iniciado: {formatDate(campaign.started_at)}
                                 </div>
                               )}
                             </div>
