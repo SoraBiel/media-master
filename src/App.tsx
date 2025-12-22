@@ -19,6 +19,8 @@ import CheckoutPage from "./pages/CheckoutPage";
 import TikTokAccountsPage from "./pages/TikTokAccountsPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
 import SettingsPage from "./pages/SettingsPage";
+import DeliveryPage from "./pages/DeliveryPage";
+import UserDetailsPage from "./pages/UserDetailsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -43,7 +45,9 @@ const App = () => (
             <Route path="/model-hub" element={<ProtectedRoute><ModelHubPage /></ProtectedRoute>} />
             <Route path="/tiktok-accounts" element={<ProtectedRoute><TikTokAccountsPage /></ProtectedRoute>} />
             <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
+            <Route path="/delivery" element={<ProtectedRoute><DeliveryPage /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute requireAdmin><AdminDashboardPage /></ProtectedRoute>} />
+            <Route path="/admin/user/:userId" element={<ProtectedRoute requireAdmin><UserDetailsPage /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>

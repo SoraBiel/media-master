@@ -21,6 +21,7 @@ export type Database = {
           file_count: number | null
           id: string
           image_url: string | null
+          media_files: Json | null
           min_plan: string
           name: string
           pack_type: string
@@ -32,6 +33,7 @@ export type Database = {
           file_count?: number | null
           id?: string
           image_url?: string | null
+          media_files?: Json | null
           min_plan?: string
           name: string
           pack_type?: string
@@ -43,6 +45,7 @@ export type Database = {
           file_count?: number | null
           id?: string
           image_url?: string | null
+          media_files?: Json | null
           min_plan?: string
           name?: string
           pack_type?: string
@@ -193,6 +196,50 @@ export type Database = {
         }
         Relationships: []
       }
+      deliveries: {
+        Row: {
+          created_at: string | null
+          delivered_at: string | null
+          delivery_data: Json | null
+          id: string
+          product_id: string
+          product_type: string
+          transaction_id: string | null
+          user_id: string
+          viewed_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          delivered_at?: string | null
+          delivery_data?: Json | null
+          id?: string
+          product_id: string
+          product_type: string
+          transaction_id?: string | null
+          user_id: string
+          viewed_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          delivered_at?: string | null
+          delivery_data?: Json | null
+          id?: string
+          product_id?: string
+          product_type?: string
+          transaction_id?: string | null
+          user_id?: string
+          viewed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deliveries_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       destinations: {
         Row: {
           chat_id: string
@@ -253,6 +300,9 @@ export type Database = {
           category: string | null
           created_at: string | null
           created_by: string | null
+          deliverable_info: string | null
+          deliverable_link: string | null
+          deliverable_notes: string | null
           id: string
           image_url: string | null
           is_sold: boolean | null
@@ -269,6 +319,9 @@ export type Database = {
           category?: string | null
           created_at?: string | null
           created_by?: string | null
+          deliverable_info?: string | null
+          deliverable_link?: string | null
+          deliverable_notes?: string | null
           id?: string
           image_url?: string | null
           is_sold?: boolean | null
@@ -285,6 +338,9 @@ export type Database = {
           category?: string | null
           created_at?: string | null
           created_by?: string | null
+          deliverable_info?: string | null
+          deliverable_link?: string | null
+          deliverable_notes?: string | null
           id?: string
           image_url?: string | null
           is_sold?: boolean | null
@@ -351,6 +407,7 @@ export type Database = {
           full_name: string | null
           id: string
           is_online: boolean | null
+          is_suspended: boolean | null
           last_seen_at: string | null
           onboarding_completed: boolean | null
           phone: string | null
@@ -365,6 +422,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           is_online?: boolean | null
+          is_suspended?: boolean | null
           last_seen_at?: string | null
           onboarding_completed?: boolean | null
           phone?: string | null
@@ -379,6 +437,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           is_online?: boolean | null
+          is_suspended?: boolean | null
           last_seen_at?: string | null
           onboarding_completed?: boolean | null
           phone?: string | null
@@ -477,6 +536,11 @@ export type Database = {
         Row: {
           created_at: string | null
           created_by: string | null
+          deliverable_email: string | null
+          deliverable_info: string | null
+          deliverable_login: string | null
+          deliverable_notes: string | null
+          deliverable_password: string | null
           description: string | null
           followers: number | null
           id: string
@@ -493,6 +557,11 @@ export type Database = {
         Insert: {
           created_at?: string | null
           created_by?: string | null
+          deliverable_email?: string | null
+          deliverable_info?: string | null
+          deliverable_login?: string | null
+          deliverable_notes?: string | null
+          deliverable_password?: string | null
           description?: string | null
           followers?: number | null
           id?: string
@@ -509,6 +578,11 @@ export type Database = {
         Update: {
           created_at?: string | null
           created_by?: string | null
+          deliverable_email?: string | null
+          deliverable_info?: string | null
+          deliverable_login?: string | null
+          deliverable_notes?: string | null
+          deliverable_password?: string | null
           description?: string | null
           followers?: number | null
           id?: string
@@ -700,17 +774,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      has_role: {
-        Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _user_id: string
-        }
-        Returns: boolean
-      }
       is_admin: { Args: never; Returns: boolean }
     }
     Enums: {
-      app_role: "admin" | "user"
+      app_role: "admin" | "user" | "vendor"
       plan_type: "free" | "basic" | "pro" | "agency"
       subscription_status: "active" | "pending" | "cancelled" | "expired"
       transaction_status: "pending" | "paid" | "failed" | "refunded"
@@ -841,7 +908,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "user"],
+      app_role: ["admin", "user", "vendor"],
       plan_type: ["free", "basic", "pro", "agency"],
       subscription_status: ["active", "pending", "cancelled", "expired"],
       transaction_status: ["pending", "paid", "failed", "refunded"],
