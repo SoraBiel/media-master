@@ -1530,6 +1530,11 @@ const AdminDashboardPage = () => {
               </Table>
             </div>
           </TabsContent>
+
+          {/* Templates Tab */}
+          <TabsContent value="templates" className="space-y-4">
+            <AdminTemplatesPanel />
+          </TabsContent>
         </Tabs>
 
         {/* Plan Change Dialog */}
@@ -1618,11 +1623,6 @@ const AdminDashboardPage = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-
-        {/* Templates Tab */}
-        <TabsContent value="templates" className="space-y-4">
-          <AdminTemplatesPanel />
-        </TabsContent>
       </div>
     </DashboardLayout>
   );
