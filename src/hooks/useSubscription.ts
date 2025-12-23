@@ -22,6 +22,7 @@ export interface Plan {
   features: any;
   max_destinations: number | null;
   max_media_per_month: number | null;
+  max_funnels: number | null;
   has_scheduling: boolean;
   has_ai_models: boolean;
   is_active: boolean;
