@@ -82,7 +82,7 @@ const FunnelCanvasInner = ({
       id: edge.id,
       source: edge.source,
       target: edge.target,
-      sourceHandle: edge.sourceHandle,
+      sourceHandle: edge.sourceHandle || 'default',
       targetHandle: edge.targetHandle,
       animated: true,
       style: { stroke: 'hsl(var(--primary))' },

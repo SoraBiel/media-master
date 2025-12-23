@@ -93,6 +93,7 @@ const BlockNode = ({ data, selected }: BlockNodeProps) => {
         <Handle
           type="source"
           position={Position.Bottom}
+          id="default"
           className="!w-3 !h-3 !bg-primary !border-2 !border-background"
         />
       )}
