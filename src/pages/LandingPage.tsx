@@ -290,7 +290,7 @@ const LandingPage = () => {
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <img src="/logo-nexo.png" alt="Nexo" className="h-8" />
+              <img src="/logo-nexo.png" alt="Nexo" className="h-40" />
             </div>
             <p className="text-sm text-muted-foreground">
               © 2024 Nexo. Todos os direitos reservados.
