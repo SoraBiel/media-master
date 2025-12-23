@@ -76,6 +76,8 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { AdminTemplatesPanel } from "@/components/admin/AdminTemplatesPanel";
+import { useAdminSettings } from "@/hooks/useAdminSettings";
+import { Switch } from "@/components/ui/switch";
 
 interface Profile {
   id: string;
@@ -229,6 +231,7 @@ const AdminDashboardPage = () => {
   const imageInputRef = useRef<HTMLInputElement>(null);
   
   const { toast } = useToast();
+  const { settings: adminSettings, updateSetting } = useAdminSettings();
 
   const [tiktokForm, setTiktokForm] = useState({
     username: "",
@@ -1288,6 +1291,29 @@ const AdminDashboardPage = () => {
 
           {/* TikTok Accounts Tab */}
           <TabsContent value="tiktok" className="space-y-4">
+            {/* Toggle para ativar/desativar TikTok */}
+            <Card className="border-dashed">
+              <CardContent className="flex items-center justify-between py-4">
+                <div className="space-y-0.5">
+                  <div className="font-medium flex items-center gap-2">
+                    Aba TikTok
+                    <Badge variant={adminSettings.tiktok_enabled ? "default" : "secondary"}>
+                      {adminSettings.tiktok_enabled ? "Ativo" : "Desativado"}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {adminSettings.tiktok_enabled 
+                      ? "Usuários podem ver e comprar contas TikTok" 
+                      : "A aba TikTok está oculta para usuários"}
+                  </p>
+                </div>
+                <Switch
+                  checked={adminSettings.tiktok_enabled}
+                  onCheckedChange={(checked) => updateSetting("tiktok_enabled", checked)}
+                />
+              </CardContent>
+            </Card>
+
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold">Contas TikTok ({tiktokAccounts.length})</h3>
               <Dialog open={tiktokDialogOpen} onOpenChange={setTiktokDialogOpen}>
@@ -1435,6 +1461,29 @@ const AdminDashboardPage = () => {
 
           {/* Models Tab */}
           <TabsContent value="models" className="space-y-4">
+            {/* Toggle para ativar/desativar Modelos */}
+            <Card className="border-dashed">
+              <CardContent className="flex items-center justify-between py-4">
+                <div className="space-y-0.5">
+                  <div className="font-medium flex items-center gap-2">
+                    Aba Modelos (Model Hub)
+                    <Badge variant={adminSettings.models_enabled ? "default" : "secondary"}>
+                      {adminSettings.models_enabled ? "Ativo" : "Desativado"}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {adminSettings.models_enabled 
+                      ? "Usuários podem ver e comprar modelos" 
+                      : "A aba Modelos está oculta para usuários"}
+                  </p>
+                </div>
+                <Switch
+                  checked={adminSettings.models_enabled}
+                  onCheckedChange={(checked) => updateSetting("models_enabled", checked)}
+                />
+              </CardContent>
+            </Card>
+
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold">Modelos ({models.length})</h3>
               <Dialog open={modelDialogOpen} onOpenChange={setModelDialogOpen}>

@@ -1,4 +1,4 @@
-import { ReactNode, useState, useEffect } from "react";
+import { ReactNode, useState, useEffect, useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Send, LayoutDashboard, CreditCard, MessageCircle, Target, Megaphone, Sparkles, Settings, LogOut, ChevronLeft, ChevronRight, Bell, User, Shield, Menu, Video, Crown, Headphones, GitBranch } from "lucide-react";
@@ -7,6 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { useAuth } from "@/contexts/AuthContext";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useAdminSettings } from "@/hooks/useAdminSettings";
 interface DashboardLayoutProps {
   children: ReactNode;
 }
@@ -27,6 +28,7 @@ const DashboardLayout = ({
     hasActiveSubscription,
     currentPlan
   } = useSubscription();
+  const { settings: adminSettings } = useAdminSettings();
 
   // Build navigation items dynamically based on subscription status
   const getNavItems = () => {
@@ -63,22 +65,34 @@ const DashboardLayout = ({
       icon: Megaphone,
       label: "Campanhas",
       path: "/campaigns"
-    }, {
-      icon: Sparkles,
-      label: "Model Hub",
-      path: "/model-hub"
-    }, {
-      icon: Video,
-      label: "TikTok Accounts",
-      path: "/tiktok-accounts"
-    }, {
+    });
+    
+    // Only show Model Hub if enabled by admin
+    if (adminSettings.models_enabled) {
+      items.push({
+        icon: Sparkles,
+        label: "Model Hub",
+        path: "/model-hub"
+      });
+    }
+    
+    // Only show TikTok Accounts if enabled by admin
+    if (adminSettings.tiktok_enabled) {
+      items.push({
+        icon: Video,
+        label: "TikTok Accounts",
+        path: "/tiktok-accounts"
+      });
+    }
+    
+    items.push({
       icon: GitBranch,
       label: "Funis",
       path: "/funnels"
     });
     return items;
   };
-  const navItems = getNavItems();
+  const navItems = useMemo(() => getNavItems(), [hasActiveSubscription, currentPlan, adminSettings]);
 
   // Admin-only items
   const adminItems = [{
