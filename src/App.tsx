@@ -20,6 +20,8 @@ import OnboardingPage from "./pages/OnboardingPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import ThankYouPage from "./pages/ThankYouPage";
 import TikTokAccountsPage from "./pages/TikTokAccountsPage";
+import FunnelsPage from "./pages/FunnelsPage";
+import FunnelBuilderPage from "./pages/FunnelBuilderPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
 import SettingsPage from "./pages/SettingsPage";
 import DeliveryPage from "./pages/DeliveryPage";
@@ -49,6 +51,8 @@ const App = () => (
             <Route path="/campaigns" element={<ProtectedRoute><CampaignsPage /></ProtectedRoute>} />
             <Route path="/model-hub" element={<ProtectedRoute><ModelHubPage /></ProtectedRoute>} />
             <Route path="/tiktok-accounts" element={<ProtectedRoute><TikTokAccountsPage /></ProtectedRoute>} />
+            <Route path="/funnels" element={<ProtectedRoute><FunnelsPage /></ProtectedRoute>} />
+            <Route path="/funnels/:funnelId" element={<ProtectedRoute><FunnelBuilderPage /></ProtectedRoute>} />
             <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
             <Route path="/thank-you" element={<ProtectedRoute><ThankYouPage /></ProtectedRoute>} />
             <Route path="/delivery" element={<ProtectedRoute><DeliveryPage /></ProtectedRoute>} />
