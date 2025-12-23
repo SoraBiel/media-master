@@ -3,7 +3,7 @@ import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 
-interface Profile {
+export interface Profile {
   id: string;
   user_id: string;
   email: string;
@@ -13,6 +13,7 @@ interface Profile {
   current_plan: "free" | "basic" | "pro" | "agency";
   onboarding_completed: boolean;
   is_online: boolean;
+  is_suspended: boolean;
   created_at: string | null;
   updated_at: string | null;
   last_seen_at: string | null;

@@ -918,28 +918,51 @@ const AdminDashboardPage = () => {
                         <TableHead>Plano</TableHead>
                         <TableHead>Início</TableHead>
                         <TableHead>Expira em</TableHead>
+                        <TableHead>Dias Restantes</TableHead>
                         <TableHead>Status</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {subscriptions.map((sub) => (
-                        <TableRow key={sub.id}>
-                          <TableCell>
-                            <div>
-                              <p className="font-medium">{sub.profile?.full_name || "—"}</p>
-                              <p className="text-sm text-muted-foreground">{sub.profile?.email}</p>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge>{sub.plan?.name || "—"}</Badge>
-                          </TableCell>
-                          <TableCell>{sub.started_at ? formatDate(sub.started_at) : "—"}</TableCell>
-                          <TableCell>{sub.expires_at ? formatDate(sub.expires_at) : "Sem expiração"}</TableCell>
-                          <TableCell>
-                            <Badge className="bg-success">Ativa</Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {subscriptions.map((sub) => {
+                        const daysRemaining = sub.expires_at 
+                          ? Math.ceil((new Date(sub.expires_at).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+                          : null;
+                        const isExpiringSoon = daysRemaining !== null && daysRemaining <= 3;
+                        const isExpired = daysRemaining !== null && daysRemaining <= 0;
+                        
+                        return (
+                          <TableRow key={sub.id} className={isExpired ? "opacity-60" : ""}>
+                            <TableCell>
+                              <div>
+                                <p className="font-medium">{sub.profile?.full_name || "—"}</p>
+                                <p className="text-sm text-muted-foreground">{sub.profile?.email}</p>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge>{sub.plan?.name || "—"}</Badge>
+                            </TableCell>
+                            <TableCell>{sub.started_at ? formatDate(sub.started_at) : "—"}</TableCell>
+                            <TableCell>{sub.expires_at ? formatDate(sub.expires_at) : "Sem expiração"}</TableCell>
+                            <TableCell>
+                              {daysRemaining !== null ? (
+                                <Badge 
+                                  variant={isExpired ? "destructive" : isExpiringSoon ? "secondary" : "default"}
+                                  className={!isExpired && !isExpiringSoon ? "bg-success" : isExpiringSoon && !isExpired ? "bg-warning text-warning-foreground" : ""}
+                                >
+                                  {isExpired ? "Expirado" : `${daysRemaining} dias`}
+                                </Badge>
+                              ) : (
+                                <span className="text-muted-foreground">∞</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={isExpired ? "bg-destructive" : "bg-success"}>
+                                {isExpired ? "Expirada" : "Ativa"}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 )}
