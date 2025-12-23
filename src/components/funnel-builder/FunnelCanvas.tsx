@@ -99,17 +99,9 @@ const FunnelCanvasInner = ({
     setEdges(convertToFlowEdges(initialEdges));
   }, [initialNodes, initialEdges, setNodes, setEdges]);
 
-  // Auto-save with debounce
-  const triggerAutoSave = useCallback(() => {
+  // Mark changes as unsaved (no auto-save - user must click save)
+  const markUnsaved = useCallback(() => {
     setHasUnsavedChanges(true);
-    
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-    
-    saveTimeoutRef.current = setTimeout(async () => {
-      await handleSave();
-    }, 2000); // Auto-save after 2 seconds of inactivity
   }, []);
 
   // Convert back to funnel format
@@ -194,8 +186,8 @@ const FunnelCanvasInner = ({
       animated: true,
       style: { stroke: 'hsl(var(--primary))' },
     }, eds));
-    triggerAutoSave();
-  }, [setEdges, triggerAutoSave]);
+    markUnsaved();
+  }, [setEdges, markUnsaved]);
 
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
@@ -224,13 +216,13 @@ const FunnelCanvasInner = ({
     };
 
     setNodes((nds) => [...nds, newNode]);
-    triggerAutoSave();
+    markUnsaved();
     
     toast({
       title: 'Bloco adicionado',
-      description: BLOCK_INFO[type].label,
+      description: `${BLOCK_INFO[type].label} - Clique em Salvar para persistir`,
     });
-  }, [screenToFlowPosition, setNodes, toast, triggerAutoSave]);
+  }, [screenToFlowPosition, setNodes, toast, markUnsaved]);
 
   const onDragStart = useCallback((event: React.DragEvent, blockType: BlockType) => {
     event.dataTransfer.setData('application/reactflow', blockType);
@@ -245,16 +237,16 @@ const FunnelCanvasInner = ({
           : node
       )
     );
-    triggerAutoSave();
-  }, [setNodes, triggerAutoSave]);
+    markUnsaved();
+  }, [setNodes, markUnsaved]);
 
   const handleDeleteNode = useCallback((nodeId: string) => {
     setNodes((nds) => nds.filter((node) => node.id !== nodeId));
     setEdges((eds) => eds.filter((edge) => edge.source !== nodeId && edge.target !== nodeId));
     setSelectedNode(null);
-    triggerAutoSave();
-    toast({ title: 'Bloco removido' });
-  }, [setNodes, setEdges, toast, triggerAutoSave]);
+    markUnsaved();
+    toast({ title: 'Bloco removido - Clique em Salvar para persistir' });
+  }, [setNodes, setEdges, toast, markUnsaved]);
 
   const onSelectionChange = useCallback(({ nodes: selectedNodes }: { nodes: Node[] }) => {
     setSelectedNode(selectedNodes.length === 1 ? selectedNodes[0] : null);
@@ -262,18 +254,18 @@ const FunnelCanvasInner = ({
 
   const onNodesChangeWithSave = useCallback((changes: any) => {
     onNodesChange(changes);
-    // Only trigger save for position changes
+    // Only mark unsaved for position changes
     if (changes.some((c: any) => c.type === 'position' && c.dragging === false)) {
-      triggerAutoSave();
+      markUnsaved();
     }
-  }, [onNodesChange, triggerAutoSave]);
+  }, [onNodesChange, markUnsaved]);
 
   const onEdgesChangeWithSave = useCallback((changes: any) => {
     onEdgesChange(changes);
     if (changes.some((c: any) => c.type === 'remove')) {
-      triggerAutoSave();
+      markUnsaved();
     }
-  }, [onEdgesChange, triggerAutoSave]);
+  }, [onEdgesChange, markUnsaved]);
 
   // Handle file drop for import
   const handleFileDrop = useCallback((event: React.DragEvent) => {
@@ -438,6 +430,13 @@ function getDefaultDataForType(type: BlockType): BlockData {
       return { text: '' };
     case 'action_webhook':
       return { webhookUrl: '', webhookMethod: 'POST' };
+    case 'remarketing':
+      return { 
+        remarketingType: 'inactivity',
+        remarketingDelay: 24,
+        remarketingMessage: 'Oi! Notei que você não finalizou. Posso ajudar?',
+        remarketingMaxAttempts: 3,
+      };
     case 'end':
       return { label: 'Fim' };
     default:

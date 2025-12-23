@@ -11,6 +11,7 @@ export type BlockType =
   | 'action_message'
   | 'action_notify'
   | 'action_webhook'
+  | 'remarketing'
   | 'end';
 
 export interface BlockData {
@@ -63,6 +64,12 @@ export interface BlockData {
   webhookHeaders?: Record<string, string>;
   webhookBody?: string;
   
+  // Remarketing block
+  remarketingType?: 'inactivity' | 'abandoned' | 'followup';
+  remarketingDelay?: number; // em horas
+  remarketingMessage?: string;
+  remarketingMaxAttempts?: number;
+  
   // General
   label?: string;
 }
@@ -109,6 +116,7 @@ export const BLOCK_CATEGORIES = {
   questions: ['question', 'question_choice', 'question_number'],
   logic: ['condition', 'delay', 'variable'],
   actions: ['action_message', 'action_notify', 'action_webhook'],
+  automation: ['remarketing'],
 } as const;
 
 export const BLOCK_INFO: Record<BlockType, { 
@@ -188,6 +196,12 @@ export const BLOCK_INFO: Record<BlockType, {
     description: 'Finaliza o funil',
     color: 'bg-gray-500',
     category: 'messages',
+  },
+  remarketing: {
+    label: 'Remarketing',
+    description: 'Reengaja leads inativos automaticamente',
+    color: 'bg-rose-500',
+    category: 'automation',
   },
 };
 

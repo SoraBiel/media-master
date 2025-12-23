@@ -323,6 +323,21 @@ export const TelegramSandbox = () => {
         break;
       }
 
+      case "remarketing": {
+        const type = node.data.remarketingType || 'inactivity';
+        const delay = node.data.remarketingDelay || 24;
+        const message = replaceVariables(node.data.remarketingMessage || '');
+        const maxAttempts = node.data.remarketingMaxAttempts || 3;
+        
+        addBotMessage(`🔄 [Remarketing Configurado]\nTipo: ${type}\nAtraso: ${delay}h\nTentativas: ${maxAttempts}\nMensagem: "${message}"`);
+        
+        const nextNode = findNextNode(node.id);
+        if (nextNode) {
+          return await processNode(nextNode);
+        }
+        break;
+      }
+
       case "end": {
         addBotMessage("🏁 Funil finalizado!");
         setCurrentNodeId(null);
