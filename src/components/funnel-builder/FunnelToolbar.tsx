@@ -30,6 +30,20 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { FunnelSandbox } from './FunnelSandbox';
+
+interface SandboxNode {
+  id: string;
+  type: string;
+  data: Record<string, any>;
+}
+
+interface SandboxEdge {
+  id: string;
+  source: string;
+  target: string;
+  sourceHandle?: string | null;
+}
 
 interface FunnelToolbarProps {
   funnelName: string;
@@ -40,6 +54,8 @@ interface FunnelToolbarProps {
   onExport: () => void;
   onImport: (data: any) => void;
   onToggleActive: () => void;
+  sandboxNodes?: SandboxNode[];
+  sandboxEdges?: SandboxEdge[];
 }
 
 export const FunnelToolbar = ({
@@ -51,6 +67,8 @@ export const FunnelToolbar = ({
   onExport,
   onImport,
   onToggleActive,
+  sandboxNodes = [],
+  sandboxEdges = [],
 }: FunnelToolbarProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -123,6 +141,12 @@ export const FunnelToolbar = ({
         </div>
 
         <div className="flex items-center gap-2">
+          <FunnelSandbox
+            funnelName={funnelName}
+            nodes={sandboxNodes}
+            edges={sandboxEdges}
+          />
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
