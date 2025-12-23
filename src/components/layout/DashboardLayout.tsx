@@ -192,7 +192,7 @@ const DashboardLayout = ({
       <div className={cn("flex-1 transition-all duration-300", "lg:ml-64", collapsed && "lg:ml-16")}>
         {/* Desktop Top Bar */}
         <header className="h-16 border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-30 hidden lg:flex items-center justify-between px-6">
-          <h1 className="text-lg font-semibold">
+          <h1 className="font-semibold text-4xl">
             {allNavItems.find(item => item.path === location.pathname)?.label || "Dashboard"}
           </h1>
 
