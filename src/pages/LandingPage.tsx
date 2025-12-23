@@ -30,35 +30,35 @@ const LandingPage = () => {
   }];
   const plans = [{
     name: "Free",
-    price: "R$0",
+    price: "R$ 0,00",
     period: "/mês",
-    description: "Para testar a plataforma",
-    features: ["1 destino", "100 mídias/mês", "Suporte por email"],
-    cta: "Começar Grátis",
+    description: "Para conhecer a estrutura por dentro. Teste grátis por 7 dias",
+    features: ["1 destino", "100 mídias/mês", "1 destino (grupo)", "Até 100 mídias/dia", "Acesso à plataforma", "Suporte por e-mail", "Teste grátis por 7 dias"],
+    cta: "Selecionar",
     popular: false
   }, {
     name: "Basic",
-    price: "R$49",
+    price: "R$ 49,90",
     period: "/mês",
-    description: "Para criadores de conteúdo",
-    features: ["5 destinos", "1.000 mídias/mês", "Agendamento", "Suporte prioritário"],
-    cta: "Assinar Basic",
+    description: "Para quem quer sair do zero e começar certo",
+    features: ["3 destinos", "500 mídias/mês", "Agendamento", "3 destinos (grupos)", "500 mídias/dia", "Agendamento básico", "Fluxo de chat padrão", "Suporte prioritário (WhatsApp)"],
+    cta: "Selecionar",
     popular: false
   }, {
     name: "Pro",
-    price: "R$149",
+    price: "R$ 99,90",
     period: "/mês",
-    description: "Para profissionais",
-    features: ["20 destinos", "10.000 mídias/mês", "Model Hub completo", "API access", "Suporte 24/7"],
-    cta: "Assinar Pro",
+    description: "Para quem quer ganhar velocidade e escalar",
+    features: ["10 destinos", "2.000 mídias/mês", "Agendamento", "Model Hub", "10 destinos", "2.000 mídias/dia", "Agendamento avançado", "Fluxos de chat otimizado", "Model Hub / IA", "Modelos Vazados", "Suporte 24/7 (WhatsApp)"],
+    cta: "Selecionar",
     popular: true
   }, {
     name: "Agency",
-    price: "R$499",
+    price: "R$ 299,90",
     period: "/mês",
-    description: "Para agências e equipes",
-    features: ["Destinos ilimitados", "Mídias ilimitadas", "Multi-usuários", "White label", "Gerente dedicado"],
-    cta: "Falar com Vendas",
+    description: "Escala máxima, sem limite",
+    features: ["∞ destinos", "∞ mídias/mês", "Agendamento", "Model Hub", "Destinos ilimitados", "Mídias ilimitadas", "Todas as ferramentas liberadas", "API access", "Gerente dedicado"],
+    cta: "Selecionar",
     popular: false
   }];
   return <div className="min-h-screen bg-background">
