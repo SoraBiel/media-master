@@ -231,6 +231,7 @@ const DestinationsPage = () => {
           name: editingDestination.name,
           chat_id: editingDestination.chat_id,
           chat_type: editingDestination.chat_type,
+          telegram_integration_id: editingDestination.telegram_integration_id || null,
         })
         .eq("id", editingDestination.id);
 
@@ -255,77 +256,53 @@ const DestinationsPage = () => {
   };
 
   const handleTestDestination = async (dest: Destination) => {
-    // Find the bot associated with this destination
-    const bot = bots.find(b => b.id === dest.telegram_integration_id);
-    
+    const formatTelegramError = (message: string) => {
+      const msg = message?.toLowerCase?.() || "";
+      if (msg.includes("chat not found")) {
+        return "Chat não encontrado. Confirme: (1) o bot selecionado está nesse grupo/canal; (2) em CANAL ele precisa ser ADMIN; (3) o Chat ID está correto (ex: -100...).";
+      }
+      return message || "Erro desconhecido";
+    };
+
+    if (!dest.telegram_integration_id) {
+      toast({
+        title: "Defina o bot deste destino",
+        description: "Este destino ainda não está vinculado a um bot. Selecione um bot no editar e tente novamente.",
+        variant: "destructive",
+      });
+      setEditingDestination(dest);
+      setIsEditDialogOpen(true);
+      return;
+    }
+
+    const bot = bots.find((b) => b.id === dest.telegram_integration_id);
     if (!bot) {
-      // Try to find any connected bot
-      const anyBot = bots.find(b => b.is_connected);
-      if (!anyBot) {
-        toast({
-          title: "Bot não encontrado",
-          description: "Conecte um bot do Telegram primeiro em /telegram",
-          variant: "destructive",
-        });
-        return;
-      }
-      // Use the first available bot
-      setIsTesting(dest.id);
-      try {
-        await sendMessage(anyBot.bot_token, dest.chat_id, "✅ Teste de conexão do MediaDrop!");
-        
-        // Update destination with bot and status
-        await supabase
-          .from("destinations")
-          .update({ 
-            status: "verified",
-            telegram_integration_id: anyBot.id 
-          })
-          .eq("id", dest.id);
-        
-        toast({
-          title: "Teste enviado!",
-          description: `Mensagem enviada para ${dest.name}`,
-        });
-      } catch (error: any) {
-        await supabase
-          .from("destinations")
-          .update({ status: "error" })
-          .eq("id", dest.id);
-        
-        toast({
-          title: "Erro no teste",
-          description: error.message,
-          variant: "destructive",
-        });
-      } finally {
-        setIsTesting(null);
-      }
+      toast({
+        title: "Bot do destino não encontrado",
+        description: "O bot vinculado a este destino não existe mais. Edite o destino e selecione outro bot.",
+        variant: "destructive",
+      });
+      setEditingDestination(dest);
+      setIsEditDialogOpen(true);
       return;
     }
 
     setIsTesting(dest.id);
     try {
       await sendMessage(bot.bot_token, dest.chat_id, "✅ Teste de conexão do MediaDrop!");
-      
-      await supabase
-        .from("destinations")
-        .update({ status: "verified" })
-        .eq("id", dest.id);
-      
+
+      await supabase.from("destinations").update({ status: "verified" }).eq("id", dest.id);
+
       toast({
         title: "Teste enviado!",
         description: `Mensagem enviada para ${dest.name}`,
       });
     } catch (error: any) {
-      await supabase
-        .from("destinations")
-        .update({ status: "error" })
-        .eq("id", dest.id);
-      
+      await supabase.from("destinations").update({ status: "error" }).eq("id", dest.id);
+
       toast({
         title: "Erro no teste",
-        description: error.message,
+        description: formatTelegramError(error.message),
         variant: "destructive",
       });
     } finally {
@@ -720,6 +697,32 @@ const DestinationsPage = () => {
                 onChange={(e) => setEditingDestination(prev => prev ? { ...prev, name: e.target.value } : null)}
               />
             </div>
+
+            <div className="space-y-2">
+              <Label>Bot</Label>
+              <Select
+                value={editingDestination?.telegram_integration_id || ""}
+                onValueChange={(value) => setEditingDestination(prev => prev ? { ...prev, telegram_integration_id: value } : null)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o bot" />
+                </SelectTrigger>
+                <SelectContent>
+                  {bots.map((bot) => (
+                    <SelectItem key={bot.id} value={bot.id}>
+                      <div className="flex items-center gap-2">
+                        <Bot className="w-4 h-4" />
+                        {bot.bot_name} (@{bot.bot_username})
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Se der "chat not found", normalmente é porque este bot não está no grupo/canal.
+              </p>
+            </div>
+
             <div className="space-y-2">
               <Label>Chat ID</Label>
               <Input
@@ -727,6 +730,7 @@ const DestinationsPage = () => {
                 onChange={(e) => setEditingDestination(prev => prev ? { ...prev, chat_id: e.target.value } : null)}
               />
             </div>
+
             <div className="space-y-2">
               <Label>Tipo</Label>
               <Select
