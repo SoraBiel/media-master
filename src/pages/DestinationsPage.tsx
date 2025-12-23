@@ -205,6 +205,9 @@ const DestinationsPage = () => {
 
       if (error) throw error;
 
+      // Immediately refresh list
+      await fetchDestinations();
+
       toast({
         title: "Destino adicionado!",
         description: `${newDestination.name} foi adicionado com sucesso.`,
@@ -237,6 +240,9 @@ const DestinationsPage = () => {
 
       if (error) throw error;
 
+      // Immediately refresh list
+      await fetchDestinations();
+
       toast({ title: "Destino atualizado!" });
       setIsEditDialogOpen(false);
       setEditingDestination(null);
@@ -249,6 +255,8 @@ const DestinationsPage = () => {
     try {
       const { error } = await supabase.from("destinations").delete().eq("id", id);
       if (error) throw error;
+      // Immediately refresh list
+      await fetchDestinations();
       toast({ title: "Destino removido!" });
     } catch (error: any) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
