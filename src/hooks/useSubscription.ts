@@ -29,7 +29,7 @@ export interface Plan {
 }
 
 export const useSubscription = () => {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [currentPlan, setCurrentPlan] = useState<Plan | null>(null);
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -131,6 +131,9 @@ export const useSubscription = () => {
   };
 
   const hasActiveSubscription = (): boolean => {
+    // Admins always have full access to all plan features
+    if (isAdmin) return true;
+    
     if (!subscription) return false;
     if (subscription.status !== "active") return false;
     // For profile-based subscriptions (no expiry), always active
