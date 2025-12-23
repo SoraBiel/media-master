@@ -23,6 +23,7 @@ import {
   AlertTriangle,
   UserCog,
   RefreshCw,
+  GitBranch,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -74,6 +75,7 @@ import { Textarea } from "@/components/ui/textarea";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { AdminTemplatesPanel } from "@/components/admin/AdminTemplatesPanel";
 
 interface Profile {
   id: string;
@@ -788,6 +790,10 @@ const AdminDashboardPage = () => {
             <TabsTrigger value="media">Mídias</TabsTrigger>
             <TabsTrigger value="tiktok">Contas TikTok</TabsTrigger>
             <TabsTrigger value="models">Modelos</TabsTrigger>
+            <TabsTrigger value="templates" className="flex items-center gap-1">
+              <GitBranch className="h-4 w-4" />
+              Templates Funis
+            </TabsTrigger>
           </TabsList>
 
           {/* Users Tab */}
@@ -1612,6 +1618,11 @@ const AdminDashboardPage = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Templates Tab */}
+        <TabsContent value="templates" className="space-y-4">
+          <AdminTemplatesPanel />
+        </TabsContent>
       </div>
     </DashboardLayout>
   );

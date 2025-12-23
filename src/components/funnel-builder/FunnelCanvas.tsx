@@ -15,13 +15,18 @@ import {
   useReactFlow,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Pencil, ScrollText, Webhook } from 'lucide-react';
 
 import BlockNode from './BlockNode';
 import { BlockSidebar } from './BlockSidebar';
 import { PropertiesPanel } from './PropertiesPanel';
 import { FunnelToolbar } from './FunnelToolbar';
+import { FunnelLogsPanel } from './FunnelLogsPanel';
+import { WebhookConfig } from './WebhookConfig';
 import { BlockType, BLOCK_INFO, BlockData, FunnelNode, FunnelEdge, SCHEMA_VERSION } from './types';
 import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
 
 const nodeTypes = {
   block: BlockNode,
@@ -56,6 +61,8 @@ const FunnelCanvasInner = ({
   const [isSaving, setIsSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout>();
+  const [activeTab, setActiveTab] = useState('editor');
+  const [webhookDialogOpen, setWebhookDialogOpen] = useState(false);
   
   // Convert to React Flow format
   const convertToFlowNodes = (nodes: FunnelNode[]): Node[] => {
@@ -290,67 +297,102 @@ const FunnelCanvasInner = ({
   }, [onImport, toast]);
 
   return (
-    <div className="flex h-full">
-      <BlockSidebar onDragStart={onDragStart} />
-      
-      <div className="flex-1 flex flex-col">
-        <FunnelToolbar
-          funnelName={funnelName}
-          isActive={isActive}
-          isSaving={isSaving}
-          hasUnsavedChanges={hasUnsavedChanges}
-          onSave={handleSave}
-          onExport={onExport}
-          onImport={onImport}
-          onToggleActive={onToggleActive}
-        />
-        
-        <div 
-          ref={reactFlowWrapper} 
-          className="flex-1"
-          onDrop={(e) => {
-            if (e.dataTransfer.files.length > 0) {
-              handleFileDrop(e);
-            }
-          }}
-        >
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={onNodesChangeWithSave}
-            onEdgesChange={onEdgesChangeWithSave}
-            onConnect={onConnect}
-            onDrop={onDrop}
-            onDragOver={onDragOver}
-            onSelectionChange={onSelectionChange}
-            nodeTypes={nodeTypes}
-            fitView
-            snapToGrid
-            snapGrid={[20, 20]}
-            defaultEdgeOptions={{
-              animated: true,
-              style: { stroke: 'hsl(var(--primary))' },
-            }}
-            className="bg-muted/20"
+    <div className="flex h-full flex-col">
+      <FunnelToolbar
+        funnelName={funnelName}
+        isActive={isActive}
+        isSaving={isSaving}
+        hasUnsavedChanges={hasUnsavedChanges}
+        onSave={handleSave}
+        onExport={onExport}
+        onImport={onImport}
+        onToggleActive={onToggleActive}
+      />
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+        <div className="px-4 py-2 border-b bg-background flex items-center justify-between">
+          <TabsList>
+            <TabsTrigger value="editor" className="flex items-center gap-2">
+              <Pencil className="h-4 w-4" />
+              Editor
+            </TabsTrigger>
+            <TabsTrigger value="logs" className="flex items-center gap-2">
+              <ScrollText className="h-4 w-4" />
+              Logs
+            </TabsTrigger>
+          </TabsList>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setWebhookDialogOpen(true)}
           >
-            <Background gap={20} size={1} className="bg-muted/30" />
-            <Controls />
-            <MiniMap 
-              nodeColor={(node) => {
-                const blockType = (node.data as any)?.blockType as BlockType;
-                const info = BLOCK_INFO[blockType];
-                return info?.color.replace('bg-', '').replace('-500', '') || '#888';
-              }}
-              maskColor="rgba(0,0,0,0.1)"
-            />
-          </ReactFlow>
+            <Webhook className="h-4 w-4 mr-2" />
+            Webhook
+          </Button>
         </div>
-      </div>
-      
-      <PropertiesPanel
-        selectedNode={selectedNode}
-        onUpdateNode={handleUpdateNode}
-        onDeleteNode={handleDeleteNode}
+
+        <TabsContent value="editor" className="flex-1 flex m-0 data-[state=inactive]:hidden">
+          <BlockSidebar onDragStart={onDragStart} />
+          
+          <div className="flex-1 flex flex-col">
+            <div 
+              ref={reactFlowWrapper} 
+              className="flex-1"
+              onDrop={(e) => {
+                if (e.dataTransfer.files.length > 0) {
+                  handleFileDrop(e);
+                }
+              }}
+            >
+              <ReactFlow
+                nodes={nodes}
+                edges={edges}
+                onNodesChange={onNodesChangeWithSave}
+                onEdgesChange={onEdgesChangeWithSave}
+                onConnect={onConnect}
+                onDrop={onDrop}
+                onDragOver={onDragOver}
+                onSelectionChange={onSelectionChange}
+                nodeTypes={nodeTypes}
+                fitView
+                snapToGrid
+                snapGrid={[20, 20]}
+                defaultEdgeOptions={{
+                  animated: true,
+                  style: { stroke: 'hsl(var(--primary))' },
+                }}
+                className="bg-muted/20"
+              >
+                <Background gap={20} size={1} className="bg-muted/30" />
+                <Controls />
+                <MiniMap 
+                  nodeColor={(node) => {
+                    const blockType = (node.data as any)?.blockType as BlockType;
+                    const info = BLOCK_INFO[blockType];
+                    return info?.color.replace('bg-', '').replace('-500', '') || '#888';
+                  }}
+                  maskColor="rgba(0,0,0,0.1)"
+                />
+              </ReactFlow>
+            </div>
+          </div>
+          
+          <PropertiesPanel
+            selectedNode={selectedNode}
+            onUpdateNode={handleUpdateNode}
+            onDeleteNode={handleDeleteNode}
+          />
+        </TabsContent>
+
+        <TabsContent value="logs" className="flex-1 m-0 data-[state=inactive]:hidden">
+          <FunnelLogsPanel funnelId={funnelId} />
+        </TabsContent>
+      </Tabs>
+
+      <WebhookConfig
+        funnelId={funnelId}
+        open={webhookDialogOpen}
+        onOpenChange={setWebhookDialogOpen}
       />
     </div>
   );
