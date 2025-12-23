@@ -111,7 +111,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       {/* Logo */}
       <div className="h-16 flex items-center justify-between px-4 border-b border-sidebar-border">
         <Link to="/dashboard" className="flex items-center gap-2" onClick={onItemClick}>
-          <img src="/logo-nexo.png" alt="Nexo" className={collapsed ? "h-8" : "h-8"} />
+          <img src="/logo-nexo.png" alt="Nexo" className={collapsed ? "h-8" : "h-10"} />
           {!collapsed && (
             <span className="font-bold text-sidebar-foreground">Nexo</span>
           )}
@@ -203,7 +203,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       {/* Mobile Header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-background/80 backdrop-blur-sm border-b border-border z-40 flex items-center justify-between px-4">
         <Link to="/dashboard" className="flex items-center gap-2">
-          <img src="/logo-nexo.png" alt="Nexo" className="h-8" />
+          <img src="/logo-nexo.png" alt="Nexo" className="h-10" />
         </Link>
         
         <div className="flex items-center gap-2">

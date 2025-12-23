@@ -75,7 +75,7 @@ const LoginPage = () => {
           className="w-full max-w-md"
         >
           <Link to="/" className="flex items-center gap-2 mb-8">
-            <img src="/logo-nexo.png" alt="Nexo" className="h-10" />
+            <img src="/logo-nexo.png" alt="Nexo" className="h-14" />
           </Link>
 
           <h1 className="text-2xl md:text-3xl font-bold mb-2">Bem-vindo de volta</h1>
