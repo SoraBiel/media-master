@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   XCircle,
   AlertTriangle,
+  Phone,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -210,13 +211,31 @@ const UserDetailsPage = () => {
                   </div>
                 </div>
 
-                <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="flex-1 grid grid-cols-2 md:grid-cols-5 gap-4">
                   <div className="p-3 rounded-lg bg-secondary">
                     <div className="flex items-center gap-2 text-muted-foreground mb-1">
                       <Mail className="w-4 h-4" />
                       <span className="text-xs">Email</span>
                     </div>
                     <p className="text-sm font-medium truncate">{profile.email}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-secondary">
+                    <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                      <Phone className="w-4 h-4" />
+                      <span className="text-xs">Telefone</span>
+                    </div>
+                    {profile.phone ? (
+                      <a 
+                        href={`https://wa.me/${profile.phone.replace(/\D/g, '')}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-sm font-medium text-success hover:underline"
+                      >
+                        {profile.phone}
+                      </a>
+                    ) : (
+                      <p className="text-sm font-medium text-muted-foreground">—</p>
+                    )}
                   </div>
                   <div className="p-3 rounded-lg bg-secondary">
                     <div className="flex items-center gap-2 text-muted-foreground mb-1">

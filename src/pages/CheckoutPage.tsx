@@ -93,6 +93,15 @@ const CheckoutPage = () => {
       return;
     }
 
+    if (!profile?.phone) {
+      toast({
+        title: "Telefone obrigatório",
+        description: "Atualize seu perfil com um número de telefone para continuar",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -295,12 +304,12 @@ const CheckoutPage = () => {
                 <span className="text-muted-foreground">Email</span>
                 <span className="font-medium">{profile.email}</span>
               </div>
-              {profile.phone && (
-                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                  <span className="text-muted-foreground">Telefone</span>
-                  <span className="font-medium">{profile.phone}</span>
-                </div>
-              )}
+              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                <span className="text-muted-foreground">Telefone</span>
+                <span className="font-medium">
+                  {profile.phone || <span className="text-destructive">Não informado - obrigatório</span>}
+                </span>
+              </div>
             </div>
 
             <Button

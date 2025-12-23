@@ -119,6 +119,7 @@ interface Transaction {
   created_at: string;
   buyer_name: string | null;
   buyer_email: string | null;
+  buyer_phone: string | null;
 }
 
 interface TikTokAccount {
@@ -1044,6 +1045,7 @@ const AdminDashboardPage = () => {
                       <TableRow>
                         <TableHead>Data</TableHead>
                         <TableHead>Comprador</TableHead>
+                        <TableHead>Telefone</TableHead>
                         <TableHead>Tipo</TableHead>
                         <TableHead>Valor</TableHead>
                         <TableHead>Status</TableHead>
@@ -1058,6 +1060,20 @@ const AdminDashboardPage = () => {
                               <p className="font-medium">{tx.buyer_name || "—"}</p>
                               <p className="text-sm text-muted-foreground">{tx.buyer_email || "—"}</p>
                             </div>
+                          </TableCell>
+                          <TableCell>
+                            {tx.buyer_phone ? (
+                              <a 
+                                href={`https://wa.me/${tx.buyer_phone.replace(/\D/g, '')}`} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-success hover:underline"
+                              >
+                                {tx.buyer_phone}
+                              </a>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
                           </TableCell>
                           <TableCell><Badge variant="outline" className="capitalize">{tx.product_type}</Badge></TableCell>
                           <TableCell className="font-semibold">{formatPrice(tx.amount_cents)}</TableCell>
