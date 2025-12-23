@@ -13,7 +13,8 @@ import {
   Bell,
   Webhook,
   Flag,
-  GripVertical
+  GripVertical,
+  RefreshCcw
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { BlockType, BLOCK_INFO } from './types';
@@ -30,6 +31,7 @@ const ICONS: Record<BlockType, typeof Play> = {
   action_message: Send,
   action_notify: Bell,
   action_webhook: Webhook,
+  remarketing: RefreshCcw,
   end: Flag,
 };
 

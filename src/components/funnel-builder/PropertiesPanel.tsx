@@ -479,6 +479,71 @@ export const PropertiesPanel = ({
             )}
           </>
         )}
+
+        {/* Remarketing block */}
+        {blockType === 'remarketing' && (
+          <>
+            <div className="space-y-2">
+              <Label>Tipo de Remarketing</Label>
+              <Select
+                value={localData.remarketingType || 'inactivity'}
+                onValueChange={(v) => handleChange('remarketingType', v)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="inactivity">Inatividade</SelectItem>
+                  <SelectItem value="abandoned">Abandono de Funil</SelectItem>
+                  <SelectItem value="followup">Follow-up</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {localData.remarketingType === 'inactivity' && 'Dispara quando o lead para de responder'}
+                {localData.remarketingType === 'abandoned' && 'Dispara quando o lead abandona o funil'}
+                {localData.remarketingType === 'followup' && 'Dispara após X horas do término'}
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label>Tempo de espera (horas)</Label>
+              <Input
+                type="number"
+                min={1}
+                max={168}
+                value={localData.remarketingDelay || 24}
+                onChange={(e) => handleChange('remarketingDelay', Number(e.target.value) || 24)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Tempo antes de disparar o remarketing
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label>Mensagem de Remarketing</Label>
+              <Textarea
+                value={localData.remarketingMessage || ''}
+                onChange={(e) => handleChange('remarketingMessage', e.target.value)}
+                placeholder="Oi {{nome}}! Notei que você não finalizou. Posso ajudar?"
+                className="min-h-[100px]"
+              />
+              <p className="text-xs text-muted-foreground">
+                Use {"{{variavel}}"} para dados do lead
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label>Máximo de tentativas</Label>
+              <Input
+                type="number"
+                min={1}
+                max={10}
+                value={localData.remarketingMaxAttempts || 3}
+                onChange={(e) => handleChange('remarketingMaxAttempts', Number(e.target.value) || 3)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Quantas vezes tentar reengajar
+              </p>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

@@ -97,22 +97,94 @@ const FunnelsPage = () => {
 
       if (error) throw error;
 
+      // Se tem template, usa os nodes do template
       if (template && data) {
-        const nodes = (template.nodes || []).map((node: any) => ({
-          id: `${node.id}_${Date.now()}`,
-          funnel_id: data.id,
-          node_type: node.type,
-          position_x: node.position.x,
-          position_y: node.position.y,
-          content: { blockType: node.type, ...node.data },
-        }));
+        const idMap = new Map<string, string>();
+        
+        const nodes = (template.nodes || []).map((node: any) => {
+          const newId = `${node.id}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+          idMap.set(node.id, newId);
+          return {
+            id: newId,
+            funnel_id: data.id,
+            node_type: node.type,
+            position_x: node.position.x,
+            position_y: node.position.y,
+            content: { blockType: node.type, ...node.data },
+          };
+        });
 
         if (nodes.length > 0) {
           await supabase.from("funnel_nodes").insert(nodes);
         }
+
+        // Insert edges with remapped IDs
+        const edges = (template.edges || []).map((edge: any) => ({
+          id: `edge_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          funnel_id: data.id,
+          source_node_id: idMap.get(edge.source) || edge.source,
+          target_node_id: idMap.get(edge.target) || edge.target,
+          source_handle: edge.sourceHandle || 'default',
+        }));
+
+        if (edges.length > 0) {
+          await supabase.from("funnel_edges").insert(edges);
+        }
+      } else if (data) {
+        // Se não tem template, cria blocos iniciais de teste
+        const startNodeId = `start_${Date.now()}_1`;
+        const messageNodeId = `message_${Date.now()}_2`;
+        const endNodeId = `end_${Date.now()}_3`;
+
+        const initialNodes = [
+          {
+            id: startNodeId,
+            funnel_id: data.id,
+            node_type: 'start',
+            position_x: 300,
+            position_y: 50,
+            content: { blockType: 'start', label: 'Início' },
+          },
+          {
+            id: messageNodeId,
+            funnel_id: data.id,
+            node_type: 'message',
+            position_x: 300,
+            position_y: 200,
+            content: { blockType: 'message', text: 'Olá! Seja bem-vindo ao funil. Edite esta mensagem.' },
+          },
+          {
+            id: endNodeId,
+            funnel_id: data.id,
+            node_type: 'end',
+            position_x: 300,
+            position_y: 350,
+            content: { blockType: 'end', label: 'Fim' },
+          },
+        ];
+
+        const initialEdges = [
+          {
+            id: `edge_${Date.now()}_1`,
+            funnel_id: data.id,
+            source_node_id: startNodeId,
+            target_node_id: messageNodeId,
+            source_handle: 'default',
+          },
+          {
+            id: `edge_${Date.now()}_2`,
+            funnel_id: data.id,
+            source_node_id: messageNodeId,
+            target_node_id: endNodeId,
+            source_handle: 'default',
+          },
+        ];
+
+        await supabase.from("funnel_nodes").insert(initialNodes);
+        await supabase.from("funnel_edges").insert(initialEdges);
       }
 
-      toast({ title: "Funil criado!" });
+      toast({ title: "Funil criado com blocos iniciais!" });
       setIsTemplateDialogOpen(false);
       navigate(`/funnels/${data.id}`);
     } catch (error: any) {

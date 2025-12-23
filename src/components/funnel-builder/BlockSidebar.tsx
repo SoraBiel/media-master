@@ -11,6 +11,7 @@ import {
   Bell,
   Webhook,
   Flag,
+  RefreshCcw,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { BlockType, BLOCK_INFO, BLOCK_CATEGORIES } from './types';
@@ -27,6 +28,7 @@ const ICONS: Record<BlockType, typeof Play> = {
   action_message: Send,
   action_notify: Bell,
   action_webhook: Webhook,
+  remarketing: RefreshCcw,
   end: Flag,
 };
 
@@ -39,6 +41,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   questions: 'Perguntas',
   logic: 'Lógica',
   actions: 'Ações',
+  automation: 'Automação',
 };
 
 export const BlockSidebar = ({ onDragStart }: BlockSidebarProps) => {
