@@ -29,6 +29,8 @@ import {
   Megaphone,
   Sparkles,
   Video,
+  Clock,
+  History,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -81,8 +83,11 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { AdminTemplatesPanel } from "@/components/admin/AdminTemplatesPanel";
-import { useAdminSettings } from "@/hooks/useAdminSettings";
+import { useAdminSettings, getSettingLabel } from "@/hooks/useAdminSettings";
 import { Switch } from "@/components/ui/switch";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface Profile {
   id: string;
@@ -236,7 +241,7 @@ const AdminDashboardPage = () => {
   const imageInputRef = useRef<HTMLInputElement>(null);
   
   const { toast } = useToast();
-  const { settings: adminSettings, updateSetting } = useAdminSettings();
+  const { settings: adminSettings, updateSetting, history: settingsHistory, isLoadingHistory } = useAdminSettings();
 
   const [tiktokForm, setTiktokForm] = useState({
     username: "",
@@ -1729,6 +1734,68 @@ const AdminDashboardPage = () => {
                     checked={adminSettings.media_library_enabled}
                     onCheckedChange={(checked) => updateSetting("media_library_enabled", checked)}
                   />
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Settings History */}
+            <div className="mt-8 space-y-4">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Clock className="w-5 h-5" />
+                Histórico de Alterações
+              </h3>
+              
+              <Card>
+                <CardContent className="p-0">
+                  <ScrollArea className="h-[300px]">
+                    {isLoadingHistory ? (
+                      <div className="p-4 text-center text-muted-foreground">
+                        <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2" />
+                        Carregando histórico...
+                      </div>
+                    ) : settingsHistory.length === 0 ? (
+                      <div className="p-4 text-center text-muted-foreground">
+                        Nenhuma alteração registrada
+                      </div>
+                    ) : (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Data/Hora</TableHead>
+                            <TableHead>Configuração</TableHead>
+                            <TableHead>De</TableHead>
+                            <TableHead>Para</TableHead>
+                            <TableHead>Alterado por</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {settingsHistory.map((entry) => (
+                            <TableRow key={entry.id}>
+                              <TableCell className="text-sm">
+                                {format(new Date(entry.changed_at), "dd/MM/yy HH:mm", { locale: ptBR })}
+                              </TableCell>
+                              <TableCell className="font-medium">
+                                {getSettingLabel(entry.setting_key)}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={entry.old_value ? "default" : "secondary"} className="text-xs">
+                                  {entry.old_value === null ? "—" : entry.old_value ? "Ativo" : "Desativado"}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={entry.new_value ? "default" : "secondary"} className="text-xs">
+                                  {entry.new_value ? "Ativo" : "Desativado"}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {entry.changed_by_email || "Sistema"}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+                  </ScrollArea>
                 </CardContent>
               </Card>
             </div>
