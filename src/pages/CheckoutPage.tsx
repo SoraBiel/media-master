@@ -144,6 +144,42 @@ const CheckoutPage = () => {
   };
 
   const startPolling = (externalId: string) => {
+    // Use real-time subscription instead of polling
+    const channel = supabase
+      .channel(`transaction_${externalId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "transactions",
+          filter: `external_id=eq.${externalId}`,
+        },
+        (payload) => {
+          console.log("Transaction update received:", payload);
+          if (payload.new && (payload.new as any).status === "paid") {
+            setPaymentStatus("paid");
+            supabase.removeChannel(channel);
+            
+            toast({
+              title: "Pagamento confirmado!",
+              description: "Sua assinatura foi ativada com sucesso.",
+            });
+
+            // Redirect to thank you page for subscriptions, dashboard for other products
+            setTimeout(() => {
+              if (productType === "subscription") {
+                navigate("/thank-you");
+              } else {
+                navigate("/delivery");
+              }
+            }, 2000);
+          }
+        }
+      )
+      .subscribe();
+
+    // Also do periodic polling as fallback
     const interval = setInterval(async () => {
       try {
         const { data } = await supabase
@@ -155,18 +191,18 @@ const CheckoutPage = () => {
         if (data?.status === "paid") {
           setPaymentStatus("paid");
           clearInterval(interval);
+          supabase.removeChannel(channel);
           
           toast({
             title: "Pagamento confirmado!",
             description: "Sua assinatura foi ativada com sucesso.",
           });
 
-          // Redirect to thank you page for subscriptions, dashboard for other products
           setTimeout(() => {
             if (productType === "subscription") {
               navigate("/thank-you");
             } else {
-              navigate("/dashboard");
+              navigate("/delivery");
             }
           }, 2000);
         }
@@ -175,7 +211,11 @@ const CheckoutPage = () => {
       }
     }, 5000);
 
-    setTimeout(() => clearInterval(interval), 30 * 60 * 1000);
+    // Clean up after 30 minutes
+    setTimeout(() => {
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    }, 30 * 60 * 1000);
   };
 
   const handleCopyPix = async () => {

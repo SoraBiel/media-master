@@ -66,6 +66,21 @@ const DashboardPage = () => {
     }
   }, [profile?.user_id]);
 
+  // Format days remaining with proper label
+  const formatDaysRemaining = () => {
+    const days = getDaysRemaining();
+    if (days === null) {
+      // Profile-based subscription without expiry
+      if (currentPlan?.slug && currentPlan.slug !== "free") {
+        return "Plano ativo";
+      }
+      return "Sem assinatura";
+    }
+    if (days === 0) return "Expira hoje";
+    if (days === 1) return "1 dia restante";
+    return `${days} dias restantes`;
+  };
+
   const stats = [
     {
       title: "Ações realizadas",
@@ -94,7 +109,7 @@ const DashboardPage = () => {
     {
       title: "Plano atual",
       value: currentPlan?.name || profile?.current_plan || "Free",
-      change: hasActiveSubscription() ? `${getDaysRemaining()} dias` : "Sem assinatura",
+      change: formatDaysRemaining(),
       icon: CreditCard,
       color: "text-purple-400",
       bgColor: "bg-purple-400/10",
