@@ -974,6 +974,7 @@ export type Database = {
           created_at: string | null
           external_id: string
           id: string
+          is_admin_granted: boolean | null
           net_amount_cents: number | null
           payment_method: string | null
           pix_code: string | null
@@ -994,6 +995,7 @@ export type Database = {
           created_at?: string | null
           external_id: string
           id?: string
+          is_admin_granted?: boolean | null
           net_amount_cents?: number | null
           payment_method?: string | null
           pix_code?: string | null
@@ -1014,6 +1016,7 @@ export type Database = {
           created_at?: string | null
           external_id?: string
           id?: string
+          is_admin_granted?: boolean | null
           net_amount_cents?: number | null
           payment_method?: string | null
           pix_code?: string | null

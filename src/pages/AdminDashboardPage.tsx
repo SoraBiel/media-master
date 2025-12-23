@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -31,7 +31,11 @@ import {
   Video,
   Clock,
   History,
+  Phone,
+  Mail,
+  User,
 } from "lucide-react";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -132,6 +136,8 @@ interface Transaction {
   buyer_name: string | null;
   buyer_email: string | null;
   buyer_phone: string | null;
+  buyer_document: string | null;
+  is_admin_granted: boolean | null;
 }
 
 interface TikTokAccount {
@@ -457,6 +463,9 @@ const AdminDashboardPage = () => {
   };
 
   const calculateBillingStats = (txs: Transaction[]) => {
+    // Filter out admin-granted transactions for real sales stats
+    const realSales = txs.filter(tx => !tx.is_admin_granted);
+    
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const last7 = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -465,7 +474,7 @@ const AdminDashboardPage = () => {
 
     let todaySum = 0, last7Sum = 0, last15Sum = 0, last30Sum = 0, allSum = 0;
 
-    txs.forEach((tx) => {
+    realSales.forEach((tx) => {
       const txDate = new Date(tx.created_at);
       allSum += tx.amount_cents;
       if (txDate >= today) todaySum += tx.amount_cents;
@@ -480,9 +489,38 @@ const AdminDashboardPage = () => {
       last15Days: last15Sum,
       last30Days: last30Sum,
       allTime: allSum,
-      transactionCount: txs.length,
+      transactionCount: realSales.length,
     });
   };
+
+  // Generate chart data for the last 7 days
+  const chartData = useMemo(() => {
+    // Filter only real paid transactions (not admin granted)
+    const realPaidTxs = transactions.filter(tx => tx.status === "paid" && !tx.is_admin_granted);
+    
+    const days: { date: string; label: string; amount: number; count: number }[] = [];
+    const now = new Date();
+    
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(now);
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toISOString().split('T')[0];
+      const label = date.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit' });
+      
+      const dayTxs = realPaidTxs.filter(tx => 
+        new Date(tx.created_at).toISOString().split('T')[0] === dateStr
+      );
+      
+      days.push({
+        date: dateStr,
+        label,
+        amount: dayTxs.reduce((sum, tx) => sum + tx.amount_cents, 0) / 100,
+        count: dayTxs.length,
+      });
+    }
+    
+    return days;
+  }, [transactions]);
 
   const getFilteredTransactions = (statusFilter?: "pending" | "paid") => {
     const now = new Date();
@@ -1059,37 +1097,177 @@ const AdminDashboardPage = () => {
 
           {/* Billing Tab */}
           <TabsContent value="billing" className="space-y-6">
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            {/* Charts Section */}
+            <div className="grid md:grid-cols-2 gap-4">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4" />
+                    Faturamento - Últimos 7 dias
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[200px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={chartData}>
+                        <defs>
+                          <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                            <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <XAxis dataKey="label" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                        <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} tickFormatter={(v) => `R$${v}`} />
+                        <Tooltip 
+                          formatter={(value: number) => [`R$ ${value.toFixed(2)}`, 'Faturamento']}
+                          contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
+                        />
+                        <Area type="monotone" dataKey="amount" stroke="hsl(var(--primary))" strokeWidth={2} fill="url(#colorAmount)" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <ShoppingCart className="w-4 h-4" />
+                    Vendas - Últimos 7 dias
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[200px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={chartData}>
+                        <XAxis dataKey="label" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                        <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} allowDecimals={false} />
+                        <Tooltip 
+                          formatter={(value: number) => [value, 'Vendas']}
+                          contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
+                        />
+                        <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Period Filter */}
+            <div className="flex flex-wrap gap-2">
               {(["today", "7days", "15days", "30days", "all"] as BillingPeriod[]).map((period) => (
-                <Card
+                <Button
                   key={period}
-                  className={`cursor-pointer transition-all ${billingPeriod === period ? "border-telegram" : ""}`}
+                  variant={billingPeriod === period ? "default" : "outline"}
+                  size="sm"
                   onClick={() => setBillingPeriod(period)}
+                  className={billingPeriod === period ? "telegram-gradient text-white" : ""}
                 >
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      {period === "all" ? <DollarSign className="w-4 h-4 text-muted-foreground" /> : <Calendar className="w-4 h-4 text-muted-foreground" />}
-                      <span className="text-sm text-muted-foreground">{billingPeriodLabels[period]}</span>
-                    </div>
-                    <p className="text-xl font-bold">
-                      {formatPrice(period === "today" ? billingStats.today : period === "7days" ? billingStats.last7Days : period === "15days" ? billingStats.last15Days : period === "30days" ? billingStats.last30Days : billingStats.allTime)}
-                    </p>
-                  </CardContent>
-                </Card>
+                  {billingPeriodLabels[period]}
+                  {period !== "all" && (
+                    <span className="ml-1 text-xs opacity-75">
+                      ({formatPrice(
+                        period === "today" ? billingStats.today : 
+                        period === "7days" ? billingStats.last7Days : 
+                        period === "15days" ? billingStats.last15Days : 
+                        billingStats.last30Days
+                      )})
+                    </span>
+                  )}
+                </Button>
               ))}
             </div>
 
-            <Tabs defaultValue="paid" className="space-y-4">
+            <Tabs defaultValue="pending" className="space-y-4">
               <TabsList>
-                <TabsTrigger value="paid" className="gap-2">
-                  <CheckCircle2 className="w-4 h-4" />
-                  Aprovadas ({getFilteredTransactions("paid").length})
-                </TabsTrigger>
                 <TabsTrigger value="pending" className="gap-2">
                   <Clock className="w-4 h-4" />
                   Pendentes ({getFilteredTransactions("pending").length})
                 </TabsTrigger>
+                <TabsTrigger value="paid" className="gap-2">
+                  <CheckCircle2 className="w-4 h-4" />
+                  Aprovadas ({getFilteredTransactions("paid").filter(tx => !tx.is_admin_granted).length})
+                </TabsTrigger>
+                <TabsTrigger value="admin" className="gap-2">
+                  <Shield className="w-4 h-4" />
+                  Admin ({getFilteredTransactions("paid").filter(tx => tx.is_admin_granted).length})
+                </TabsTrigger>
               </TabsList>
+
+              <TabsContent value="pending">
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2">
+                        <Clock className="w-5 h-5 text-warning" />
+                        Pagamentos Pendentes - {billingPeriodLabels[billingPeriod]}
+                      </CardTitle>
+                      <Badge variant="secondary">{getFilteredTransactions("pending").length} transações</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {getFilteredTransactions("pending").length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Clock className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                        <p>Nenhuma transação pendente no período</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {getFilteredTransactions("pending").map((tx) => (
+                          <Card key={tx.id} className="border-warning/30 bg-warning/5">
+                            <CardContent className="p-4">
+                              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                <div className="space-y-2">
+                                  <div className="flex items-center gap-2">
+                                    <User className="w-4 h-4 text-muted-foreground" />
+                                    <span className="font-semibold">{tx.buyer_name || "Cliente não identificado"}</span>
+                                    <Badge variant="outline" className="capitalize">{tx.product_type}</Badge>
+                                  </div>
+                                  <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                                    {tx.buyer_email && (
+                                      <div className="flex items-center gap-1">
+                                        <Mail className="w-3 h-3" />
+                                        <span>{tx.buyer_email}</span>
+                                      </div>
+                                    )}
+                                    {tx.buyer_phone && (
+                                      <a 
+                                        href={`https://wa.me/${tx.buyer_phone.replace(/\D/g, '')}`} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-1 text-success hover:underline"
+                                      >
+                                        <Phone className="w-3 h-3" />
+                                        <span>{tx.buyer_phone}</span>
+                                      </a>
+                                    )}
+                                    {tx.buyer_document && (
+                                      <div className="flex items-center gap-1">
+                                        <CreditCard className="w-3 h-3" />
+                                        <span>CPF: {tx.buyer_document}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-muted-foreground">{formatDate(tx.created_at)}</p>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                  <div className="text-right">
+                                    <p className="text-2xl font-bold">{formatPrice(tx.amount_cents)}</p>
+                                    <Badge variant="secondary" className="gap-1">
+                                      <Clock className="w-3 h-3" />Aguardando
+                                    </Badge>
+                                  </div>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
               <TabsContent value="paid">
                 <Card>
@@ -1097,16 +1275,16 @@ const AdminDashboardPage = () => {
                     <div className="flex items-center justify-between">
                       <CardTitle className="flex items-center gap-2">
                         <CheckCircle2 className="w-5 h-5 text-success" />
-                        Transações Aprovadas - {billingPeriodLabels[billingPeriod]}
+                        Vendas Aprovadas - {billingPeriodLabels[billingPeriod]}
                       </CardTitle>
-                      <Badge variant="secondary">{getFilteredTransactions("paid").length} transações</Badge>
+                      <Badge variant="secondary">{getFilteredTransactions("paid").filter(tx => !tx.is_admin_granted).length} transações</Badge>
                     </div>
                   </CardHeader>
                   <CardContent>
-                    {getFilteredTransactions("paid").length === 0 ? (
+                    {getFilteredTransactions("paid").filter(tx => !tx.is_admin_granted).length === 0 ? (
                       <div className="text-center py-8 text-muted-foreground">
                         <DollarSign className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                        <p>Nenhuma transação aprovada no período</p>
+                        <p>Nenhuma venda no período</p>
                       </div>
                     ) : (
                       <Table>
@@ -1114,14 +1292,14 @@ const AdminDashboardPage = () => {
                           <TableRow>
                             <TableHead>Data</TableHead>
                             <TableHead>Comprador</TableHead>
-                            <TableHead>Telefone</TableHead>
+                            <TableHead>Contato</TableHead>
                             <TableHead>Tipo</TableHead>
                             <TableHead>Valor</TableHead>
                             <TableHead>Status</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {getFilteredTransactions("paid").map((tx) => (
+                          {getFilteredTransactions("paid").filter(tx => !tx.is_admin_granted).map((tx) => (
                             <TableRow key={tx.id}>
                               <TableCell>{formatDate(tx.created_at)}</TableCell>
                               <TableCell>
@@ -1156,38 +1334,37 @@ const AdminDashboardPage = () => {
                 </Card>
               </TabsContent>
 
-              <TabsContent value="pending">
+              <TabsContent value="admin">
                 <Card>
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <CardTitle className="flex items-center gap-2">
-                        <Clock className="w-5 h-5 text-warning" />
-                        Transações Pendentes - {billingPeriodLabels[billingPeriod]}
+                        <Shield className="w-5 h-5 text-muted-foreground" />
+                        Liberações Admin - {billingPeriodLabels[billingPeriod]}
                       </CardTitle>
-                      <Badge variant="secondary">{getFilteredTransactions("pending").length} transações</Badge>
+                      <Badge variant="secondary">{getFilteredTransactions("paid").filter(tx => tx.is_admin_granted).length} liberações</Badge>
                     </div>
                   </CardHeader>
                   <CardContent>
-                    {getFilteredTransactions("pending").length === 0 ? (
+                    {getFilteredTransactions("paid").filter(tx => tx.is_admin_granted).length === 0 ? (
                       <div className="text-center py-8 text-muted-foreground">
-                        <Clock className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                        <p>Nenhuma transação pendente no período</p>
+                        <Shield className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                        <p>Nenhuma liberação admin no período</p>
                       </div>
                     ) : (
                       <Table>
                         <TableHeader>
                           <TableRow>
                             <TableHead>Data</TableHead>
-                            <TableHead>Comprador</TableHead>
-                            <TableHead>Telefone</TableHead>
+                            <TableHead>Usuário</TableHead>
                             <TableHead>Tipo</TableHead>
                             <TableHead>Valor</TableHead>
                             <TableHead>Status</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {getFilteredTransactions("pending").map((tx) => (
-                            <TableRow key={tx.id}>
+                          {getFilteredTransactions("paid").filter(tx => tx.is_admin_granted).map((tx) => (
+                            <TableRow key={tx.id} className="bg-muted/30">
                               <TableCell>{formatDate(tx.created_at)}</TableCell>
                               <TableCell>
                                 <div>
@@ -1195,23 +1372,13 @@ const AdminDashboardPage = () => {
                                   <p className="text-sm text-muted-foreground">{tx.buyer_email || "—"}</p>
                                 </div>
                               </TableCell>
-                              <TableCell>
-                                {tx.buyer_phone ? (
-                                  <a 
-                                    href={`https://wa.me/${tx.buyer_phone.replace(/\D/g, '')}`} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer"
-                                    className="text-success hover:underline"
-                                  >
-                                    {tx.buyer_phone}
-                                  </a>
-                                ) : (
-                                  <span className="text-muted-foreground">—</span>
-                                )}
-                              </TableCell>
                               <TableCell><Badge variant="outline" className="capitalize">{tx.product_type}</Badge></TableCell>
-                              <TableCell className="font-semibold">{formatPrice(tx.amount_cents)}</TableCell>
-                              <TableCell><Badge variant="secondary" className="gap-1"><Clock className="w-3 h-3" />Pendente</Badge></TableCell>
+                              <TableCell className="font-semibold text-muted-foreground">{formatPrice(tx.amount_cents)}</TableCell>
+                              <TableCell>
+                                <Badge variant="secondary" className="gap-1">
+                                  <Shield className="w-3 h-3" />Admin
+                                </Badge>
+                              </TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
