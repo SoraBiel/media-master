@@ -10,6 +10,7 @@ import {
   Cloud,
   CloudOff,
   Loader2,
+  RotateCcw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +18,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -47,6 +49,7 @@ interface SandboxEdge {
 
 interface FunnelToolbarProps {
   funnelName: string;
+  funnelId: string;
   isActive: boolean;
   isSaving: boolean;
   hasUnsavedChanges: boolean;
@@ -54,12 +57,14 @@ interface FunnelToolbarProps {
   onExport: () => void;
   onImport: (data: any) => void;
   onToggleActive: () => void;
+  onResetSessions: () => Promise<void>;
   sandboxNodes?: SandboxNode[];
   sandboxEdges?: SandboxEdge[];
 }
 
 export const FunnelToolbar = ({
   funnelName,
+  funnelId,
   isActive,
   isSaving,
   hasUnsavedChanges,
@@ -67,6 +72,7 @@ export const FunnelToolbar = ({
   onExport,
   onImport,
   onToggleActive,
+  onResetSessions,
   sandboxNodes = [],
   sandboxEdges = [],
 }: FunnelToolbarProps) => {
@@ -74,6 +80,28 @@ export const FunnelToolbar = ({
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [confirmLeaveOpen, setConfirmLeaveOpen] = useState(false);
+  const [confirmResetOpen, setConfirmResetOpen] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+
+  const handleResetSessions = async () => {
+    setIsResetting(true);
+    try {
+      await onResetSessions();
+      toast({
+        title: 'Sessões resetadas',
+        description: 'Todas as conversas ativas foram finalizadas. O bot começará do zero.',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao resetar',
+        description: error.message || 'Não foi possível resetar as sessões.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsResetting(false);
+      setConfirmResetOpen(false);
+    }
+  };
 
   const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -163,6 +191,14 @@ export const FunnelToolbar = ({
                 <Upload className="w-4 h-4 mr-2" />
                 Importar JSON
               </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                onClick={() => setConfirmResetOpen(true)}
+                className="text-destructive focus:text-destructive"
+              >
+                <RotateCcw className="w-4 h-4 mr-2" />
+                Resetar Sessões do Bot
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -230,6 +266,37 @@ export const FunnelToolbar = ({
               }}
             >
               Sair sem salvar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmResetOpen} onOpenChange={setConfirmResetOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Resetar sessões do bot?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Isso vai finalizar todas as conversas ativas deste funil. Os usuários começarão do início na próxima mensagem.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isResetting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleResetSessions}
+              disabled={isResetting}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {isResetting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Resetando...
+                </>
+              ) : (
+                <>
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  Resetar Sessões
+                </>
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
