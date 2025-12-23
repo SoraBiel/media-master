@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Send, Mail, Lock, User, ArrowRight, Eye, EyeOff } from "lucide-react";
+import { Send, Mail, Lock, User, ArrowRight, Eye, EyeOff, Phone } from "lucide-react";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -13,6 +13,7 @@ const SignupPage = () => {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
+    phone: "",
     password: "",
     confirmPassword: "",
   });
@@ -55,6 +56,15 @@ const SignupPage = () => {
       return;
     }
 
+    if (!formData.phone || formData.phone.replace(/\D/g, '').length < 10) {
+      toast({
+        title: "Erro",
+        description: "Informe um número de telefone válido.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (formData.password.length < 6) {
       toast({
         title: "Erro",
@@ -66,7 +76,7 @@ const SignupPage = () => {
 
     setIsLoading(true);
     
-    const { error } = await signUp(formData.email, formData.password, formData.name);
+    const { error } = await signUp(formData.email, formData.password, formData.name, formData.phone);
     
     if (error) {
       setIsLoading(false);
@@ -190,6 +200,23 @@ const SignupPage = () => {
                   type="email"
                   placeholder="seu@email.com"
                   value={formData.email}
+                  onChange={handleChange}
+                  className="pl-10"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="phone">Telefone (WhatsApp)</Label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  placeholder="+55 (11) 99999-9999"
+                  value={formData.phone}
                   onChange={handleChange}
                   className="pl-10"
                   required
