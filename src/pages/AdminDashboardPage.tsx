@@ -188,6 +188,8 @@ interface Stats {
   offlineUsers: number;
   activeSubscriptions: number;
   pendingCheckouts: number;
+  pendingTransactions: number;
+  paidTransactions: number;
   totalRevenue: number;
 }
 
@@ -219,6 +221,8 @@ const AdminDashboardPage = () => {
     offlineUsers: 0,
     activeSubscriptions: 0,
     pendingCheckouts: 0,
+    pendingTransactions: 0,
+    paidTransactions: 0,
     totalRevenue: 0,
   });
   const [isLoading, setIsLoading] = useState(true);
@@ -408,15 +412,23 @@ const AdminDashboardPage = () => {
   };
 
   const fetchTransactions = async () => {
+    // Fetch ALL transactions (pending and paid)
     const { data } = await supabase
       .from("transactions")
       .select("*")
-      .eq("status", "paid")
       .order("created_at", { ascending: false });
 
     if (data) {
       setTransactions(data);
-      calculateBillingStats(data);
+      // Calculate billing stats only with paid transactions
+      const paidTransactions = data.filter(tx => tx.status === "paid");
+      const pendingTransactions = data.filter(tx => tx.status === "pending");
+      calculateBillingStats(paidTransactions);
+      setStats(prev => ({
+        ...prev,
+        pendingTransactions: pendingTransactions.length,
+        paidTransactions: paidTransactions.length,
+      }));
     }
   };
 
@@ -472,11 +484,14 @@ const AdminDashboardPage = () => {
     });
   };
 
-  const getFilteredTransactions = () => {
+  const getFilteredTransactions = (statusFilter?: "pending" | "paid") => {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     
     return transactions.filter((tx) => {
+      // Filter by status if provided
+      if (statusFilter && tx.status !== statusFilter) return false;
+      
       const txDate = new Date(tx.created_at);
       switch (billingPeriod) {
         case "today": return txDate >= today;
@@ -753,9 +768,10 @@ const AdminDashboardPage = () => {
   const statCards = [
     { title: "Total de Usuários", value: stats.totalUsers, icon: Users, color: "text-telegram" },
     { title: "Usuários Online", value: stats.onlineUsers, icon: UserCheck, color: "text-success" },
-    { title: "Usuários Offline", value: stats.offlineUsers, icon: UserX, color: "text-muted-foreground" },
     { title: "Assinaturas Ativas", value: stats.activeSubscriptions, icon: CreditCard, color: "text-primary" },
     { title: "Checkouts Pendentes", value: stats.pendingCheckouts, icon: ShoppingCart, color: "text-warning" },
+    { title: "Pagamentos Pendentes", value: stats.pendingTransactions, icon: Clock, color: "text-warning" },
+    { title: "Pagamentos Aprovados", value: stats.paidTransactions, icon: CheckCircle2, color: "text-success" },
     { title: "Receita Total", value: formatPrice(stats.totalRevenue), icon: TrendingUp, color: "text-success" },
   ];
 
@@ -1063,68 +1079,148 @@ const AdminDashboardPage = () => {
               ))}
             </div>
 
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2">
-                    <Filter className="w-5 h-5" />
-                    Transações - {billingPeriodLabels[billingPeriod]}
-                  </CardTitle>
-                  <Badge variant="secondary">{getFilteredTransactions().length} transações</Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {getFilteredTransactions().length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <DollarSign className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                    <p>Nenhuma transação no período</p>
-                  </div>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Data</TableHead>
-                        <TableHead>Comprador</TableHead>
-                        <TableHead>Telefone</TableHead>
-                        <TableHead>Tipo</TableHead>
-                        <TableHead>Valor</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {getFilteredTransactions().map((tx) => (
-                        <TableRow key={tx.id}>
-                          <TableCell>{formatDate(tx.created_at)}</TableCell>
-                          <TableCell>
-                            <div>
-                              <p className="font-medium">{tx.buyer_name || "—"}</p>
-                              <p className="text-sm text-muted-foreground">{tx.buyer_email || "—"}</p>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {tx.buyer_phone ? (
-                              <a 
-                                href={`https://wa.me/${tx.buyer_phone.replace(/\D/g, '')}`} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="text-success hover:underline"
-                              >
-                                {tx.buyer_phone}
-                              </a>
-                            ) : (
-                              <span className="text-muted-foreground">—</span>
-                            )}
-                          </TableCell>
-                          <TableCell><Badge variant="outline" className="capitalize">{tx.product_type}</Badge></TableCell>
-                          <TableCell className="font-semibold">{formatPrice(tx.amount_cents)}</TableCell>
-                          <TableCell><Badge className="bg-success">Pago</Badge></TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
+            <Tabs defaultValue="paid" className="space-y-4">
+              <TabsList>
+                <TabsTrigger value="paid" className="gap-2">
+                  <CheckCircle2 className="w-4 h-4" />
+                  Aprovadas ({getFilteredTransactions("paid").length})
+                </TabsTrigger>
+                <TabsTrigger value="pending" className="gap-2">
+                  <Clock className="w-4 h-4" />
+                  Pendentes ({getFilteredTransactions("pending").length})
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="paid">
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2">
+                        <CheckCircle2 className="w-5 h-5 text-success" />
+                        Transações Aprovadas - {billingPeriodLabels[billingPeriod]}
+                      </CardTitle>
+                      <Badge variant="secondary">{getFilteredTransactions("paid").length} transações</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {getFilteredTransactions("paid").length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <DollarSign className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                        <p>Nenhuma transação aprovada no período</p>
+                      </div>
+                    ) : (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Data</TableHead>
+                            <TableHead>Comprador</TableHead>
+                            <TableHead>Telefone</TableHead>
+                            <TableHead>Tipo</TableHead>
+                            <TableHead>Valor</TableHead>
+                            <TableHead>Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {getFilteredTransactions("paid").map((tx) => (
+                            <TableRow key={tx.id}>
+                              <TableCell>{formatDate(tx.created_at)}</TableCell>
+                              <TableCell>
+                                <div>
+                                  <p className="font-medium">{tx.buyer_name || "—"}</p>
+                                  <p className="text-sm text-muted-foreground">{tx.buyer_email || "—"}</p>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                {tx.buyer_phone ? (
+                                  <a 
+                                    href={`https://wa.me/${tx.buyer_phone.replace(/\D/g, '')}`} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-success hover:underline"
+                                  >
+                                    {tx.buyer_phone}
+                                  </a>
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
+                              </TableCell>
+                              <TableCell><Badge variant="outline" className="capitalize">{tx.product_type}</Badge></TableCell>
+                              <TableCell className="font-semibold">{formatPrice(tx.amount_cents)}</TableCell>
+                              <TableCell><Badge className="bg-success">Pago</Badge></TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="pending">
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2">
+                        <Clock className="w-5 h-5 text-warning" />
+                        Transações Pendentes - {billingPeriodLabels[billingPeriod]}
+                      </CardTitle>
+                      <Badge variant="secondary">{getFilteredTransactions("pending").length} transações</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {getFilteredTransactions("pending").length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Clock className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                        <p>Nenhuma transação pendente no período</p>
+                      </div>
+                    ) : (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Data</TableHead>
+                            <TableHead>Comprador</TableHead>
+                            <TableHead>Telefone</TableHead>
+                            <TableHead>Tipo</TableHead>
+                            <TableHead>Valor</TableHead>
+                            <TableHead>Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {getFilteredTransactions("pending").map((tx) => (
+                            <TableRow key={tx.id}>
+                              <TableCell>{formatDate(tx.created_at)}</TableCell>
+                              <TableCell>
+                                <div>
+                                  <p className="font-medium">{tx.buyer_name || "—"}</p>
+                                  <p className="text-sm text-muted-foreground">{tx.buyer_email || "—"}</p>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                {tx.buyer_phone ? (
+                                  <a 
+                                    href={`https://wa.me/${tx.buyer_phone.replace(/\D/g, '')}`} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-success hover:underline"
+                                  >
+                                    {tx.buyer_phone}
+                                  </a>
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
+                              </TableCell>
+                              <TableCell><Badge variant="outline" className="capitalize">{tx.product_type}</Badge></TableCell>
+                              <TableCell className="font-semibold">{formatPrice(tx.amount_cents)}</TableCell>
+                              <TableCell><Badge variant="secondary" className="gap-1"><Clock className="w-3 h-3" />Pendente</Badge></TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
           </TabsContent>
 
           {/* Media Tab */}
