@@ -147,7 +147,7 @@ const BillingPage = () => {
                       {plan.max_media_per_month && (
                         <li className="flex items-center gap-2 text-sm">
                           <Check className="w-4 h-4 text-telegram flex-shrink-0" />
-                          <span>{plan.max_media_per_month === 999999 ? "Mídias ilimitadas" : `${plan.max_media_per_month.toLocaleString()} mídias/mês`}</span>
+                          <span>{plan.max_media_per_month === 999999 || plan.max_media_per_month < 0 ? "∞ mídias/mês" : `${plan.max_media_per_month.toLocaleString()} mídias/mês`}</span>
                         </li>
                       )}
                       {plan.has_scheduling && (
