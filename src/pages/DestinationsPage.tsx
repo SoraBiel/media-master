@@ -145,12 +145,25 @@ const DestinationsPage = () => {
     setIsLoadingChats(true);
     try {
       const chats = await fetchChatsForBot(bot.bot_token);
+      
+      // If bot has a configured chat, add it to the list
+      if (bot.chat_id && bot.chat_title) {
+        const existingIds = chats.map(c => String(c.id));
+        if (!existingIds.includes(bot.chat_id)) {
+          chats.unshift({
+            id: parseInt(bot.chat_id),
+            title: bot.chat_title + " (salvo)",
+            type: "supergroup",
+          });
+        }
+      }
+      
       setAvailableChats(chats);
       
       if (chats.length === 0) {
         toast({
           title: "Nenhum grupo encontrado",
-          description: "Adicione o bot a um grupo e envie uma mensagem para ele aparecer aqui.",
+          description: "1) Adicione o bot ao grupo como admin. 2) Envie /start no grupo. 3) Clique em buscar novamente.",
           variant: "default",
         });
       }
@@ -439,6 +452,16 @@ const DestinationsPage = () => {
                           ))}
                         </SelectContent>
                       </Select>
+                    </div>
+
+                    {/* Instructions */}
+                    <div className="p-3 rounded-lg bg-secondary/50 text-sm space-y-2">
+                      <p className="font-medium">Como adicionar um destino:</p>
+                      <ol className="list-decimal list-inside space-y-1 text-muted-foreground text-xs">
+                        <li>Adicione o bot como <span className="text-telegram font-medium">administrador</span> no grupo/canal</li>
+                        <li>Envie <span className="font-mono text-telegram">/start</span> no grupo</li>
+                        <li>Clique em "Buscar Grupos" ou digite o Chat ID manualmente</li>
+                      </ol>
                     </div>
 
                     {/* Load Groups Button */}
