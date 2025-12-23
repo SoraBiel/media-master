@@ -1,13 +1,13 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  ArrowLeft, 
-  Save, 
-  Play, 
-  Pause, 
-  Download, 
-  Upload, 
-  Cloud, 
+import {
+  ArrowLeft,
+  Save,
+  Play,
+  Pause,
+  Download,
+  Upload,
+  Cloud,
   CloudOff,
   Loader2,
 } from 'lucide-react';
@@ -19,6 +19,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 
 interface FunnelToolbarProps {
@@ -45,6 +55,7 @@ export const FunnelToolbar = ({
   const navigate = useNavigate();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [confirmLeaveOpen, setConfirmLeaveOpen] = useState(false);
 
   const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -54,12 +65,12 @@ export const FunnelToolbar = ({
     reader.onload = (e) => {
       try {
         const data = JSON.parse(e.target?.result as string);
-        
+
         // Validate schema
         if (!data.schemaVersion || !data.nodes || !Array.isArray(data.nodes)) {
           throw new Error('Formato de arquivo inválido');
         }
-        
+
         onImport(data);
         toast({
           title: 'Funil importado',
@@ -74,37 +85,47 @@ export const FunnelToolbar = ({
       }
     };
     reader.readAsText(file);
-    
+
     // Reset input
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
 
-  return (
-    <div className="h-14 border-b border-border bg-card/80 backdrop-blur-sm px-4 flex items-center justify-between">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/funnels')}>
-          <ArrowLeft className="w-5 h-5" />
-        </Button>
-        <div className="flex items-center gap-2">
-          <h1 className="font-semibold">{funnelName}</h1>
-          {hasUnsavedChanges && (
-            <Badge variant="outline" className="text-xs">
-              <CloudOff className="w-3 h-3 mr-1" />
-              Não salvo
-            </Badge>
-          )}
-          {!hasUnsavedChanges && (
-            <Badge variant="outline" className="text-xs text-muted-foreground">
-              <Cloud className="w-3 h-3 mr-1" />
-              Salvo
-            </Badge>
-          )}
-        </div>
-      </div>
+  const handleBack = () => {
+    if (hasUnsavedChanges) {
+      setConfirmLeaveOpen(true);
+      return;
+    }
 
-      <div className="flex items-center gap-2">
+    navigate('/funnels');
+  };
+
+  return (
+    <>
+      <div className="h-14 border-b border-border bg-card/80 backdrop-blur-sm px-4 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={handleBack}>
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <div className="flex items-center gap-2">
+            <h1 className="font-semibold">{funnelName}</h1>
+            {hasUnsavedChanges && (
+              <Badge variant="outline" className="text-xs">
+                <CloudOff className="w-3 h-3 mr-1" />
+                Alterações não salvas
+              </Badge>
+            )}
+            {!hasUnsavedChanges && (
+              <Badge variant="outline" className="text-xs text-muted-foreground">
+                <Cloud className="w-3 h-3 mr-1" />
+                Tudo salvo
+              </Badge>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
         {/* Import/Export */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
