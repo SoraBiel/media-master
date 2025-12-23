@@ -94,7 +94,16 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   };
 
   const openSupport = () => {
-    window.open(`https://web.whatsapp.com/${SUPPORT_WHATSAPP}`, "_blank", "noopener,noreferrer");
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const phoneNumber = SUPPORT_WHATSAPP.replace('+', '');
+    
+    if (isMobile) {
+      // Opens WhatsApp app on mobile devices
+      window.location.href = `whatsapp://send?phone=${phoneNumber}`;
+    } else {
+      // Opens WhatsApp Web on desktop
+      window.open(`https://web.whatsapp.com/send?phone=${phoneNumber}`, "_blank", "noopener,noreferrer");
+    }
   };
 
   const NavContent = ({ onItemClick }: { onItemClick?: () => void }) => (
