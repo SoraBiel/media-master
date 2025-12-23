@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useAdminSettings } from "@/hooks/useAdminSettings";
+
 interface DashboardLayoutProps {
   children: ReactNode;
 }
@@ -28,7 +29,7 @@ const DashboardLayout = ({
     hasActiveSubscription,
     currentPlan
   } = useSubscription();
-  const { settings: adminSettings } = useAdminSettings();
+  const { settings: adminSettings, isLoading: isLoadingSettings } = useAdminSettings();
 
   // Build navigation items dynamically based on subscription status
   const getNavItems = () => {
@@ -105,7 +106,12 @@ const DashboardLayout = ({
     }
     return items;
   };
-  const navItems = useMemo(() => getNavItems(), [hasActiveSubscription, currentPlan, adminSettings]);
+  
+  // Only compute nav items when settings are loaded to prevent flash
+  const navItems = useMemo(() => {
+    if (isLoadingSettings) return [];
+    return getNavItems();
+  }, [hasActiveSubscription, currentPlan, adminSettings, isLoadingSettings]);
 
   // Admin-only items
   const adminItems = [{

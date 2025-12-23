@@ -16,7 +16,7 @@ export interface PlanExpirationData {
 }
 
 export const usePlanExpiration = () => {
-  const { user, profile } = useAuth();
+  const { user, profile, isAdmin } = useAuth();
   const { subscription, currentPlan, getDaysRemaining } = useSubscription();
   const [expirationData, setExpirationData] = useState<PlanExpirationData>({
     daysRemaining: null,
@@ -89,6 +89,8 @@ export const usePlanExpiration = () => {
   };
 
   const isFeatureBlocked = (): boolean => {
+    // Admins are never blocked
+    if (isAdmin) return false;
     return expirationData.isExpired || expirationData.isSuspended;
   };
 
