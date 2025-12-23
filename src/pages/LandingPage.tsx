@@ -1,98 +1,72 @@
-import { 
-  Send, 
-  Zap, 
-  Shield, 
-  BarChart3, 
-  Clock, 
-  Users,
-  ArrowRight,
-  Check,
-  Sparkles
-} from "lucide-react";
+import { Send, Zap, Shield, BarChart3, Clock, Users, ArrowRight, Check, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-
 const LandingPage = () => {
-  const features = [
-    {
-      icon: <Send className="w-6 h-6" />,
-      title: "Envio Automatizado",
-      description: "Publique mídias em grupos e canais do Telegram de forma automática e programada."
-    },
-    {
-      icon: <Shield className="w-6 h-6" />,
-      title: "Segurança Total",
-      description: "Conexão segura via Bot Token ou sessão MTProto com criptografia em repouso."
-    },
-    {
-      icon: <Clock className="w-6 h-6" />,
-      title: "Agendamento Inteligente",
-      description: "Configure delays e limites anti-spam para evitar bloqueios do Telegram."
-    },
-    {
-      icon: <BarChart3 className="w-6 h-6" />,
-      title: "Dashboard Completo",
-      description: "Acompanhe o progresso em tempo real com logs detalhados e métricas."
-    },
-    {
-      icon: <Users className="w-6 h-6" />,
-      title: "Multi-Destinos",
-      description: "Gerencie múltiplos grupos e canais em uma única plataforma."
-    },
-    {
-      icon: <Sparkles className="w-6 h-6" />,
-      title: "Model Hub",
-      description: "Acesse templates prontos e estratégias de marketing com modelos IA."
-    }
-  ];
-
-  const plans = [
-    {
-      name: "Free",
-      price: "R$0",
-      period: "/mês",
-      description: "Para testar a plataforma",
-      features: ["1 destino", "100 mídias/mês", "Suporte por email"],
-      cta: "Começar Grátis",
-      popular: false
-    },
-    {
-      name: "Basic",
-      price: "R$49",
-      period: "/mês",
-      description: "Para criadores de conteúdo",
-      features: ["5 destinos", "1.000 mídias/mês", "Agendamento", "Suporte prioritário"],
-      cta: "Assinar Basic",
-      popular: false
-    },
-    {
-      name: "Pro",
-      price: "R$149",
-      period: "/mês",
-      description: "Para profissionais",
-      features: ["20 destinos", "10.000 mídias/mês", "Model Hub completo", "API access", "Suporte 24/7"],
-      cta: "Assinar Pro",
-      popular: true
-    },
-    {
-      name: "Agency",
-      price: "R$499",
-      period: "/mês",
-      description: "Para agências e equipes",
-      features: ["Destinos ilimitados", "Mídias ilimitadas", "Multi-usuários", "White label", "Gerente dedicado"],
-      cta: "Falar com Vendas",
-      popular: false
-    }
-  ];
-
-  return (
-    <div className="min-h-screen bg-background">
+  const features = [{
+    icon: <Send className="w-6 h-6" />,
+    title: "Envio Automatizado",
+    description: "Publique mídias em grupos e canais do Telegram de forma automática e programada."
+  }, {
+    icon: <Shield className="w-6 h-6" />,
+    title: "Segurança Total",
+    description: "Conexão segura via Bot Token ou sessão MTProto com criptografia em repouso."
+  }, {
+    icon: <Clock className="w-6 h-6" />,
+    title: "Agendamento Inteligente",
+    description: "Configure delays e limites anti-spam para evitar bloqueios do Telegram."
+  }, {
+    icon: <BarChart3 className="w-6 h-6" />,
+    title: "Dashboard Completo",
+    description: "Acompanhe o progresso em tempo real com logs detalhados e métricas."
+  }, {
+    icon: <Users className="w-6 h-6" />,
+    title: "Multi-Destinos",
+    description: "Gerencie múltiplos grupos e canais em uma única plataforma."
+  }, {
+    icon: <Sparkles className="w-6 h-6" />,
+    title: "Model Hub",
+    description: "Acesse templates prontos e estratégias de marketing com modelos IA."
+  }];
+  const plans = [{
+    name: "Free",
+    price: "R$0",
+    period: "/mês",
+    description: "Para testar a plataforma",
+    features: ["1 destino", "100 mídias/mês", "Suporte por email"],
+    cta: "Começar Grátis",
+    popular: false
+  }, {
+    name: "Basic",
+    price: "R$49",
+    period: "/mês",
+    description: "Para criadores de conteúdo",
+    features: ["5 destinos", "1.000 mídias/mês", "Agendamento", "Suporte prioritário"],
+    cta: "Assinar Basic",
+    popular: false
+  }, {
+    name: "Pro",
+    price: "R$149",
+    period: "/mês",
+    description: "Para profissionais",
+    features: ["20 destinos", "10.000 mídias/mês", "Model Hub completo", "API access", "Suporte 24/7"],
+    cta: "Assinar Pro",
+    popular: true
+  }, {
+    name: "Agency",
+    price: "R$499",
+    period: "/mês",
+    description: "Para agências e equipes",
+    features: ["Destinos ilimitados", "Mídias ilimitadas", "Multi-usuários", "White label", "Gerente dedicado"],
+    cta: "Falar com Vendas",
+    popular: false
+  }];
+  return <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
-            <img src="/logo-nexo.png" alt="Nexo" className="h-12" />
+            <img src="/logo-nexo.png" alt="Nexo" className="h-40" />
           </Link>
           <nav className="hidden md:flex items-center gap-6">
             <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">
@@ -119,12 +93,15 @@ const LandingPage = () => {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full bg-telegram/5 blur-3xl" />
         
         <div className="container mx-auto px-4 relative">
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="max-w-4xl mx-auto text-center"
-          >
+          <motion.div initial={{
+          opacity: 0,
+          y: 20
+        }} animate={{
+          opacity: 1,
+          y: 0
+        }} transition={{
+          duration: 0.6
+        }} className="max-w-4xl mx-auto text-center">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-secondary/50 border border-border mb-6">
               <Zap className="w-4 h-4 text-telegram" />
               <span className="text-sm text-muted-foreground">Automação inteligente para Telegram</span>
@@ -157,12 +134,16 @@ const LandingPage = () => {
           </motion.div>
 
           {/* Dashboard Preview */}
-          <motion.div 
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            className="mt-16 relative"
-          >
+          <motion.div initial={{
+          opacity: 0,
+          y: 40
+        }} animate={{
+          opacity: 1,
+          y: 0
+        }} transition={{
+          duration: 0.8,
+          delay: 0.2
+        }} className="mt-16 relative">
             <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent z-10 pointer-events-none" />
             <div className="glass-card p-2 md:p-4 rounded-2xl shadow-elevated mx-auto max-w-5xl">
               <div className="bg-background rounded-xl overflow-hidden border border-border">
@@ -174,15 +155,11 @@ const LandingPage = () => {
                 <div className="p-6 space-y-4">
                   <div className="flex gap-4">
                     <div className="w-48 h-full bg-secondary/50 rounded-lg p-4 space-y-3">
-                      {[1,2,3,4,5].map(i => (
-                        <div key={i} className="h-8 bg-muted rounded animate-pulse" />
-                      ))}
+                      {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-8 bg-muted rounded animate-pulse" />)}
                     </div>
                     <div className="flex-1 space-y-4">
                       <div className="grid grid-cols-3 gap-4">
-                        {[1,2,3].map(i => (
-                          <div key={i} className="h-24 bg-secondary/50 rounded-lg animate-pulse" />
-                        ))}
+                        {[1, 2, 3].map(i => <div key={i} className="h-24 bg-secondary/50 rounded-lg animate-pulse" />)}
                       </div>
                       <div className="h-48 bg-secondary/50 rounded-lg animate-pulse" />
                     </div>
@@ -208,22 +185,24 @@ const LandingPage = () => {
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {features.map((feature, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                className="glass-card p-6 hover:border-telegram/30 transition-colors group"
-              >
+            {features.map((feature, index) => <motion.div key={index} initial={{
+            opacity: 0,
+            y: 20
+          }} whileInView={{
+            opacity: 1,
+            y: 0
+          }} viewport={{
+            once: true
+          }} transition={{
+            duration: 0.5,
+            delay: index * 0.1
+          }} className="glass-card p-6 hover:border-telegram/30 transition-colors group">
                 <div className="w-12 h-12 rounded-lg bg-telegram/10 flex items-center justify-center text-telegram mb-4 group-hover:bg-telegram/20 transition-colors">
                   {feature.icon}
                 </div>
                 <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
                 <p className="text-muted-foreground text-sm">{feature.description}</p>
-              </motion.div>
-            ))}
+              </motion.div>)}
           </div>
         </div>
       </section>
@@ -242,22 +221,23 @@ const LandingPage = () => {
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
-            {plans.map((plan, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                className={`glass-card p-6 relative ${plan.popular ? 'border-telegram ring-1 ring-telegram/20' : ''}`}
-              >
-                {plan.popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+            {plans.map((plan, index) => <motion.div key={index} initial={{
+            opacity: 0,
+            y: 20
+          }} whileInView={{
+            opacity: 1,
+            y: 0
+          }} viewport={{
+            once: true
+          }} transition={{
+            duration: 0.5,
+            delay: index * 0.1
+          }} className={`glass-card p-6 relative ${plan.popular ? 'border-telegram ring-1 ring-telegram/20' : ''}`}>
+                {plan.popular && <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                     <span className="px-3 py-1 text-xs font-medium telegram-gradient text-white rounded-full">
                       Mais Popular
                     </span>
-                  </div>
-                )}
+                  </div>}
                 <div className="mb-4">
                   <h3 className="text-lg font-semibold">{plan.name}</h3>
                   <p className="text-sm text-muted-foreground">{plan.description}</p>
@@ -267,23 +247,17 @@ const LandingPage = () => {
                   <span className="text-muted-foreground">{plan.period}</span>
                 </div>
                 <ul className="space-y-3 mb-6">
-                  {plan.features.map((feature, i) => (
-                    <li key={i} className="flex items-center gap-2 text-sm">
+                  {plan.features.map((feature, i) => <li key={i} className="flex items-center gap-2 text-sm">
                       <Check className="w-4 h-4 text-telegram" />
                       <span>{feature}</span>
-                    </li>
-                  ))}
+                    </li>)}
                 </ul>
                 <Link to="/signup">
-                  <Button 
-                    variant={plan.popular ? "gradient" : "outline"} 
-                    className="w-full"
-                  >
+                  <Button variant={plan.popular ? "gradient" : "outline"} className="w-full">
                     {plan.cta}
                   </Button>
                 </Link>
-              </motion.div>
-            ))}
+              </motion.div>)}
           </div>
         </div>
       </section>
@@ -329,8 +303,6 @@ const LandingPage = () => {
           </div>
         </div>
       </footer>
-    </div>
-  );
+    </div>;
 };
-
 export default LandingPage;
