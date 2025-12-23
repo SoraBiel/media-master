@@ -95,7 +95,8 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
   const openSupport = () => {
     const message = encodeURIComponent("Olá! Preciso de ajuda com a plataforma MediaDrop TG.");
-    window.open(`https://wa.me/${SUPPORT_WHATSAPP}?text=${message}`, "_blank");
+    // Using web.whatsapp.com for better browser compatibility
+    window.open(`https://web.whatsapp.com/send?phone=${SUPPORT_WHATSAPP}&text=${message}`, "_blank", "noopener,noreferrer");
   };
 
   const NavContent = ({ onItemClick }: { onItemClick?: () => void }) => (
