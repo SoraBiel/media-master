@@ -57,12 +57,12 @@ const FunnelCanvasInner = ({
 }: FunnelCanvasProps) => {
   const { toast } = useToast();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
-  const { screenToFlowPosition } = useReactFlow();
+  const { screenToFlowPosition, fitView } = useReactFlow();
   const [isSaving, setIsSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const saveTimeoutRef = useRef<NodeJS.Timeout>();
   const [activeTab, setActiveTab] = useState('editor');
   const [webhookDialogOpen, setWebhookDialogOpen] = useState(false);
+  const didInitialFitRef = useRef(false);
   
   // Convert to React Flow format
   const convertToFlowNodes = (nodes: FunnelNode[]): Node[] => {
@@ -98,6 +98,29 @@ const FunnelCanvasInner = ({
     setNodes(convertToFlowNodes(initialNodes));
     setEdges(convertToFlowEdges(initialEdges));
   }, [initialNodes, initialEdges, setNodes, setEdges]);
+
+  // Fit view only once (avoid re-centering after save)
+  useEffect(() => {
+    if (didInitialFitRef.current) return;
+    if (nodes.length === 0) return;
+
+    didInitialFitRef.current = true;
+    requestAnimationFrame(() => {
+      fitView({ padding: 0.2, duration: 250 });
+    });
+  }, [nodes.length, fitView]);
+
+  // Confirm browser/tab close when there are unsaved changes
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (!hasUnsavedChanges) return;
+      e.preventDefault();
+      e.returnValue = '';
+    };
+
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [hasUnsavedChanges]);
 
   // Mark changes as unsaved (no auto-save - user must click save)
   const markUnsaved = useCallback(() => {
@@ -181,11 +204,17 @@ const FunnelCanvasInner = ({
   }, [nodes, edges, funnelId, hasUnsavedChanges, convertToFunnelFormat]);
 
   const onConnect: OnConnect = useCallback((params: Connection) => {
-    setEdges((eds) => addEdge({
-      ...params,
-      animated: true,
-      style: { stroke: 'hsl(var(--primary))' },
-    }, eds));
+    setEdges((eds) =>
+      addEdge(
+        {
+          id: crypto.randomUUID(),
+          ...params,
+          animated: true,
+          style: { stroke: 'hsl(var(--primary))' },
+        },
+        eds
+      )
+    );
     markUnsaved();
   }, [setEdges, markUnsaved]);
 
@@ -206,7 +235,7 @@ const FunnelCanvasInner = ({
     });
 
     const newNode: Node = {
-      id: `${type}_${Date.now()}`,
+      id: crypto.randomUUID(),
       type: 'block',
       position,
       data: {
@@ -346,7 +375,6 @@ const FunnelCanvasInner = ({
                 onDragOver={onDragOver}
                 onSelectionChange={onSelectionChange}
                 nodeTypes={nodeTypes}
-                fitView
                 snapToGrid
                 snapGrid={[20, 20]}
                 defaultEdgeOptions={{

@@ -14,6 +14,12 @@ interface Funnel {
   telegram_integration_id: string | null;
 }
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const isUuid = (value: string) => UUID_RE.test(value);
+
+
 const FunnelBuilderPage = () => {
   const { funnelId } = useParams<{ funnelId: string }>();
   const navigate = useNavigate();
@@ -98,16 +104,15 @@ const FunnelBuilderPage = () => {
       await supabase.from("funnel_edges").delete().eq("funnel_id", funnelId);
       await supabase.from("funnel_nodes").delete().eq("funnel_id", funnelId);
 
-      // Create a map from old IDs to new UUIDs
+      // Create a map from old IDs to UUIDs (only needed for legacy non-UUID ids)
       const idMap = new Map<string, string>();
 
-      // Insert new nodes with proper UUIDs
+      // Insert nodes (keep UUIDs stable when already UUID)
       if (newNodes.length > 0) {
         const nodesToInsert = newNodes.map((node) => {
-          // Generate a proper UUID for each node
-          const newId = crypto.randomUUID();
+          const newId = isUuid(node.id) ? node.id : crypto.randomUUID();
           idMap.set(node.id, newId);
-          
+
           return {
             id: newId,
             funnel_id: funnelId,
@@ -118,33 +123,36 @@ const FunnelBuilderPage = () => {
           };
         });
 
-        const { error: nodesError } = await supabase
-          .from("funnel_nodes")
-          .insert(nodesToInsert);
-
+        const { error: nodesError } = await supabase.from("funnel_nodes").insert(nodesToInsert);
         if (nodesError) throw nodesError;
       }
 
-      // Insert new edges with remapped UUIDs
-      if (newEdges.length > 0) {
-        const edgesToInsert = newEdges.map((edge) => ({
-          id: crypto.randomUUID(),
+      // Dedupe edges before inserting (prevents duplicate connections)
+      const seen = new Set<string>();
+      const uniqueEdges = newEdges.filter((edge) => {
+        const key = `${edge.source}::${edge.target}::${edge.sourceHandle || "default"}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      // Insert edges
+      if (uniqueEdges.length > 0) {
+        const edgesToInsert = uniqueEdges.map((edge) => ({
+          id: isUuid(edge.id) ? edge.id : crypto.randomUUID(),
           funnel_id: funnelId,
           source_node_id: idMap.get(edge.source) || edge.source,
           target_node_id: idMap.get(edge.target) || edge.target,
-          source_handle: edge.sourceHandle || 'default',
+          source_handle: edge.sourceHandle || "default",
         }));
 
-        const { error: edgesError } = await supabase
-          .from("funnel_edges")
-          .insert(edgesToInsert);
-
+        const { error: edgesError } = await supabase.from("funnel_edges").insert(edgesToInsert);
         if (edgesError) throw edgesError;
       }
 
-      // Refresh from database to get the new UUIDs
+      // Refresh from database
       await fetchFunnel();
-      
+
       toast({ title: "Funil salvo!" });
     } catch (error: any) {
       console.error("Error saving funnel:", error);
@@ -187,9 +195,9 @@ const FunnelBuilderPage = () => {
 
     // Remap IDs to avoid conflicts
     const idMap = new Map<string, string>();
-    
+
     const newNodes: FunnelNode[] = data.nodes.map((node: any) => {
-      const newId = `${node.type || node.id}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+      const newId = crypto.randomUUID();
       idMap.set(node.id, newId);
       return {
         ...node,
@@ -199,7 +207,7 @@ const FunnelBuilderPage = () => {
 
     const newEdges: FunnelEdge[] = (data.edges || []).map((edge: any) => ({
       ...edge,
-      id: `edge_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      id: crypto.randomUUID(),
       source: idMap.get(edge.source) || edge.source,
       target: idMap.get(edge.target) || edge.target,
     }));
