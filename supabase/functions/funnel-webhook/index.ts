@@ -188,9 +188,9 @@ serve(async (req) => {
 
     // Check for trigger keywords
     const triggerKeywords = funnel.trigger_keywords || ['/start'];
-    const isNewSession = messageText && triggerKeywords.some((k: string) => 
+    let isNewSession = !!(messageText && triggerKeywords.some((k: string) => 
       messageText.toLowerCase().startsWith(k.toLowerCase())
-    );
+    ));
 
     // Get or create session
     let { data: session } = await supabase
@@ -200,6 +200,20 @@ serve(async (req) => {
       .eq("chat_id", String(chatId))
       .eq("is_finished", false)
       .single();
+
+    // If the funnel was updated after the last interaction, restart the session
+    if (session) {
+      const funnelUpdatedAt = funnel.updated_at ? new Date(funnel.updated_at).getTime() : 0;
+      const sessionLastAtRaw = session.last_message_at || session.created_at;
+      const sessionLastAt = sessionLastAtRaw ? new Date(sessionLastAtRaw).getTime() : 0;
+
+      if (funnelUpdatedAt && sessionLastAt && funnelUpdatedAt > sessionLastAt) {
+        console.log(
+          `Restarting session because funnel was updated (funnel.updated_at=${funnel.updated_at}, session.last=${sessionLastAtRaw})`
+        );
+        isNewSession = true;
+      }
+    }
 
     // If starting fresh or no session exists
     if (isNewSession || !session) {
