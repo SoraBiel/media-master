@@ -315,6 +315,137 @@ export type Database = {
           },
         ]
       }
+      funnel_edges: {
+        Row: {
+          created_at: string
+          funnel_id: string
+          id: string
+          source_handle: string | null
+          source_node_id: string
+          target_node_id: string
+        }
+        Insert: {
+          created_at?: string
+          funnel_id: string
+          id?: string
+          source_handle?: string | null
+          source_node_id: string
+          target_node_id: string
+        }
+        Update: {
+          created_at?: string
+          funnel_id?: string
+          id?: string
+          source_handle?: string | null
+          source_node_id?: string
+          target_node_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "funnel_edges_funnel_id_fkey"
+            columns: ["funnel_id"]
+            isOneToOne: false
+            referencedRelation: "funnels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "funnel_edges_source_node_id_fkey"
+            columns: ["source_node_id"]
+            isOneToOne: false
+            referencedRelation: "funnel_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "funnel_edges_target_node_id_fkey"
+            columns: ["target_node_id"]
+            isOneToOne: false
+            referencedRelation: "funnel_nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      funnel_nodes: {
+        Row: {
+          content: Json | null
+          created_at: string
+          funnel_id: string
+          id: string
+          node_type: string
+          position_x: number
+          position_y: number
+          updated_at: string
+        }
+        Insert: {
+          content?: Json | null
+          created_at?: string
+          funnel_id: string
+          id?: string
+          node_type?: string
+          position_x?: number
+          position_y?: number
+          updated_at?: string
+        }
+        Update: {
+          content?: Json | null
+          created_at?: string
+          funnel_id?: string
+          id?: string
+          node_type?: string
+          position_x?: number
+          position_y?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "funnel_nodes_funnel_id_fkey"
+            columns: ["funnel_id"]
+            isOneToOne: false
+            referencedRelation: "funnels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      funnels: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          telegram_integration_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          telegram_integration_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          telegram_integration_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "funnels_telegram_integration_id_fkey"
+            columns: ["telegram_integration_id"]
+            isOneToOne: false
+            referencedRelation: "telegram_integrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       models_for_sale: {
         Row: {
           assets: Json | null
@@ -385,6 +516,7 @@ export type Database = {
           id: string
           is_active: boolean | null
           max_destinations: number | null
+          max_funnels: number | null
           max_media_per_month: number | null
           name: string
           price_cents: number
@@ -399,6 +531,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           max_destinations?: number | null
+          max_funnels?: number | null
           max_media_per_month?: number | null
           name: string
           price_cents?: number
@@ -413,6 +546,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           max_destinations?: number | null
+          max_funnels?: number | null
           max_media_per_month?: number | null
           name?: string
           price_cents?: number
