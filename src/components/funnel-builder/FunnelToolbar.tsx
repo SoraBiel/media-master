@@ -66,7 +66,6 @@ export const FunnelToolbar = ({
       try {
         const data = JSON.parse(e.target?.result as string);
 
-        // Validate schema
         if (!data.schemaVersion || !data.nodes || !Array.isArray(data.nodes)) {
           throw new Error('Formato de arquivo inválido');
         }
@@ -86,7 +85,6 @@ export const FunnelToolbar = ({
     };
     reader.readAsText(file);
 
-    // Reset input
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -97,7 +95,6 @@ export const FunnelToolbar = ({
       setConfirmLeaveOpen(true);
       return;
     }
-
     navigate('/funnels');
   };
 
@@ -111,7 +108,7 @@ export const FunnelToolbar = ({
           <div className="flex items-center gap-2">
             <h1 className="font-semibold">{funnelName}</h1>
             {hasUnsavedChanges && (
-              <Badge variant="outline" className="text-xs">
+              <Badge variant="outline" className="text-xs text-amber-500 border-amber-500/50">
                 <CloudOff className="w-3 h-3 mr-1" />
                 Alterações não salvas
               </Badge>
@@ -126,73 +123,93 @@ export const FunnelToolbar = ({
         </div>
 
         <div className="flex items-center gap-2">
-        {/* Import/Export */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm">
-              <Download className="w-4 h-4 mr-2" />
-              Arquivo
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={onExport}>
-              <Download className="w-4 h-4 mr-2" />
-              Exportar JSON
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
-              <Upload className="w-4 h-4 mr-2" />
-              Importar JSON
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Download className="w-4 h-4 mr-2" />
+                Arquivo
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={onExport}>
+                <Download className="w-4 h-4 mr-2" />
+                Exportar JSON
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+                <Upload className="w-4 h-4 mr-2" />
+                Importar JSON
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".json"
-          className="hidden"
-          onChange={handleFileImport}
-        />
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json"
+            className="hidden"
+            onChange={handleFileImport}
+          />
 
-        {/* Toggle Active */}
-        <Button 
-          variant={isActive ? 'secondary' : 'outline'} 
-          size="sm"
-          onClick={onToggleActive}
-        >
-          {isActive ? (
-            <>
-              <Pause className="w-4 h-4 mr-2" />
-              Desativar
-            </>
-          ) : (
-            <>
-              <Play className="w-4 h-4 mr-2" />
-              Ativar
-            </>
-          )}
-        </Button>
+          <Button
+            variant={isActive ? 'secondary' : 'outline'}
+            size="sm"
+            onClick={onToggleActive}
+          >
+            {isActive ? (
+              <>
+                <Pause className="w-4 h-4 mr-2" />
+                Desativar
+              </>
+            ) : (
+              <>
+                <Play className="w-4 h-4 mr-2" />
+                Ativar
+              </>
+            )}
+          </Button>
 
-        {/* Save Button */}
-        <Button 
-          variant="gradient" 
-          size="sm" 
-          onClick={onSave}
-          disabled={isSaving}
-        >
-          {isSaving ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Salvando...
-            </>
-          ) : (
-            <>
-              <Save className="w-4 h-4 mr-2" />
-              Salvar
-            </>
-          )}
-        </Button>
+          <Button
+            variant="gradient"
+            size="sm"
+            onClick={onSave}
+            disabled={isSaving}
+          >
+            {isSaving ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Salvando...
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4 mr-2" />
+                Salvar
+              </>
+            )}
+          </Button>
+        </div>
       </div>
-    </div>
+
+      <AlertDialog open={confirmLeaveOpen} onOpenChange={setConfirmLeaveOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sair sem salvar?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você tem alterações não salvas. Se sair agora, elas serão perdidas.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Continuar editando</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setConfirmLeaveOpen(false);
+                navigate('/funnels');
+              }}
+            >
+              Sair sem salvar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };
