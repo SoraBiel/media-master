@@ -24,6 +24,11 @@ import {
   UserCog,
   RefreshCw,
   GitBranch,
+  Settings,
+  Target,
+  Megaphone,
+  Sparkles,
+  Video,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -798,6 +803,10 @@ const AdminDashboardPage = () => {
               <GitBranch className="h-4 w-4" />
               Templates Funis
             </TabsTrigger>
+            <TabsTrigger value="settings" className="flex items-center gap-1">
+              <Settings className="h-4 w-4" />
+              Configurações
+            </TabsTrigger>
           </TabsList>
 
           {/* Users Tab */}
@@ -1291,29 +1300,6 @@ const AdminDashboardPage = () => {
 
           {/* TikTok Accounts Tab */}
           <TabsContent value="tiktok" className="space-y-4">
-            {/* Toggle para ativar/desativar TikTok */}
-            <Card className="border-dashed">
-              <CardContent className="flex items-center justify-between py-4">
-                <div className="space-y-0.5">
-                  <div className="font-medium flex items-center gap-2">
-                    Aba TikTok
-                    <Badge variant={adminSettings.tiktok_enabled ? "default" : "secondary"}>
-                      {adminSettings.tiktok_enabled ? "Ativo" : "Desativado"}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {adminSettings.tiktok_enabled 
-                      ? "Usuários podem ver e comprar contas TikTok" 
-                      : "A aba TikTok está oculta para usuários"}
-                  </p>
-                </div>
-                <Switch
-                  checked={adminSettings.tiktok_enabled}
-                  onCheckedChange={(checked) => updateSetting("tiktok_enabled", checked)}
-                />
-              </CardContent>
-            </Card>
-
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold">Contas TikTok ({tiktokAccounts.length})</h3>
               <Dialog open={tiktokDialogOpen} onOpenChange={setTiktokDialogOpen}>
@@ -1461,29 +1447,6 @@ const AdminDashboardPage = () => {
 
           {/* Models Tab */}
           <TabsContent value="models" className="space-y-4">
-            {/* Toggle para ativar/desativar Modelos */}
-            <Card className="border-dashed">
-              <CardContent className="flex items-center justify-between py-4">
-                <div className="space-y-0.5">
-                  <div className="font-medium flex items-center gap-2">
-                    Aba Modelos (Model Hub)
-                    <Badge variant={adminSettings.models_enabled ? "default" : "secondary"}>
-                      {adminSettings.models_enabled ? "Ativo" : "Desativado"}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {adminSettings.models_enabled 
-                      ? "Usuários podem ver e comprar modelos" 
-                      : "A aba Modelos está oculta para usuários"}
-                  </p>
-                </div>
-                <Switch
-                  checked={adminSettings.models_enabled}
-                  onCheckedChange={(checked) => updateSetting("models_enabled", checked)}
-                />
-              </CardContent>
-            </Card>
-
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold">Modelos ({models.length})</h3>
               <Dialog open={modelDialogOpen} onOpenChange={setModelDialogOpen}>
@@ -1622,6 +1585,153 @@ const AdminDashboardPage = () => {
           {/* Templates Tab */}
           <TabsContent value="templates" className="space-y-4">
             <AdminTemplatesPanel />
+          </TabsContent>
+
+          {/* Settings Tab - All Feature Toggles */}
+          <TabsContent value="settings" className="space-y-4">
+            <div className="space-y-2">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Settings className="w-5 h-5" />
+                Configurações de Features
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Ative ou desative features da plataforma. Quando desativadas, os usuários não verão essas opções no menu e serão redirecionados se tentarem acessar diretamente.
+              </p>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              {/* Destinations Toggle */}
+              <Card className="border-dashed">
+                <CardContent className="flex items-center justify-between py-4">
+                  <div className="space-y-0.5">
+                    <div className="font-medium flex items-center gap-2">
+                      <Target className="w-4 h-4 text-muted-foreground" />
+                      Destinos
+                      <Badge variant={adminSettings.destinations_enabled ? "default" : "secondary"}>
+                        {adminSettings.destinations_enabled ? "Ativo" : "Desativado"}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Permite gerenciar grupos/canais do Telegram
+                    </p>
+                  </div>
+                  <Switch
+                    checked={adminSettings.destinations_enabled}
+                    onCheckedChange={(checked) => updateSetting("destinations_enabled", checked)}
+                  />
+                </CardContent>
+              </Card>
+
+              {/* Campaigns Toggle */}
+              <Card className="border-dashed">
+                <CardContent className="flex items-center justify-between py-4">
+                  <div className="space-y-0.5">
+                    <div className="font-medium flex items-center gap-2">
+                      <Megaphone className="w-4 h-4 text-muted-foreground" />
+                      Campanhas
+                      <Badge variant={adminSettings.campaigns_enabled ? "default" : "secondary"}>
+                        {adminSettings.campaigns_enabled ? "Ativo" : "Desativado"}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Disparo de mídias em massa
+                    </p>
+                  </div>
+                  <Switch
+                    checked={adminSettings.campaigns_enabled}
+                    onCheckedChange={(checked) => updateSetting("campaigns_enabled", checked)}
+                  />
+                </CardContent>
+              </Card>
+
+              {/* Model Hub Toggle */}
+              <Card className="border-dashed">
+                <CardContent className="flex items-center justify-between py-4">
+                  <div className="space-y-0.5">
+                    <div className="font-medium flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-muted-foreground" />
+                      Model Hub
+                      <Badge variant={adminSettings.models_enabled ? "default" : "secondary"}>
+                        {adminSettings.models_enabled ? "Ativo" : "Desativado"}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Catálogo de modelos IA e Black
+                    </p>
+                  </div>
+                  <Switch
+                    checked={adminSettings.models_enabled}
+                    onCheckedChange={(checked) => updateSetting("models_enabled", checked)}
+                  />
+                </CardContent>
+              </Card>
+
+              {/* TikTok Accounts Toggle */}
+              <Card className="border-dashed">
+                <CardContent className="flex items-center justify-between py-4">
+                  <div className="space-y-0.5">
+                    <div className="font-medium flex items-center gap-2">
+                      <Video className="w-4 h-4 text-muted-foreground" />
+                      TikTok Accounts
+                      <Badge variant={adminSettings.tiktok_enabled ? "default" : "secondary"}>
+                        {adminSettings.tiktok_enabled ? "Ativo" : "Desativado"}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Catálogo de contas TikTok à venda
+                    </p>
+                  </div>
+                  <Switch
+                    checked={adminSettings.tiktok_enabled}
+                    onCheckedChange={(checked) => updateSetting("tiktok_enabled", checked)}
+                  />
+                </CardContent>
+              </Card>
+
+              {/* Funnels Toggle */}
+              <Card className="border-dashed">
+                <CardContent className="flex items-center justify-between py-4">
+                  <div className="space-y-0.5">
+                    <div className="font-medium flex items-center gap-2">
+                      <GitBranch className="w-4 h-4 text-muted-foreground" />
+                      Funis
+                      <Badge variant={adminSettings.funnels_enabled ? "default" : "secondary"}>
+                        {adminSettings.funnels_enabled ? "Ativo" : "Desativado"}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Builder de funis de conversação
+                    </p>
+                  </div>
+                  <Switch
+                    checked={adminSettings.funnels_enabled}
+                    onCheckedChange={(checked) => updateSetting("funnels_enabled", checked)}
+                  />
+                </CardContent>
+              </Card>
+
+              {/* Media Library Toggle */}
+              <Card className="border-dashed">
+                <CardContent className="flex items-center justify-between py-4">
+                  <div className="space-y-0.5">
+                    <div className="font-medium flex items-center gap-2">
+                      <Image className="w-4 h-4 text-muted-foreground" />
+                      Biblioteca de Mídias
+                      <Badge variant={adminSettings.media_library_enabled ? "default" : "secondary"}>
+                        {adminSettings.media_library_enabled ? "Ativo" : "Desativado"}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Acesso aos pacotes de mídias
+                    </p>
+                  </div>
+                  <Switch
+                    checked={adminSettings.media_library_enabled}
+                    onCheckedChange={(checked) => updateSetting("media_library_enabled", checked)}
+                  />
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
 

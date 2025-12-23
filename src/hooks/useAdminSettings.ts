@@ -2,16 +2,35 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-interface AdminSettings {
+export interface AdminSettings {
   tiktok_enabled: boolean;
   models_enabled: boolean;
+  campaigns_enabled: boolean;
+  destinations_enabled: boolean;
+  funnels_enabled: boolean;
+  media_library_enabled: boolean;
 }
 
+const defaultSettings: AdminSettings = {
+  tiktok_enabled: true,
+  models_enabled: true,
+  campaigns_enabled: true,
+  destinations_enabled: true,
+  funnels_enabled: true,
+  media_library_enabled: true,
+};
+
+const settingLabels: Record<keyof AdminSettings, string> = {
+  tiktok_enabled: "TikTok Accounts",
+  models_enabled: "Model Hub",
+  campaigns_enabled: "Campanhas",
+  destinations_enabled: "Destinos",
+  funnels_enabled: "Funis",
+  media_library_enabled: "Biblioteca de Mídias",
+};
+
 export const useAdminSettings = () => {
-  const [settings, setSettings] = useState<AdminSettings>({
-    tiktok_enabled: true,
-    models_enabled: true,
-  });
+  const [settings, setSettings] = useState<AdminSettings>(defaultSettings);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
@@ -23,17 +42,12 @@ export const useAdminSettings = () => {
 
       if (error) throw error;
 
-      const newSettings: AdminSettings = {
-        tiktok_enabled: true,
-        models_enabled: true,
-      };
+      const newSettings: AdminSettings = { ...defaultSettings };
 
       data?.forEach((item) => {
-        if (item.setting_key === "tiktok_enabled") {
-          newSettings.tiktok_enabled = item.setting_value;
-        }
-        if (item.setting_key === "models_enabled") {
-          newSettings.models_enabled = item.setting_value;
+        const key = item.setting_key as keyof AdminSettings;
+        if (key in newSettings) {
+          newSettings[key] = item.setting_value;
         }
       });
 
@@ -61,7 +75,7 @@ export const useAdminSettings = () => {
       
       toast({
         title: "Configuração atualizada",
-        description: `${key === "tiktok_enabled" ? "TikTok" : "Modelos"} ${value ? "ativado" : "desativado"} com sucesso.`,
+        description: `${settingLabels[key]} ${value ? "ativado" : "desativado"} com sucesso.`,
       });
     } catch (error) {
       console.error("Error updating setting:", error);
