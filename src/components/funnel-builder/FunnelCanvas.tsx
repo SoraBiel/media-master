@@ -27,6 +27,7 @@ import { WebhookConfig } from './WebhookConfig';
 import { BlockType, BLOCK_INFO, BlockData, FunnelNode, FunnelEdge, SCHEMA_VERSION } from './types';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
 
 const nodeTypes = {
   block: BlockNode,
@@ -333,10 +334,21 @@ const FunnelCanvasInner = ({
     sourceHandle: edge.sourceHandle || null,
   }));
 
+  const handleResetSessions = useCallback(async () => {
+    const { error } = await supabase
+      .from('telegram_sessions')
+      .update({ is_finished: true })
+      .eq('funnel_id', funnelId)
+      .eq('is_finished', false);
+
+    if (error) throw error;
+  }, [funnelId]);
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <FunnelToolbar
         funnelName={funnelName}
+        funnelId={funnelId}
         isActive={isActive}
         isSaving={isSaving}
         hasUnsavedChanges={hasUnsavedChanges}
@@ -344,6 +356,7 @@ const FunnelCanvasInner = ({
         onExport={onExport}
         onImport={onImport}
         onToggleActive={onToggleActive}
+        onResetSessions={handleResetSessions}
         sandboxNodes={sandboxNodes}
         sandboxEdges={sandboxEdges}
       />
