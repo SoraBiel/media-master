@@ -32,16 +32,16 @@ import {
   Trash2,
   Edit,
   Send,
-  ExternalLink,
   RefreshCw,
   Bot,
+  List,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useTelegramIntegration } from "@/hooks/useTelegramIntegration";
+import { useMultipleTelegramBots, TelegramBot, TelegramChat } from "@/hooks/useMultipleTelegramBots";
 
 interface Destination {
   id: string;
@@ -65,6 +65,9 @@ const DestinationsPage = () => {
   const [destinations, setDestinations] = useState<Destination[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isTesting, setIsTesting] = useState<string | null>(null);
+  const [selectedBotId, setSelectedBotId] = useState<string>("");
+  const [availableChats, setAvailableChats] = useState<TelegramChat[]>([]);
+  const [isLoadingChats, setIsLoadingChats] = useState(false);
   const [newDestination, setNewDestination] = useState({
     name: "",
     chat_id: "",
@@ -73,7 +76,7 @@ const DestinationsPage = () => {
   });
   const { toast } = useToast();
   const { user } = useAuth();
-  const { integration, availableChats, fetchAvailableChats, sendMessage } = useTelegramIntegration();
+  const { bots, isLoading: isLoadingBots, fetchChatsForBot, sendMessage } = useMultipleTelegramBots();
 
   const fetchDestinations = async () => {
     if (!user) return;
@@ -114,6 +117,59 @@ const DestinationsPage = () => {
     }
   }, [user]);
 
+  // Set default bot when bots load
+  useEffect(() => {
+    if (bots.length > 0 && !selectedBotId) {
+      setSelectedBotId(bots[0].id);
+      setNewDestination(prev => ({ ...prev, telegram_integration_id: bots[0].id }));
+    }
+  }, [bots]);
+
+  const handleBotChange = async (botId: string) => {
+    setSelectedBotId(botId);
+    setNewDestination(prev => ({ ...prev, telegram_integration_id: botId, chat_id: "" }));
+    setAvailableChats([]);
+  };
+
+  const handleLoadChats = async () => {
+    const bot = bots.find(b => b.id === selectedBotId);
+    if (!bot) {
+      toast({
+        title: "Selecione um bot",
+        description: "Escolha um bot primeiro para buscar os grupos.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoadingChats(true);
+    try {
+      const chats = await fetchChatsForBot(bot.bot_token);
+      setAvailableChats(chats);
+      
+      if (chats.length === 0) {
+        toast({
+          title: "Nenhum grupo encontrado",
+          description: "Adicione o bot a um grupo e envie uma mensagem para ele aparecer aqui.",
+          variant: "default",
+        });
+      }
+    } catch (error) {
+      console.error("Error loading chats:", error);
+    } finally {
+      setIsLoadingChats(false);
+    }
+  };
+
+  const handleSelectChat = (chat: TelegramChat) => {
+    setNewDestination(prev => ({
+      ...prev,
+      chat_id: String(chat.id),
+      name: prev.name || chat.title,
+      chat_type: chat.type === "channel" ? "channel" : chat.type === "supergroup" ? "supergroup" : "group",
+    }));
+  };
+
   const handleAddDestination = async () => {
     if (!newDestination.name || !newDestination.chat_id || !user) {
       toast({
@@ -141,7 +197,8 @@ const DestinationsPage = () => {
         description: `${newDestination.name} foi adicionado com sucesso.`,
       });
       setIsDialogOpen(false);
-      setNewDestination({ name: "", chat_id: "", chat_type: "group", telegram_integration_id: "" });
+      setNewDestination({ name: "", chat_id: "", chat_type: "group", telegram_integration_id: selectedBotId });
+      setAvailableChats([]);
     } catch (error: any) {
       toast({
         title: "Erro",
@@ -185,20 +242,59 @@ const DestinationsPage = () => {
   };
 
   const handleTestDestination = async (dest: Destination) => {
-    if (!integration?.bot_token) {
-      toast({
-        title: "Bot não conectado",
-        description: "Conecte um bot do Telegram primeiro em /telegram",
-        variant: "destructive",
-      });
+    // Find the bot associated with this destination
+    const bot = bots.find(b => b.id === dest.telegram_integration_id);
+    
+    if (!bot) {
+      // Try to find any connected bot
+      const anyBot = bots.find(b => b.is_connected);
+      if (!anyBot) {
+        toast({
+          title: "Bot não encontrado",
+          description: "Conecte um bot do Telegram primeiro em /telegram",
+          variant: "destructive",
+        });
+        return;
+      }
+      // Use the first available bot
+      setIsTesting(dest.id);
+      try {
+        await sendMessage(anyBot.bot_token, dest.chat_id, "✅ Teste de conexão do MediaDrop!");
+        
+        // Update destination with bot and status
+        await supabase
+          .from("destinations")
+          .update({ 
+            status: "verified",
+            telegram_integration_id: anyBot.id 
+          })
+          .eq("id", dest.id);
+        
+        toast({
+          title: "Teste enviado!",
+          description: `Mensagem enviada para ${dest.name}`,
+        });
+      } catch (error: any) {
+        await supabase
+          .from("destinations")
+          .update({ status: "error" })
+          .eq("id", dest.id);
+        
+        toast({
+          title: "Erro no teste",
+          description: error.message,
+          variant: "destructive",
+        });
+      } finally {
+        setIsTesting(null);
+      }
       return;
     }
 
     setIsTesting(dest.id);
     try {
-      await sendMessage("✅ Teste de conexão do MediaDrop!", dest.chat_id);
+      await sendMessage(bot.bot_token, dest.chat_id, "✅ Teste de conexão do MediaDrop!");
       
-      // Update status to verified
       await supabase
         .from("destinations")
         .update({ status: "verified" })
@@ -209,7 +305,6 @@ const DestinationsPage = () => {
         description: `Mensagem enviada para ${dest.name}`,
       });
     } catch (error: any) {
-      // Update status to error
       await supabase
         .from("destinations")
         .update({ status: "error" })
@@ -253,6 +348,12 @@ const DestinationsPage = () => {
     }
   };
 
+  const getBotName = (integrationId: string | null) => {
+    if (!integrationId) return null;
+    const bot = bots.find(b => b.id === integrationId);
+    return bot ? `@${bot.bot_username || bot.bot_name}` : null;
+  };
+
   const filteredDestinations = destinations.filter(
     (d) =>
       d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -269,7 +370,7 @@ const DestinationsPage = () => {
     });
   };
 
-  if (isLoading) {
+  if (isLoading || isLoadingBots) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center min-h-[400px]">
@@ -290,7 +391,12 @@ const DestinationsPage = () => {
             </p>
           </div>
 
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <Dialog open={isDialogOpen} onOpenChange={(open) => {
+            setIsDialogOpen(open);
+            if (!open) {
+              setAvailableChats([]);
+            }
+          }}>
             <DialogTrigger asChild>
               <Button variant="gradient">
                 <Plus className="w-4 h-4 mr-2" />
@@ -305,82 +411,150 @@ const DestinationsPage = () => {
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="dest-name">Nome interno</Label>
-                  <Input
-                    id="dest-name"
-                    placeholder="Ex: Grupo de Promoções"
-                    value={newDestination.name}
-                    onChange={(e) => setNewDestination({ ...newDestination, name: e.target.value })}
-                  />
-                </div>
-              <div className="space-y-2">
-                <Label htmlFor="dest-chat-id">Chat ID</Label>
-                <Input
-                  id="dest-chat-id"
-                  placeholder="-1001234567890"
-                  value={newDestination.chat_id}
-                  onChange={(e) => setNewDestination({ ...newDestination, chat_id: e.target.value })}
-                />
-                <div className="p-3 rounded-lg bg-secondary/50 text-sm space-y-2 mt-2">
-                  <p className="font-medium">Como obter o Chat ID:</p>
-                  <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
-                    <li>Adicione o bot <span className="text-telegram font-mono">@meuchatid_bot</span> ao seu grupo</li>
-                    <li>Envie qualquer mensagem no grupo</li>
-                    <li>O bot responderá com o Chat ID (ex: -1001234567890)</li>
-                    <li>Copie o ID e cole aqui</li>
-                  </ol>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Tipo</Label>
-                <Select
-                  value={newDestination.chat_type}
-                  onValueChange={(value) => setNewDestination({ ...newDestination, chat_type: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="group">
-                      <div className="flex items-center gap-2">
-                        <Users className="w-4 h-4" />
-                        Grupo
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="supergroup">
-                      <div className="flex items-center gap-2">
-                        <Users className="w-4 h-4" />
-                        Supergrupo
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="channel">
-                      <div className="flex items-center gap-2">
-                        <Megaphone className="w-4 h-4" />
-                        Canal
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground mt-1">
-                  O tipo é informado pelo @meuchatid_bot junto com o Chat ID.
-                </p>
-              </div>
-                
-                {!integration?.is_connected && (
-                  <div className="p-3 rounded-lg bg-warning/10 border border-warning/30 text-sm">
-                    <div className="flex items-center gap-2 text-warning">
-                      <Bot className="w-4 h-4" />
-                      <span>Conecte um bot primeiro em /telegram</span>
-                    </div>
+                {bots.length === 0 ? (
+                  <div className="p-4 rounded-lg bg-warning/10 border border-warning/30 text-center">
+                    <Bot className="w-8 h-8 mx-auto mb-2 text-warning" />
+                    <p className="font-medium">Nenhum bot conectado</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Vá para /telegram e conecte um bot primeiro.
+                    </p>
                   </div>
+                ) : (
+                  <>
+                    {/* Bot Selection */}
+                    <div className="space-y-2">
+                      <Label>Selecionar Bot</Label>
+                      <Select value={selectedBotId} onValueChange={handleBotChange}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Escolha um bot" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {bots.map((bot) => (
+                            <SelectItem key={bot.id} value={bot.id}>
+                              <div className="flex items-center gap-2">
+                                <Bot className="w-4 h-4" />
+                                {bot.bot_name} (@{bot.bot_username})
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Load Groups Button */}
+                    <Button 
+                      variant="outline" 
+                      className="w-full" 
+                      onClick={handleLoadChats}
+                      disabled={!selectedBotId || isLoadingChats}
+                    >
+                      {isLoadingChats ? (
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <List className="w-4 h-4 mr-2" />
+                      )}
+                      Buscar Grupos do Bot
+                    </Button>
+
+                    {/* Available Chats */}
+                    {availableChats.length > 0 && (
+                      <div className="space-y-2">
+                        <Label>Grupos Encontrados</Label>
+                        <div className="max-h-40 overflow-y-auto space-y-1 border rounded-lg p-2">
+                          {availableChats.map((chat) => (
+                            <button
+                              key={chat.id}
+                              onClick={() => handleSelectChat(chat)}
+                              className={`w-full p-2 text-left rounded-lg transition-colors flex items-center gap-2 ${
+                                newDestination.chat_id === String(chat.id)
+                                  ? "bg-telegram/20 border border-telegram"
+                                  : "hover:bg-secondary"
+                              }`}
+                            >
+                              {chat.type === "channel" ? (
+                                <Megaphone className="w-4 h-4" />
+                              ) : (
+                                <Users className="w-4 h-4" />
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium truncate">{chat.title}</p>
+                                <p className="text-xs text-muted-foreground">ID: {chat.id}</p>
+                              </div>
+                              {newDestination.chat_id === String(chat.id) && (
+                                <CheckCircle2 className="w-4 h-4 text-telegram" />
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="space-y-2">
+                      <Label htmlFor="dest-name">Nome interno</Label>
+                      <Input
+                        id="dest-name"
+                        placeholder="Ex: Grupo de Promoções"
+                        value={newDestination.name}
+                        onChange={(e) => setNewDestination({ ...newDestination, name: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="dest-chat-id">Chat ID</Label>
+                      <Input
+                        id="dest-chat-id"
+                        placeholder="-1001234567890"
+                        value={newDestination.chat_id}
+                        onChange={(e) => setNewDestination({ ...newDestination, chat_id: e.target.value })}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Use o botão "Buscar Grupos" ou insira o ID manualmente.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Tipo</Label>
+                      <Select
+                        value={newDestination.chat_type}
+                        onValueChange={(value) => setNewDestination({ ...newDestination, chat_type: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="group">
+                            <div className="flex items-center gap-2">
+                              <Users className="w-4 h-4" />
+                              Grupo
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="supergroup">
+                            <div className="flex items-center gap-2">
+                              <Users className="w-4 h-4" />
+                              Supergrupo
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="channel">
+                            <div className="flex items-center gap-2">
+                              <Megaphone className="w-4 h-4" />
+                              Canal
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </>
                 )}
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Cancelar
                 </Button>
-                <Button variant="gradient" onClick={handleAddDestination}>
+                <Button 
+                  variant="gradient" 
+                  onClick={handleAddDestination}
+                  disabled={bots.length === 0}
+                >
                   Adicionar
                 </Button>
               </DialogFooter>
@@ -436,6 +610,12 @@ const DestinationsPage = () => {
                         <span className="text-muted-foreground">Tipo</span>
                         <span className="capitalize">{dest.chat_type}</span>
                       </div>
+                      {getBotName(dest.telegram_integration_id) && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">Bot</span>
+                          <span className="text-telegram text-xs">{getBotName(dest.telegram_integration_id)}</span>
+                        </div>
+                      )}
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-muted-foreground">Último envio</span>
                         <span>{formatDate(dest.last_sent_at)}</span>
@@ -446,7 +626,7 @@ const DestinationsPage = () => {
                           size="sm" 
                           className="flex-1"
                           onClick={() => handleTestDestination(dest)}
-                          disabled={isTesting === dest.id}
+                          disabled={isTesting === dest.id || bots.length === 0}
                         >
                           {isTesting === dest.id ? (
                             <RefreshCw className="w-4 h-4 animate-spin" />
