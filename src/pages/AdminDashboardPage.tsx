@@ -708,7 +708,12 @@ const AdminDashboardPage = () => {
 
   const handleDeleteMedia = async (id: string) => {
     const { error } = await supabase.from("admin_media").delete().eq("id", id);
-    if (!error) toast({ title: "Pacote removido!" });
+    if (error) {
+      console.error("Erro ao deletar mídia:", error);
+      toast({ title: "Erro ao deletar", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Pacote removido!" });
+    }
   };
 
   const handleChangePlan = async () => {
