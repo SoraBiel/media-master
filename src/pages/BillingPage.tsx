@@ -141,7 +141,7 @@ const BillingPage = () => {
                       {plan.max_destinations && (
                         <li className="flex items-center gap-2 text-sm">
                           <Check className="w-4 h-4 text-telegram flex-shrink-0" />
-                          <span>{plan.max_destinations === 999 ? "Destinos ilimitados" : `${plan.max_destinations} destinos`}</span>
+                          <span>{plan.max_destinations === 999 || plan.max_destinations < 0 ? "∞ destinos" : `${plan.max_destinations} destinos`}</span>
                         </li>
                       )}
                       {plan.max_media_per_month && (
