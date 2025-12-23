@@ -80,6 +80,7 @@ interface Profile {
   user_id: string;
   email: string;
   full_name: string | null;
+  phone: string | null;
   current_plan: string;
   is_online: boolean;
   is_suspended: boolean;
@@ -807,6 +808,7 @@ const AdminDashboardPage = () => {
                     <TableHead>Status</TableHead>
                     <TableHead>Usuário</TableHead>
                     <TableHead>Email</TableHead>
+                    <TableHead>Telefone</TableHead>
                     <TableHead>Plano</TableHead>
                     <TableHead>Cargo</TableHead>
                     <TableHead>Último Acesso</TableHead>
@@ -825,6 +827,20 @@ const AdminDashboardPage = () => {
                       </TableCell>
                       <TableCell className="font-medium">{profile.full_name || "—"}</TableCell>
                       <TableCell>{profile.email}</TableCell>
+                      <TableCell>
+                        {profile.phone ? (
+                          <a 
+                            href={`https://wa.me/${profile.phone.replace(/\D/g, '')}`} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-success hover:underline"
+                          >
+                            {profile.phone}
+                          </a>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <Badge variant={profile.current_plan === "free" ? "secondary" : "default"} className="capitalize">
                           {profile.current_plan}

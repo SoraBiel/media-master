@@ -19,6 +19,7 @@ import {
   Menu,
   Video,
   Crown,
+  Headphones,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,6 +37,8 @@ import { useSubscription } from "@/hooks/useSubscription";
 interface DashboardLayoutProps {
   children: ReactNode;
 }
+
+const SUPPORT_WHATSAPP = "5562821234021";
 
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const [collapsed, setCollapsed] = useState(false);
@@ -86,6 +89,11 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const handleSignOut = async () => {
     await signOut();
     navigate("/login");
+  };
+
+  const openSupport = () => {
+    const message = encodeURIComponent("Olá! Preciso de ajuda com a plataforma MediaDrop TG.");
+    window.open(`https://wa.me/${SUPPORT_WHATSAPP}?text=${message}`, "_blank");
   };
 
   const NavContent = ({ onItemClick }: { onItemClick?: () => void }) => (
@@ -139,6 +147,17 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
       {/* Bottom Actions */}
       <div className="p-2 border-t border-sidebar-border space-y-1">
+        {/* Support Button */}
+        <button
+          onClick={() => {
+            onItemClick?.();
+            openSupport();
+          }}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground hover:bg-success/10 hover:text-success transition-colors w-full"
+        >
+          <Headphones className="w-5 h-5 flex-shrink-0" />
+          {!collapsed && <span className="text-sm font-medium">Suporte</span>}
+        </button>
         <Link
           to="/settings"
           onClick={onItemClick}
@@ -183,6 +202,9 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         </Link>
         
         <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" onClick={openSupport} className="text-success">
+            <Headphones className="w-5 h-5" />
+          </Button>
           <Button variant="ghost" size="icon" className="relative">
             <Bell className="w-5 h-5" />
             <span className="absolute top-1 right-1 w-2 h-2 bg-telegram rounded-full" />
@@ -218,6 +240,10 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           </h1>
 
           <div className="flex items-center gap-4">
+            <Button variant="outline" size="sm" onClick={openSupport} className="text-success border-success/30 hover:bg-success/10">
+              <Headphones className="w-4 h-4 mr-2" />
+              Suporte
+            </Button>
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="w-5 h-5" />
               <span className="absolute top-1 right-1 w-2 h-2 bg-telegram rounded-full" />
