@@ -7,75 +7,79 @@ import { Send, Mail, Lock, ArrowRight, Eye, EyeOff } from "lucide-react";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-
 const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const { signIn, user, isLoading: authLoading } = useAuth();
+  const {
+    toast
+  } = useToast();
+  const {
+    signIn,
+    user,
+    isLoading: authLoading
+  } = useAuth();
 
   // Redirect if already logged in
   useEffect(() => {
     if (!authLoading && user) {
-      navigate("/dashboard", { replace: true });
+      navigate("/dashboard", {
+        replace: true
+      });
     }
   }, [user, authLoading, navigate]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    const { error } = await signIn(email, password);
-    
+    const {
+      error
+    } = await signIn(email, password);
     if (error) {
       setIsLoading(false);
       toast({
         title: "Erro ao entrar",
-        description: error.message === "Invalid login credentials" 
-          ? "Email ou senha incorretos." 
-          : error.message,
-        variant: "destructive",
+        description: error.message === "Invalid login credentials" ? "Email ou senha incorretos." : error.message,
+        variant: "destructive"
       });
       return;
     }
-    
     setIsLoading(false);
     toast({
       title: "Login realizado!",
-      description: "Bem-vindo de volta ao Nexo.",
+      description: "Bem-vindo de volta ao Nexo."
     });
-    navigate("/dashboard", { replace: true });
+    navigate("/dashboard", {
+      replace: true
+    });
   };
 
   // Show loading while checking auth state
   if (authLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+    return <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-pulse flex flex-col items-center gap-4">
           <div className="w-12 h-12 rounded-full bg-telegram/20 flex items-center justify-center">
             <div className="w-6 h-6 rounded-full bg-telegram animate-ping" />
           </div>
           <p className="text-muted-foreground">Carregando...</p>
         </div>
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <div className="min-h-screen bg-background flex">
+  return <div className="min-h-screen bg-background flex">
       {/* Left Side - Form */}
       <div className="flex-1 flex items-center justify-center p-4 md:p-8">
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5 }}
-          className="w-full max-w-md"
-        >
+        <motion.div initial={{
+        opacity: 0,
+        x: -20
+      }} animate={{
+        opacity: 1,
+        x: 0
+      }} transition={{
+        duration: 0.5
+      }} className="w-full max-w-md">
           <Link to="/" className="flex items-center gap-2 mb-8">
-            <img src="/logo-nexo.png" alt="Nexo" className="h-16" />
+            <img src="/logo-nexo.png" alt="Nexo" className="h-40" />
           </Link>
 
           <h1 className="text-2xl md:text-3xl font-bold mb-2">Bem-vindo de volta</h1>
@@ -88,15 +92,7 @@ const LoginPage = () => {
               <Label htmlFor="email">Email</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="seu@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10"
-                  required
-                />
+                <Input id="email" type="email" placeholder="seu@email.com" value={email} onChange={e => setEmail(e.target.value)} className="pl-10" required />
               </div>
             </div>
 
@@ -109,32 +105,14 @@ const LoginPage = () => {
               </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 pr-10"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
+                <Input id="password" type={showPassword ? "text" : "password"} placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} className="pl-10 pr-10" required />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
 
-            <Button 
-              type="submit" 
-              variant="gradient" 
-              size="lg" 
-              className="w-full"
-              disabled={isLoading}
-            >
+            <Button type="submit" variant="gradient" size="lg" className="w-full" disabled={isLoading}>
               {isLoading ? "Entrando..." : "Entrar"}
               <ArrowRight className="w-4 h-4" />
             </Button>
@@ -154,12 +132,16 @@ const LoginPage = () => {
         <div className="absolute inset-0 telegram-gradient opacity-90" />
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzRjMC0yIDItNCAyLTRzLTItMi0yLTQgMi00IDItNCAyIDIgMiA0LTIgNC0yIDQgMiAyIDIgNHoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-30" />
         <div className="relative z-10 flex flex-col items-center justify-center p-12 text-white">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="text-center"
-          >
+          <motion.div initial={{
+          opacity: 0,
+          y: 20
+        }} animate={{
+          opacity: 1,
+          y: 0
+        }} transition={{
+          duration: 0.6,
+          delay: 0.2
+        }} className="text-center">
             <div className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center mb-8 mx-auto">
               <Send className="w-10 h-10" />
             </div>
@@ -173,8 +155,6 @@ const LoginPage = () => {
           </motion.div>
         </div>
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default LoginPage;
