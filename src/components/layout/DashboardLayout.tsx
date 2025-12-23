@@ -111,11 +111,9 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       {/* Logo */}
       <div className="h-16 flex items-center justify-between px-4 border-b border-sidebar-border">
         <Link to="/dashboard" className="flex items-center gap-2" onClick={onItemClick}>
-          <div className="w-8 h-8 rounded-lg telegram-gradient flex items-center justify-center flex-shrink-0">
-            <Send className="w-4 h-4 text-white" />
-          </div>
+          <img src="/logo-nexo.png" alt="Nexo" className={collapsed ? "h-8" : "h-8"} />
           {!collapsed && (
-            <span className="font-bold text-sidebar-foreground">MediaDrop</span>
+            <span className="font-bold text-sidebar-foreground">Nexo</span>
           )}
         </Link>
         <Button
@@ -205,10 +203,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       {/* Mobile Header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-background/80 backdrop-blur-sm border-b border-border z-40 flex items-center justify-between px-4">
         <Link to="/dashboard" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg telegram-gradient flex items-center justify-center">
-            <Send className="w-4 h-4 text-white" />
-          </div>
-          <span className="font-bold">MediaDrop</span>
+          <img src="/logo-nexo.png" alt="Nexo" className="h-8" />
         </Link>
         
         <div className="flex items-center gap-2">

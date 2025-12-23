@@ -118,10 +118,7 @@ const ResetPasswordPage = () => {
         className="w-full max-w-md"
       >
         <Link to="/" className="flex items-center gap-2 mb-8 justify-center">
-          <div className="w-10 h-10 rounded-lg telegram-gradient flex items-center justify-center">
-            <Send className="w-5 h-5 text-white" />
-          </div>
-          <span className="font-bold text-xl">MediaDrop TG</span>
+          <img src="/logo-nexo.png" alt="Nexo" className="h-10" />
         </Link>
 
         <div className="glass-card p-8">

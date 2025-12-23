@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 const steps = [
   {
     id: 1,
-    title: "Bem-vindo ao MediaDrop TG!",
+    title: "Bem-vindo ao Nexo!",
     description: "Sua plataforma para automação de mídia no Telegram. Vamos configurar sua conta em poucos passos.",
     icon: Send,
   },
@@ -51,7 +51,7 @@ const OnboardingPage = () => {
       
       toast({
         title: "Configuração concluída!",
-        description: "Bem-vindo ao MediaDrop TG!",
+        description: "Bem-vindo ao Nexo!",
       });
 
       navigate("/dashboard");
