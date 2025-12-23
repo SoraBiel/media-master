@@ -707,6 +707,27 @@ const AdminDashboardPage = () => {
   };
 
   const handleDeleteMedia = async (id: string) => {
+    // Check if any campaigns are using this media pack
+    const { data: campaigns, error: checkError } = await supabase
+      .from("campaigns")
+      .select("id, name")
+      .eq("media_pack_id", id);
+
+    if (checkError) {
+      console.error("Erro ao verificar campanhas:", checkError);
+      toast({ title: "Erro", description: "Não foi possível verificar se há campanhas vinculadas.", variant: "destructive" });
+      return;
+    }
+
+    if (campaigns && campaigns.length > 0) {
+      toast({
+        title: "Não é possível excluir",
+        description: `Este pacote está sendo usado por ${campaigns.length} campanha(s). Remova as campanhas primeiro ou altere o pacote de mídia delas.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     const { error } = await supabase.from("admin_media").delete().eq("id", id);
     if (error) {
       console.error("Erro ao deletar mídia:", error);
