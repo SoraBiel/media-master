@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -59,27 +59,48 @@ export const FunnelSandbox = ({ funnelName, nodes, edges }: FunnelSandboxProps) 
   const [variables, setVariables] = useState<Record<string, any>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Use refs to always have the latest nodes/edges in callbacks
+  const nodesRef = useRef(nodes);
+  const edgesRef = useRef(edges);
+  const variablesRef = useRef(variables);
+
+  useEffect(() => {
+    nodesRef.current = nodes;
+  }, [nodes]);
+
+  useEffect(() => {
+    edgesRef.current = edges;
+  }, [edges]);
+
+  useEffect(() => {
+    variablesRef.current = variables;
+  }, [variables]);
+
   // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const findNextNode = (currentId: string, sourceHandle?: string): FunnelNode | undefined => {
-    const edge = edges.find((e) => {
+  const findNextNode = useCallback((currentId: string, sourceHandle?: string): FunnelNode | undefined => {
+    const currentEdges = edgesRef.current;
+    const currentNodes = nodesRef.current;
+    
+    const edge = currentEdges.find((e) => {
       if (e.source !== currentId) return false;
       if (sourceHandle && e.sourceHandle) return e.sourceHandle === sourceHandle;
       return true;
     });
 
     if (!edge) return undefined;
-    return nodes.find((n) => n.id === edge.target);
-  };
+    return currentNodes.find((n) => n.id === edge.target);
+  }, []);
 
-  const replaceVariables = (text: string): string => {
+  const replaceVariables = useCallback((text: string): string => {
+    const vars = variablesRef.current;
     return text.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
-      return variables[varName] !== undefined ? String(variables[varName]) : match;
+      return vars[varName] !== undefined ? String(vars[varName]) : match;
     });
-  };
+  }, []);
 
   const addBotMessage = (content: string, buttons?: Array<{ id: string; label: string }>, mediaUrl?: string, mediaType?: "image" | "video") => {
     const message: Message = {
@@ -163,7 +184,8 @@ export const FunnelSandbox = ({ funnelName, nodes, edges }: FunnelSandboxProps) 
 
       case "condition": {
         const { variable, operator, value } = node.data;
-        const actualValue = variables[variable];
+        const currentVars = variablesRef.current;
+        const actualValue = currentVars[variable];
         let result = false;
 
         switch (operator) {
@@ -214,7 +236,11 @@ export const FunnelSandbox = ({ funnelName, nodes, edges }: FunnelSandboxProps) 
           const varName = node.data.variableName;
           const varValue = replaceVariables(node.data.varValue || "");
           if (varName) {
-            setVariables((prev) => ({ ...prev, [varName]: varValue }));
+            setVariables((prev) => {
+              const newVars = { ...prev, [varName]: varValue };
+              variablesRef.current = newVars;
+              return newVars;
+            });
           }
         } else if (node.data.action === "clear") {
           const varName = node.data.variableName;
@@ -222,6 +248,7 @@ export const FunnelSandbox = ({ funnelName, nodes, edges }: FunnelSandboxProps) 
             setVariables((prev) => {
               const newVars = { ...prev };
               delete newVars[varName];
+              variablesRef.current = newVars;
               return newVars;
             });
           }
@@ -278,15 +305,19 @@ export const FunnelSandbox = ({ funnelName, nodes, edges }: FunnelSandboxProps) 
   };
 
   const startSimulation = async () => {
-    if (nodes.length === 0) {
+    const currentNodes = nodesRef.current;
+    
+    if (currentNodes.length === 0) {
       toast.error("Adicione blocos ao funil primeiro");
       return;
     }
 
     setMessages([]);
-    setVariables({ nome: "Usuário Teste", user_id: "sandbox_user", chat_id: "sandbox_chat" });
+    const initialVars = { nome: "Usuário Teste", user_id: "sandbox_user", chat_id: "sandbox_chat" };
+    setVariables(initialVars);
+    variablesRef.current = initialVars;
 
-    const startNode = nodes.find((n) => n.type === "start");
+    const startNode = currentNodes.find((n) => n.type === "start");
     if (!startNode) {
       toast.error("Funil não tem nó de início");
       return;
@@ -303,12 +334,17 @@ export const FunnelSandbox = ({ funnelName, nodes, edges }: FunnelSandboxProps) 
     setInputValue("");
     addUserMessage(messageText);
 
-    const currentNode = nodes.find((n) => n.id === currentNodeId);
+    const currentNodes = nodesRef.current;
+    const currentNode = currentNodes.find((n) => n.id === currentNodeId);
     if (!currentNode) return;
 
     const varName = currentNode.data.variableName;
     if (varName) {
-      setVariables((prev) => ({ ...prev, [varName]: messageText }));
+      setVariables((prev) => {
+        const newVars = { ...prev, [varName]: messageText };
+        variablesRef.current = newVars;
+        return newVars;
+      });
     }
 
     let sourceHandle: string | undefined;
@@ -333,7 +369,9 @@ export const FunnelSandbox = ({ funnelName, nodes, edges }: FunnelSandboxProps) 
   const resetSimulation = () => {
     setMessages([]);
     setCurrentNodeId(null);
-    setVariables({ nome: "Usuário Teste", user_id: "sandbox_user", chat_id: "sandbox_chat" });
+    const initialVars = { nome: "Usuário Teste", user_id: "sandbox_user", chat_id: "sandbox_chat" };
+    setVariables(initialVars);
+    variablesRef.current = initialVars;
     setIsSimulating(false);
     toast.success("Simulação reiniciada");
   };
