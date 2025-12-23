@@ -102,7 +102,7 @@ const FunnelsPage = () => {
         const idMap = new Map<string, string>();
         
         const nodes = (template.nodes || []).map((node: any) => {
-          const newId = `${node.id}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+          const newId = crypto.randomUUID();
           idMap.set(node.id, newId);
           return {
             id: newId,
@@ -118,9 +118,9 @@ const FunnelsPage = () => {
           await supabase.from("funnel_nodes").insert(nodes);
         }
 
-        // Insert edges with remapped IDs
+        // Insert edges with remapped UUIDs
         const edges = (template.edges || []).map((edge: any) => ({
-          id: `edge_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          id: crypto.randomUUID(),
           funnel_id: data.id,
           source_node_id: idMap.get(edge.source) || edge.source,
           target_node_id: idMap.get(edge.target) || edge.target,
@@ -131,10 +131,10 @@ const FunnelsPage = () => {
           await supabase.from("funnel_edges").insert(edges);
         }
       } else if (data) {
-        // Se não tem template, cria blocos iniciais de teste
-        const startNodeId = `start_${Date.now()}_1`;
-        const messageNodeId = `message_${Date.now()}_2`;
-        const endNodeId = `end_${Date.now()}_3`;
+        // Se não tem template, cria blocos iniciais de teste com UUIDs
+        const startNodeId = crypto.randomUUID();
+        const messageNodeId = crypto.randomUUID();
+        const endNodeId = crypto.randomUUID();
 
         const initialNodes = [
           {
@@ -165,14 +165,14 @@ const FunnelsPage = () => {
 
         const initialEdges = [
           {
-            id: `edge_${Date.now()}_1`,
+            id: crypto.randomUUID(),
             funnel_id: data.id,
             source_node_id: startNodeId,
             target_node_id: messageNodeId,
             source_handle: 'default',
           },
           {
-            id: `edge_${Date.now()}_2`,
+            id: crypto.randomUUID(),
             funnel_id: data.id,
             source_node_id: messageNodeId,
             target_node_id: endNodeId,
