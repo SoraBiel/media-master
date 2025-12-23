@@ -85,10 +85,7 @@ const ForgotPasswordPage = () => {
           className="w-full max-w-md"
         >
           <Link to="/" className="flex items-center gap-2 mb-8">
-            <div className="w-10 h-10 rounded-lg telegram-gradient flex items-center justify-center">
-              <Send className="w-5 h-5 text-white" />
-            </div>
-            <span className="font-bold text-xl">MediaDrop TG</span>
+            <img src="/logo-nexo.png" alt="Nexo" className="h-10" />
           </Link>
 
           <h1 className="text-2xl md:text-3xl font-bold mb-2">Esqueceu sua senha?</h1>

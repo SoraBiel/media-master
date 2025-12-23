@@ -289,7 +289,7 @@ const DestinationsPage = () => {
 
     setIsTesting(dest.id);
     try {
-      await sendMessage(bot.bot_token, dest.chat_id, "✅ Teste de conexão do MediaDrop!");
+      await sendMessage(bot.bot_token, dest.chat_id, "✅ Teste de conexão do Nexo!");
 
       await supabase.from("destinations").update({ status: "verified" }).eq("id", dest.id);
 

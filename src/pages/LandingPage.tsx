@@ -92,10 +92,7 @@ const LandingPage = () => {
       <header className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg telegram-gradient flex items-center justify-center">
-              <Send className="w-4 h-4 text-white" />
-            </div>
-            <span className="font-bold text-lg">MediaDrop TG</span>
+            <img src="/logo-nexo.png" alt="Nexo" className="h-8" />
           </Link>
           <nav className="hidden md:flex items-center gap-6">
             <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">
@@ -319,13 +316,10 @@ const LandingPage = () => {
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-md telegram-gradient flex items-center justify-center">
-                <Send className="w-3 h-3 text-white" />
-              </div>
-              <span className="font-semibold">MediaDrop TG</span>
+              <img src="/logo-nexo.png" alt="Nexo" className="h-6" />
             </div>
             <p className="text-sm text-muted-foreground">
-              © 2024 MediaDrop TG. Todos os direitos reservados.
+              © 2024 Nexo. Todos os direitos reservados.
             </p>
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <a href="#" className="hover:text-foreground transition-colors">Termos</a>
