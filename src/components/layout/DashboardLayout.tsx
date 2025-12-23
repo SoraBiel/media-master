@@ -39,7 +39,7 @@ interface DashboardLayoutProps {
   children: ReactNode;
 }
 
-const SUPPORT_WHATSAPP = "5562821234021";
+const SUPPORT_WHATSAPP = "+556282123402";
 
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const [collapsed, setCollapsed] = useState(false);
@@ -94,9 +94,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   };
 
   const openSupport = () => {
-    const message = encodeURIComponent("Olá! Preciso de ajuda com a plataforma MediaDrop TG.");
-    // Using web.whatsapp.com for better browser compatibility
-    window.open(`https://web.whatsapp.com/send?phone=${SUPPORT_WHATSAPP}&text=${message}`, "_blank", "noopener,noreferrer");
+    window.open(`https://web.whatsapp.com/${SUPPORT_WHATSAPP}`, "_blank", "noopener,noreferrer");
   };
 
   const NavContent = ({ onItemClick }: { onItemClick?: () => void }) => (
