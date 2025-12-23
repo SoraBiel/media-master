@@ -111,7 +111,7 @@ const DashboardLayout = ({
       <div className="h-16 flex items-center justify-between px-4 border-b border-sidebar-border">
         <Link to="/dashboard" className="flex items-center gap-2" onClick={onItemClick}>
           <img src="/logo-nexo.png" alt="Nexo" className="" />
-          {!collapsed && <span className="font-bold text-sidebar-foreground">Nexo</span>}
+          {!collapsed && <span className="font-bold text-sidebar-foreground">​</span>}
         </Link>
         <Button variant="ghost" size="icon" onClick={() => setCollapsed(!collapsed)} className="text-sidebar-foreground hover:bg-sidebar-accent hidden lg:flex">
           {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
