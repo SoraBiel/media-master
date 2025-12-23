@@ -150,6 +150,12 @@ const FunnelBuilderPage = () => {
         if (edgesError) throw edgesError;
       }
 
+      // Touch funnel updated_at so live sessions can detect changes
+      await supabase
+        .from("funnels")
+        .update({ updated_at: new Date().toISOString() })
+        .eq("id", funnelId);
+
       // Refresh from database
       await fetchFunnel();
 
