@@ -405,6 +405,57 @@ export type Database = {
           },
         ]
       }
+      funnel_templates: {
+        Row: {
+          category: string
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          edges: Json
+          id: string
+          is_active: boolean | null
+          is_free: boolean | null
+          name: string
+          nodes: Json
+          schema_version: number
+          template_version: number
+          updated_at: string | null
+          variables: Json | null
+        }
+        Insert: {
+          category?: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          edges?: Json
+          id?: string
+          is_active?: boolean | null
+          is_free?: boolean | null
+          name: string
+          nodes?: Json
+          schema_version?: number
+          template_version?: number
+          updated_at?: string | null
+          variables?: Json | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          edges?: Json
+          id?: string
+          is_active?: boolean | null
+          is_free?: boolean | null
+          name?: string
+          nodes?: Json
+          schema_version?: number
+          template_version?: number
+          updated_at?: string | null
+          variables?: Json | null
+        }
+        Relationships: []
+      }
       funnels: {
         Row: {
           created_at: string
@@ -412,9 +463,13 @@ export type Database = {
           id: string
           is_active: boolean | null
           name: string
+          schema_version: number | null
           telegram_integration_id: string | null
+          trigger_keywords: string[] | null
           updated_at: string
           user_id: string
+          webhook_registered: boolean | null
+          webhook_url: string | null
         }
         Insert: {
           created_at?: string
@@ -422,9 +477,13 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           name: string
+          schema_version?: number | null
           telegram_integration_id?: string | null
+          trigger_keywords?: string[] | null
           updated_at?: string
           user_id: string
+          webhook_registered?: boolean | null
+          webhook_url?: string | null
         }
         Update: {
           created_at?: string
@@ -432,9 +491,13 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           name?: string
+          schema_version?: number | null
           telegram_integration_id?: string | null
+          trigger_keywords?: string[] | null
           updated_at?: string
           user_id?: string
+          webhook_registered?: boolean | null
+          webhook_url?: string | null
         }
         Relationships: [
           {
@@ -687,6 +750,101 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      telegram_logs: {
+        Row: {
+          created_at: string | null
+          event_type: string
+          funnel_id: string | null
+          id: string
+          node_id: string | null
+          payload: Json | null
+          session_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          event_type: string
+          funnel_id?: string | null
+          id?: string
+          node_id?: string | null
+          payload?: Json | null
+          session_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          event_type?: string
+          funnel_id?: string | null
+          id?: string
+          node_id?: string | null
+          payload?: Json | null
+          session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "telegram_logs_funnel_id_fkey"
+            columns: ["funnel_id"]
+            isOneToOne: false
+            referencedRelation: "funnels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "telegram_logs_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "telegram_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      telegram_sessions: {
+        Row: {
+          chat_id: string
+          created_at: string | null
+          current_node_id: string | null
+          funnel_id: string
+          history: Json | null
+          id: string
+          is_finished: boolean | null
+          last_message_at: string | null
+          telegram_user_id: string | null
+          updated_at: string | null
+          variables: Json | null
+        }
+        Insert: {
+          chat_id: string
+          created_at?: string | null
+          current_node_id?: string | null
+          funnel_id: string
+          history?: Json | null
+          id?: string
+          is_finished?: boolean | null
+          last_message_at?: string | null
+          telegram_user_id?: string | null
+          updated_at?: string | null
+          variables?: Json | null
+        }
+        Update: {
+          chat_id?: string
+          created_at?: string | null
+          current_node_id?: string | null
+          funnel_id?: string
+          history?: Json | null
+          id?: string
+          is_finished?: boolean | null
+          last_message_at?: string | null
+          telegram_user_id?: string | null
+          updated_at?: string | null
+          variables?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "telegram_sessions_funnel_id_fkey"
+            columns: ["funnel_id"]
+            isOneToOne: false
+            referencedRelation: "funnels"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tiktok_accounts: {
         Row: {
