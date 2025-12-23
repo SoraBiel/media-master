@@ -289,7 +289,7 @@ const FunnelCanvasInner = ({
   }, [onImport, toast]);
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full min-h-0 flex-col">
       <FunnelToolbar
         funnelName={funnelName}
         isActive={isActive}
@@ -301,7 +301,7 @@ const FunnelCanvasInner = ({
         onToggleActive={onToggleActive}
       />
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 min-h-0 flex flex-col">
         <div className="px-4 py-2 border-b bg-background flex items-center justify-between">
           <TabsList>
             <TabsTrigger value="editor" className="flex items-center gap-2">
@@ -323,13 +323,13 @@ const FunnelCanvasInner = ({
           </Button>
         </div>
 
-        <TabsContent value="editor" className="flex-1 flex m-0 data-[state=inactive]:hidden overflow-hidden">
+        <TabsContent value="editor" className="flex-1 min-h-0 flex m-0 data-[state=inactive]:hidden overflow-hidden">
           <BlockSidebar onDragStart={onDragStart} />
-          
-          <div className="flex-1 flex flex-col">
-            <div 
-              ref={reactFlowWrapper} 
-              className="flex-1"
+
+          <div className="flex-1 min-h-0 flex flex-col">
+            <div
+              ref={reactFlowWrapper}
+              className="flex-1 min-h-0"
               onDrop={(e) => {
                 if (e.dataTransfer.files.length > 0) {
                   handleFileDrop(e);
