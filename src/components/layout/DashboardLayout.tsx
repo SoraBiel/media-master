@@ -1,102 +1,99 @@
 import { ReactNode, useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import {
-  Send,
-  LayoutDashboard,
-  CreditCard,
-  MessageCircle,
-  Target,
-  Megaphone,
-  Sparkles,
-  Settings,
-  LogOut,
-  ChevronLeft,
-  ChevronRight,
-  Bell,
-  User,
-  Shield,
-  Menu,
-  Video,
-  Crown,
-  Headphones,
-  GitBranch,
-} from "lucide-react";
+import { Send, LayoutDashboard, CreditCard, MessageCircle, Target, Megaphone, Sparkles, Settings, LogOut, ChevronLeft, ChevronRight, Bell, User, Shield, Menu, Video, Crown, Headphones, GitBranch } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/AuthContext";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useSubscription } from "@/hooks/useSubscription";
-
 interface DashboardLayoutProps {
   children: ReactNode;
 }
-
 const SUPPORT_WHATSAPP = "+556282123402";
-
-const DashboardLayout = ({ children }: DashboardLayoutProps) => {
+const DashboardLayout = ({
+  children
+}: DashboardLayoutProps) => {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { signOut, isAdmin, profile } = useAuth();
-  const { hasActiveSubscription, currentPlan } = useSubscription();
+  const {
+    signOut,
+    isAdmin,
+    profile
+  } = useAuth();
+  const {
+    hasActiveSubscription,
+    currentPlan
+  } = useSubscription();
 
   // Build navigation items dynamically based on subscription status
   const getNavItems = () => {
-    const items = [
-      { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
-    ];
+    const items = [{
+      icon: LayoutDashboard,
+      label: "Dashboard",
+      path: "/dashboard"
+    }];
 
     // Show "Planos" only if user doesn't have an active subscription
     // Show "Meu Plano" if user has an active subscription
     if (hasActiveSubscription()) {
-      items.push({ 
-        icon: Crown, 
-        label: `Plano ${currentPlan?.name || "Ativo"}`, 
-        path: "/billing" 
+      items.push({
+        icon: Crown,
+        label: `Plano ${currentPlan?.name || "Ativo"}`,
+        path: "/billing"
       });
     } else {
-      items.push({ icon: CreditCard, label: "Planos", path: "/billing" });
+      items.push({
+        icon: CreditCard,
+        label: "Planos",
+        path: "/billing"
+      });
     }
-
-    items.push(
-      { icon: MessageCircle, label: "Telegram", path: "/telegram" },
-      { icon: Target, label: "Destinos", path: "/destinations" },
-      { icon: Megaphone, label: "Campanhas", path: "/campaigns" },
-      { icon: Sparkles, label: "Model Hub", path: "/model-hub" },
-      { icon: Video, label: "TikTok Accounts", path: "/tiktok-accounts" },
-      { icon: GitBranch, label: "Funis", path: "/funnels" },
-    );
-
+    items.push({
+      icon: MessageCircle,
+      label: "Telegram",
+      path: "/telegram"
+    }, {
+      icon: Target,
+      label: "Destinos",
+      path: "/destinations"
+    }, {
+      icon: Megaphone,
+      label: "Campanhas",
+      path: "/campaigns"
+    }, {
+      icon: Sparkles,
+      label: "Model Hub",
+      path: "/model-hub"
+    }, {
+      icon: Video,
+      label: "TikTok Accounts",
+      path: "/tiktok-accounts"
+    }, {
+      icon: GitBranch,
+      label: "Funis",
+      path: "/funnels"
+    });
     return items;
   };
-
   const navItems = getNavItems();
 
   // Admin-only items
-  const adminItems = [
-    { icon: Shield, label: "Admin", path: "/admin" },
-  ];
-
+  const adminItems = [{
+    icon: Shield,
+    label: "Admin",
+    path: "/admin"
+  }];
   const allNavItems = isAdmin ? [...navItems, ...adminItems] : navItems;
-
   const handleSignOut = async () => {
     await signOut();
     navigate("/login");
   };
-
   const openSupport = () => {
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     const phoneNumber = SUPPORT_WHATSAPP.replace('+', '');
-    
     if (isMobile) {
       // Opens WhatsApp app on mobile devices
       window.location.href = `whatsapp://send?phone=${phoneNumber}`;
@@ -105,98 +102,59 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       window.open(`https://web.whatsapp.com/send?phone=${phoneNumber}`, "_blank", "noopener,noreferrer");
     }
   };
-
-  const NavContent = ({ onItemClick }: { onItemClick?: () => void }) => (
-    <>
+  const NavContent = ({
+    onItemClick
+  }: {
+    onItemClick?: () => void;
+  }) => <>
       {/* Logo */}
       <div className="h-16 flex items-center justify-between px-4 border-b border-sidebar-border">
         <Link to="/dashboard" className="flex items-center gap-2" onClick={onItemClick}>
-          <img src="/logo-nexo.png" alt="Nexo" className={collapsed ? "h-8" : "h-10"} />
-          {!collapsed && (
-            <span className="font-bold text-sidebar-foreground">Nexo</span>
-          )}
+          <img src="/logo-nexo.png" alt="Nexo" className="" />
+          {!collapsed && <span className="font-bold text-sidebar-foreground">Nexo</span>}
         </Link>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setCollapsed(!collapsed)}
-          className="text-sidebar-foreground hover:bg-sidebar-accent hidden lg:flex"
-        >
-          {collapsed ? (
-            <ChevronRight className="w-4 h-4" />
-          ) : (
-            <ChevronLeft className="w-4 h-4" />
-          )}
+        <Button variant="ghost" size="icon" onClick={() => setCollapsed(!collapsed)} className="text-sidebar-foreground hover:bg-sidebar-accent hidden lg:flex">
+          {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
         </Button>
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
-        {allNavItems.map((item) => {
-          const isActive = location.pathname === item.path;
-          return (
-            <Link
-              key={item.path}
-              to={item.path}
-              onClick={onItemClick}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
-                isActive
-                  ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-              )}
-            >
+        {allNavItems.map(item => {
+        const isActive = location.pathname === item.path;
+        return <Link key={item.path} to={item.path} onClick={onItemClick} className={cn("flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200", isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground")}>
               <item.icon className="w-5 h-5 flex-shrink-0" />
               {!collapsed && <span className="text-sm font-medium">{item.label}</span>}
-            </Link>
-          );
-        })}
+            </Link>;
+      })}
       </nav>
 
       {/* Bottom Actions */}
       <div className="p-2 border-t border-sidebar-border space-y-1">
         {/* Support Button */}
-        <button
-          onClick={() => {
-            onItemClick?.();
-            openSupport();
-          }}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground hover:bg-success/10 hover:text-success transition-colors w-full"
-        >
+        <button onClick={() => {
+        onItemClick?.();
+        openSupport();
+      }} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground hover:bg-success/10 hover:text-success transition-colors w-full">
           <Headphones className="w-5 h-5 flex-shrink-0" />
           {!collapsed && <span className="text-sm font-medium">Suporte</span>}
         </button>
-        <Link
-          to="/settings"
-          onClick={onItemClick}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
-        >
+        <Link to="/settings" onClick={onItemClick} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
           <Settings className="w-5 h-5 flex-shrink-0" />
           {!collapsed && <span className="text-sm font-medium">Configurações</span>}
         </Link>
-        <button
-          onClick={() => {
-            onItemClick?.();
-            handleSignOut();
-          }}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground hover:bg-destructive/10 hover:text-destructive transition-colors w-full"
-        >
+        <button onClick={() => {
+        onItemClick?.();
+        handleSignOut();
+      }} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground hover:bg-destructive/10 hover:text-destructive transition-colors w-full">
           <LogOut className="w-5 h-5 flex-shrink-0" />
           {!collapsed && <span className="text-sm font-medium">Sair</span>}
         </button>
       </div>
-    </>
-  );
-
-  return (
-    <div className="min-h-screen bg-background flex">
+    </>;
+  return <div className="min-h-screen bg-background flex">
       {/* Desktop Sidebar */}
-      <aside
-        className={cn(
-          "fixed left-0 top-0 h-full bg-sidebar border-r border-sidebar-border z-40 transition-all duration-300 hidden lg:flex flex-col",
-          collapsed ? "w-16" : "w-64"
-        )}
-      >
+      <aside className={cn("fixed left-0 top-0 h-full bg-sidebar border-r border-sidebar-border z-40 transition-all duration-300 hidden lg:flex flex-col", collapsed ? "w-16" : "w-64")}>
         <NavContent />
       </aside>
 
@@ -231,17 +189,11 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       </div>
 
       {/* Main Content */}
-      <div
-        className={cn(
-          "flex-1 transition-all duration-300",
-          "lg:ml-64",
-          collapsed && "lg:ml-16"
-        )}
-      >
+      <div className={cn("flex-1 transition-all duration-300", "lg:ml-64", collapsed && "lg:ml-16")}>
         {/* Desktop Top Bar */}
         <header className="h-16 border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-30 hidden lg:flex items-center justify-between px-6">
           <h1 className="text-lg font-semibold">
-            {allNavItems.find((item) => item.path === location.pathname)?.label || "Dashboard"}
+            {allNavItems.find(item => item.path === location.pathname)?.label || "Dashboard"}
           </h1>
 
           <div className="flex items-center gap-4">
@@ -265,11 +217,9 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>
                   {profile?.full_name || "Minha Conta"}
-                  {isAdmin && (
-                    <span className="ml-2 text-xs bg-telegram/20 text-telegram px-2 py-0.5 rounded-full">
+                  {isAdmin && <span className="ml-2 text-xs bg-telegram/20 text-telegram px-2 py-0.5 rounded-full">
                       Admin
-                    </span>
-                  )}
+                    </span>}
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => navigate("/settings")}>
@@ -297,8 +247,6 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         {/* Page Content */}
         <main className="p-4 md:p-6 pt-20 lg:pt-6">{children}</main>
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default DashboardLayout;
