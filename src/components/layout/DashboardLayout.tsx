@@ -57,15 +57,25 @@ const DashboardLayout = ({
       icon: MessageCircle,
       label: "Telegram",
       path: "/telegram"
-    }, {
-      icon: Target,
-      label: "Destinos",
-      path: "/destinations"
-    }, {
-      icon: Megaphone,
-      label: "Campanhas",
-      path: "/campaigns"
     });
+    
+    // Only show Destinations if enabled by admin
+    if (adminSettings.destinations_enabled) {
+      items.push({
+        icon: Target,
+        label: "Destinos",
+        path: "/destinations"
+      });
+    }
+    
+    // Only show Campaigns if enabled by admin
+    if (adminSettings.campaigns_enabled) {
+      items.push({
+        icon: Megaphone,
+        label: "Campanhas",
+        path: "/campaigns"
+      });
+    }
     
     // Only show Model Hub if enabled by admin
     if (adminSettings.models_enabled) {
@@ -85,11 +95,14 @@ const DashboardLayout = ({
       });
     }
     
-    items.push({
-      icon: GitBranch,
-      label: "Funis",
-      path: "/funnels"
-    });
+    // Only show Funnels if enabled by admin
+    if (adminSettings.funnels_enabled) {
+      items.push({
+        icon: GitBranch,
+        label: "Funis",
+        path: "/funnels"
+      });
+    }
     return items;
   };
   const navItems = useMemo(() => getNavItems(), [hasActiveSubscription, currentPlan, adminSettings]);

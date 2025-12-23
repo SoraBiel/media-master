@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import FeatureProtectedRoute from "@/components/FeatureProtectedRoute";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
@@ -47,12 +48,48 @@ const App = () => (
             <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
             <Route path="/billing" element={<ProtectedRoute><BillingPage /></ProtectedRoute>} />
             <Route path="/telegram" element={<ProtectedRoute><TelegramPage /></ProtectedRoute>} />
-            <Route path="/destinations" element={<ProtectedRoute><DestinationsPage /></ProtectedRoute>} />
-            <Route path="/campaigns" element={<ProtectedRoute><CampaignsPage /></ProtectedRoute>} />
-            <Route path="/model-hub" element={<ProtectedRoute><ModelHubPage /></ProtectedRoute>} />
-            <Route path="/tiktok-accounts" element={<ProtectedRoute><TikTokAccountsPage /></ProtectedRoute>} />
-            <Route path="/funnels" element={<ProtectedRoute><FunnelsPage /></ProtectedRoute>} />
-            <Route path="/funnels/:funnelId" element={<ProtectedRoute><FunnelBuilderPage /></ProtectedRoute>} />
+            <Route path="/destinations" element={
+              <ProtectedRoute>
+                <FeatureProtectedRoute featureKey="destinations_enabled">
+                  <DestinationsPage />
+                </FeatureProtectedRoute>
+              </ProtectedRoute>
+            } />
+            <Route path="/campaigns" element={
+              <ProtectedRoute>
+                <FeatureProtectedRoute featureKey="campaigns_enabled">
+                  <CampaignsPage />
+                </FeatureProtectedRoute>
+              </ProtectedRoute>
+            } />
+            <Route path="/model-hub" element={
+              <ProtectedRoute>
+                <FeatureProtectedRoute featureKey="models_enabled">
+                  <ModelHubPage />
+                </FeatureProtectedRoute>
+              </ProtectedRoute>
+            } />
+            <Route path="/tiktok-accounts" element={
+              <ProtectedRoute>
+                <FeatureProtectedRoute featureKey="tiktok_enabled">
+                  <TikTokAccountsPage />
+                </FeatureProtectedRoute>
+              </ProtectedRoute>
+            } />
+            <Route path="/funnels" element={
+              <ProtectedRoute>
+                <FeatureProtectedRoute featureKey="funnels_enabled">
+                  <FunnelsPage />
+                </FeatureProtectedRoute>
+              </ProtectedRoute>
+            } />
+            <Route path="/funnels/:funnelId" element={
+              <ProtectedRoute>
+                <FeatureProtectedRoute featureKey="funnels_enabled">
+                  <FunnelBuilderPage />
+                </FeatureProtectedRoute>
+              </ProtectedRoute>
+            } />
             <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
             <Route path="/thank-you" element={<ProtectedRoute><ThankYouPage /></ProtectedRoute>} />
             <Route path="/delivery" element={<ProtectedRoute><DeliveryPage /></ProtectedRoute>} />
