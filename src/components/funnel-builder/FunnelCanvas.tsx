@@ -317,6 +317,22 @@ const FunnelCanvasInner = ({
     }
   }, [onImport, toast]);
 
+  // Convert nodes to sandbox format
+  const sandboxNodes = nodes.map((node) => ({
+    id: node.id,
+    type: (node.data as any).blockType as string,
+    data: Object.fromEntries(
+      Object.entries(node.data as Record<string, any>).filter(([key]) => key !== 'blockType')
+    ),
+  }));
+
+  const sandboxEdges = edges.map((edge) => ({
+    id: edge.id,
+    source: edge.source,
+    target: edge.target,
+    sourceHandle: edge.sourceHandle || null,
+  }));
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <FunnelToolbar
@@ -328,6 +344,8 @@ const FunnelCanvasInner = ({
         onExport={onExport}
         onImport={onImport}
         onToggleActive={onToggleActive}
+        sandboxNodes={sandboxNodes}
+        sandboxEdges={sandboxEdges}
       />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 min-h-0 flex flex-col">
