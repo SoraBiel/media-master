@@ -77,6 +77,33 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_settings_history: {
+        Row: {
+          changed_at: string | null
+          changed_by: string | null
+          id: string
+          new_value: boolean
+          old_value: boolean | null
+          setting_key: string
+        }
+        Insert: {
+          changed_at?: string | null
+          changed_by?: string | null
+          id?: string
+          new_value: boolean
+          old_value?: boolean | null
+          setting_key: string
+        }
+        Update: {
+          changed_at?: string | null
+          changed_by?: string | null
+          id?: string
+          new_value?: boolean
+          old_value?: boolean | null
+          setting_key?: string
+        }
+        Relationships: []
+      }
       campaigns: {
         Row: {
           avg_send_time_ms: number | null
