@@ -118,7 +118,7 @@ const ResetPasswordPage = () => {
         className="w-full max-w-md"
       >
         <Link to="/" className="flex items-center gap-2 mb-8 justify-center">
-          <img src="/logo-nexo.png" alt="Nexo" className="h-14" />
+          <img src="/logo-nexo.png" alt="Nexo" className="h-16" />
         </Link>
 
         <div className="glass-card p-8">
