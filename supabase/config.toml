@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.campaign-dispatch]
 verify_jwt = true
+
+[functions.funnel-webhook]
+verify_jwt = false
