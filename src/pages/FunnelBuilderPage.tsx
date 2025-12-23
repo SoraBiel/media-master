@@ -98,16 +98,25 @@ const FunnelBuilderPage = () => {
       await supabase.from("funnel_edges").delete().eq("funnel_id", funnelId);
       await supabase.from("funnel_nodes").delete().eq("funnel_id", funnelId);
 
-      // Insert new nodes
+      // Create a map from old IDs to new UUIDs
+      const idMap = new Map<string, string>();
+
+      // Insert new nodes with proper UUIDs
       if (newNodes.length > 0) {
-        const nodesToInsert = newNodes.map((node) => ({
-          id: node.id,
-          funnel_id: funnelId,
-          node_type: node.type,
-          position_x: node.position.x,
-          position_y: node.position.y,
-          content: { blockType: node.type, ...node.data },
-        }));
+        const nodesToInsert = newNodes.map((node) => {
+          // Generate a proper UUID for each node
+          const newId = crypto.randomUUID();
+          idMap.set(node.id, newId);
+          
+          return {
+            id: newId,
+            funnel_id: funnelId,
+            node_type: node.type,
+            position_x: node.position.x,
+            position_y: node.position.y,
+            content: { blockType: node.type, ...node.data },
+          };
+        });
 
         const { error: nodesError } = await supabase
           .from("funnel_nodes")
@@ -116,13 +125,13 @@ const FunnelBuilderPage = () => {
         if (nodesError) throw nodesError;
       }
 
-      // Insert new edges
+      // Insert new edges with remapped UUIDs
       if (newEdges.length > 0) {
         const edgesToInsert = newEdges.map((edge) => ({
-          id: edge.id,
+          id: crypto.randomUUID(),
           funnel_id: funnelId,
-          source_node_id: edge.source,
-          target_node_id: edge.target,
+          source_node_id: idMap.get(edge.source) || edge.source,
+          target_node_id: idMap.get(edge.target) || edge.target,
           source_handle: edge.sourceHandle || 'default',
         }));
 
@@ -133,8 +142,8 @@ const FunnelBuilderPage = () => {
         if (edgesError) throw edgesError;
       }
 
-      setNodes(newNodes);
-      setEdges(newEdges);
+      // Refresh from database to get the new UUIDs
+      await fetchFunnel();
       
       toast({ title: "Funil salvo!" });
     } catch (error: any) {

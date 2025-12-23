@@ -46,8 +46,8 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 export const BlockSidebar = ({ onDragStart }: BlockSidebarProps) => {
   return (
-    <div className="w-64 border-r border-border bg-card/50 p-4 overflow-y-auto">
-      <h3 className="font-semibold text-sm text-muted-foreground mb-4 uppercase tracking-wider">
+    <div className="w-64 h-full max-h-full border-r border-border bg-card/50 p-4 overflow-y-auto flex-shrink-0">
+      <h3 className="font-semibold text-sm text-muted-foreground mb-4 uppercase tracking-wider sticky top-0 bg-card/50 py-2 -mt-2 z-10">
         Blocos
       </h3>
       

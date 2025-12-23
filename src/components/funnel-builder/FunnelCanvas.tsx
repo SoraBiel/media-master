@@ -323,7 +323,7 @@ const FunnelCanvasInner = ({
           </Button>
         </div>
 
-        <TabsContent value="editor" className="flex-1 flex m-0 data-[state=inactive]:hidden">
+        <TabsContent value="editor" className="flex-1 flex m-0 data-[state=inactive]:hidden overflow-hidden">
           <BlockSidebar onDragStart={onDragStart} />
           
           <div className="flex-1 flex flex-col">
