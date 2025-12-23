@@ -35,6 +35,7 @@ import { usePlanExpiration } from "@/hooks/usePlanExpiration";
 import { useFunnelMetrics } from "@/hooks/useFunnelMetrics";
 import { PlanExpirationModal } from "@/components/PlanExpirationModal";
 import { FeatureBlockedOverlay } from "@/components/FeatureBlockedOverlay";
+import { TelegramSandbox } from "@/components/TelegramSandbox";
 import {
   Table,
   TableBody,
@@ -213,6 +214,7 @@ const DashboardPage = () => {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <TelegramSandbox />
             <Button variant="outline" size="icon" onClick={refetch}>
               <RefreshCw className="w-4 h-4" />
             </Button>
