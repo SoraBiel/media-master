@@ -20,6 +20,7 @@ import {
   Video,
   Crown,
   Headphones,
+  GitBranch,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -72,6 +73,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       { icon: Megaphone, label: "Campanhas", path: "/campaigns" },
       { icon: Sparkles, label: "Model Hub", path: "/model-hub" },
       { icon: Video, label: "TikTok Accounts", path: "/tiktok-accounts" },
+      { icon: GitBranch, label: "Funis", path: "/funnels" },
     );
 
     return items;
