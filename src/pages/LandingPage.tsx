@@ -1,7 +1,25 @@
 import { Send, Zap, Shield, BarChart3, Clock, Users, ArrowRight, Check, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, useMotionValue, useTransform, animate } from "framer-motion";
+import { useEffect, useState } from "react";
+
+// Animated counter component
+const AnimatedNumber = ({ value, suffix = "" }: { value: number; suffix?: string }) => {
+  const [displayValue, setDisplayValue] = useState(0);
+  
+  useEffect(() => {
+    const controls = animate(0, value, {
+      duration: 2,
+      ease: "easeOut",
+      onUpdate: (v) => setDisplayValue(Math.round(v)),
+    });
+    return () => controls.stop();
+  }, [value]);
+  
+  return <>{displayValue}{suffix}</>;
+};
+
 const LandingPage = () => {
   const features = [{
     icon: <Send className="w-6 h-6" />,
@@ -210,20 +228,29 @@ const LandingPage = () => {
                     {/* Stats Row */}
                     <div className="grid grid-cols-6 gap-3 mb-5">
                       {[
-                        { label: "Leads Hoje", value: "127", icon: Users, color: "text-telegram", bg: "bg-telegram/10" },
-                        { label: "Funis Ativos", value: "8", icon: BarChart3, color: "text-success", bg: "bg-success/10" },
-                        { label: "Sessões Ativas", value: "43", icon: Clock, color: "text-purple-400", bg: "bg-purple-400/10" },
-                        { label: "Mensagens Hoje", value: "892", icon: Send, color: "text-warning", bg: "bg-warning/10" },
-                        { label: "Taxa Conversão", value: "72%", icon: BarChart3, color: "text-pink-400", bg: "bg-pink-400/10" },
-                        { label: "Status Bot", value: "OK", icon: Shield, color: "text-success", bg: "bg-success/10" },
+                        { label: "Leads Hoje", value: 127, suffix: "", icon: Users, color: "text-telegram", bg: "bg-telegram/10" },
+                        { label: "Funis Ativos", value: 8, suffix: "", icon: BarChart3, color: "text-success", bg: "bg-success/10" },
+                        { label: "Sessões Ativas", value: 43, suffix: "", icon: Clock, color: "text-purple-400", bg: "bg-purple-400/10" },
+                        { label: "Mensagens Hoje", value: 892, suffix: "", icon: Send, color: "text-warning", bg: "bg-warning/10" },
+                        { label: "Taxa Conversão", value: 72, suffix: "%", icon: BarChart3, color: "text-pink-400", bg: "bg-pink-400/10" },
+                        { label: "Status Bot", value: 0, suffix: "OK", icon: Shield, color: "text-success", bg: "bg-success/10", isText: true },
                       ].map((stat, i) => (
-                        <div key={i} className="bg-[#0d1117] border border-[#1e2533] rounded-lg p-3">
+                        <motion.div 
+                          key={i} 
+                          className="bg-[#0d1117] border border-[#1e2533] rounded-lg p-3"
+                          initial={{ opacity: 0, y: 10 }}
+                          whileInView={{ opacity: 1, y: 0 }}
+                          viewport={{ once: true }}
+                          transition={{ duration: 0.4, delay: 0.3 + i * 0.1 }}
+                        >
                           <div className={`w-6 h-6 rounded-md ${stat.bg} flex items-center justify-center mb-2`}>
                             <stat.icon className={`w-3 h-3 ${stat.color}`} />
                           </div>
-                          <p className="text-lg font-bold text-foreground">{stat.value}</p>
+                          <p className="text-lg font-bold text-foreground">
+                            {stat.isText ? stat.suffix : <AnimatedNumber value={stat.value} suffix={stat.suffix} />}
+                          </p>
                           <p className="text-[10px] text-muted-foreground">{stat.label}</p>
-                        </div>
+                        </motion.div>
                       ))}
                     </div>
                     
