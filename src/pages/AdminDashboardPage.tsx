@@ -35,7 +35,7 @@ import {
   Mail,
   User,
 } from "lucide-react";
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -80,6 +80,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -804,6 +805,69 @@ const AdminDashboardPage = () => {
     }
   };
 
+  const handleClearPendingTransactions = async () => {
+    try {
+      const pendingIds = transactions.filter(tx => tx.status === "pending").map(tx => tx.id);
+      if (pendingIds.length === 0) {
+        toast({ title: "Nenhuma transação pendente para remover" });
+        return;
+      }
+      
+      const { error } = await supabase
+        .from("transactions")
+        .delete()
+        .in("id", pendingIds);
+
+      if (error) throw error;
+
+      toast({ 
+        title: "Transações removidas!", 
+        description: `${pendingIds.length} transações pendentes foram removidas.` 
+      });
+      fetchTransactions();
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleClearPendingCheckouts = async () => {
+    try {
+      const pendingIds = checkouts.map(c => c.id);
+      if (pendingIds.length === 0) {
+        toast({ title: "Nenhum checkout pendente para remover" });
+        return;
+      }
+      
+      const { error } = await supabase
+        .from("checkout_sessions")
+        .delete()
+        .in("id", pendingIds);
+
+      if (error) throw error;
+
+      toast({ 
+        title: "Checkouts removidos!", 
+        description: `${pendingIds.length} checkouts pendentes foram removidos.` 
+      });
+      fetchCheckouts();
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    }
+  };
+
+  // Pie chart data for transactions status
+  const transactionStatusChartData = useMemo(() => {
+    const pending = transactions.filter(tx => tx.status === "pending").length;
+    const paid = transactions.filter(tx => tx.status === "paid" && !tx.is_admin_granted).length;
+    const adminGranted = transactions.filter(tx => tx.status === "paid" && tx.is_admin_granted).length;
+    
+    return [
+      { name: "Pendentes", value: pending, color: "hsl(var(--warning))" },
+      { name: "Aprovados", value: paid, color: "hsl(var(--success))" },
+      { name: "Admin", value: adminGranted, color: "hsl(var(--primary))" },
+    ].filter(item => item.value > 0);
+  }, [transactions]);
+
   const getUserRole = (userId: string) => {
     return userRoles.find(r => r.user_id === userId)?.role || "user";
   };
@@ -1071,10 +1135,37 @@ const AdminDashboardPage = () => {
           <TabsContent value="checkouts" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <ShoppingCart className="w-5 h-5" />
-                  Checkouts Pendentes ({checkouts.length})
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <ShoppingCart className="w-5 h-5" />
+                    Checkouts Pendentes ({checkouts.length})
+                  </CardTitle>
+                  {checkouts.length > 0 && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="destructive" size="sm" className="gap-2">
+                          <Trash2 className="w-4 h-4" />
+                          Limpar Pendentes
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Limpar checkouts pendentes?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Esta ação irá remover {checkouts.length} checkout(s) pendente(s). 
+                            Esta ação não pode ser desfeita.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction onClick={handleClearPendingCheckouts} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            Limpar
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 {checkouts.length === 0 ? (
@@ -1124,7 +1215,7 @@ const AdminDashboardPage = () => {
           {/* Billing Tab */}
           <TabsContent value="billing" className="space-y-6">
             {/* Charts Section */}
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid md:grid-cols-3 gap-4">
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base flex items-center gap-2">
@@ -1178,6 +1269,60 @@ const AdminDashboardPage = () => {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Status Chart - Pie */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Target className="w-4 h-4" />
+                    Status das Transações
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[200px]">
+                    {transactionStatusChartData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={transactionStatusChartData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={50}
+                            outerRadius={70}
+                            paddingAngle={3}
+                            dataKey="value"
+                            label={({ name, value }) => `${name}: ${value}`}
+                            labelLine={false}
+                          >
+                            {transactionStatusChartData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip 
+                            contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-muted-foreground">
+                        <p>Nenhuma transação</p>
+                      </div>
+                    )}
+                  </div>
+                  {/* Legend */}
+                  <div className="flex flex-wrap justify-center gap-4 mt-2">
+                    {transactionStatusChartData.map((item, index) => (
+                      <div key={index} className="flex items-center gap-2 text-sm">
+                        <div 
+                          className="w-3 h-3 rounded-full" 
+                          style={{ backgroundColor: item.color }}
+                        />
+                        <span>{item.name}: {item.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
             {/* Period Filter */}
@@ -1224,12 +1369,39 @@ const AdminDashboardPage = () => {
               <TabsContent value="pending">
                 <Card>
                   <CardHeader>
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between flex-wrap gap-4">
                       <CardTitle className="flex items-center gap-2">
                         <Clock className="w-5 h-5 text-warning" />
                         Pagamentos Pendentes - {billingPeriodLabels[billingPeriod]}
                       </CardTitle>
-                      <Badge variant="secondary">{getFilteredTransactions("pending").length} transações</Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">{getFilteredTransactions("pending").length} transações</Badge>
+                        {transactions.filter(tx => tx.status === "pending").length > 0 && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="destructive" size="sm" className="gap-2">
+                                <Trash2 className="w-4 h-4" />
+                                Limpar Pendentes
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Limpar pagamentos pendentes?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Esta ação irá remover {transactions.filter(tx => tx.status === "pending").length} pagamento(s) pendente(s). 
+                                  Esta ação não pode ser desfeita.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleClearPendingTransactions} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                  Limpar
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent>
