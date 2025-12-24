@@ -65,9 +65,32 @@ serve(async (req) => {
       return sanitized;
     };
 
-    const sanitizedBuyerName = sanitizeName(buyer.name);
+    // Format phone number for BuckPay (requires at least 12 chars with country code)
+    const formatPhoneForBuckPay = (phone?: string): string | undefined => {
+      if (!phone) return undefined;
+      
+      // Remove all non-numeric characters
+      let cleaned = phone.replace(/\D/g, '');
+      
+      // If phone doesn't start with country code, add Brazil's +55
+      if (cleaned.length === 10 || cleaned.length === 11) {
+        // Brazilian phone: DDD (2 digits) + number (8 or 9 digits)
+        cleaned = '55' + cleaned;
+      }
+      
+      // Ensure minimum 12 characters
+      if (cleaned.length < 12) {
+        console.warn("Phone number too short even after formatting:", cleaned);
+        return undefined;
+      }
+      
+      return cleaned;
+    };
 
-    console.log("Payment request:", { product_type, product_id, plan_slug, buyer, sanitizedBuyerName });
+    const sanitizedBuyerName = sanitizeName(buyer.name);
+    const formattedPhone = formatPhoneForBuckPay(buyer.phone);
+
+    console.log("Payment request:", { product_type, product_id, plan_slug, buyer, sanitizedBuyerName, formattedPhone });
 
     // Determine amount based on product type
     let amountCents = 0;
@@ -182,7 +205,7 @@ serve(async (req) => {
         buyer: {
           name: sanitizedBuyerName,
           email: buyer.email,
-          phone: buyer.phone || undefined,
+          phone: formattedPhone,
           document: buyer.document || undefined,
         },
       }),
