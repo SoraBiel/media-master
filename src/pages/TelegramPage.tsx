@@ -31,7 +31,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { useMultipleTelegramBots, TelegramBot, TelegramChat } from "@/hooks/useMultipleTelegramBots";
+import { useMultipleTelegramBots, TelegramBot, TelegramChat, BotHealthStatus } from "@/hooks/useMultipleTelegramBots";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -64,6 +64,9 @@ const TelegramPage = () => {
     selectChatForBot,
     sendMessage,
     connectedBotsCount,
+    botHealthStatuses,
+    isCheckingHealth,
+    checkAllBotsHealth,
   } = useMultipleTelegramBots();
 
   useEffect(() => {
@@ -263,10 +266,30 @@ const TelegramPage = () => {
         {/* Connected Bots List */}
         {bots.length > 0 && (
           <div className="space-y-4">
-            <h2 className="text-xl font-semibold flex items-center gap-2">
-              <Bot className="w-5 h-5" />
-              Bots Conectados ({bots.length})
-            </h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold flex items-center gap-2">
+                <Bot className="w-5 h-5" />
+                Bots Conectados ({bots.length})
+              </h2>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={checkAllBotsHealth}
+                disabled={isCheckingHealth}
+              >
+                {isCheckingHealth ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin mr-2" />
+                    Verificando...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Verificar Status
+                  </>
+                )}
+              </Button>
+            </div>
 
             <div className="grid gap-4">
               {bots.map((bot, index) => (
@@ -280,20 +303,40 @@ const TelegramPage = () => {
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-4">
-                          <div className="p-3 rounded-lg bg-telegram/20">
-                            <Bot className="w-6 h-6 text-telegram" />
+                          <div className={`p-3 rounded-lg ${
+                            botHealthStatuses[bot.id]?.isOnline === false 
+                              ? 'bg-destructive/20' 
+                              : 'bg-telegram/20'
+                          }`}>
+                            <Bot className={`w-6 h-6 ${
+                              botHealthStatuses[bot.id]?.isOnline === false 
+                                ? 'text-destructive' 
+                                : 'text-telegram'
+                            }`} />
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
                               <span className="font-medium">{bot.bot_name || "Bot"}</span>
-                              <Badge variant="secondary" className="text-success">
-                                <CheckCircle2 className="w-3 h-3 mr-1" />
-                                Conectado
-                              </Badge>
+                              {botHealthStatuses[bot.id]?.isOnline === false ? (
+                                <Badge variant="destructive" className="gap-1">
+                                  <AlertCircle className="w-3 h-3" />
+                                  Offline
+                                </Badge>
+                              ) : (
+                                <Badge variant="secondary" className="text-success">
+                                  <CheckCircle2 className="w-3 h-3 mr-1" />
+                                  {botHealthStatuses[bot.id]?.isOnline === true ? 'Online' : 'Conectado'}
+                                </Badge>
+                              )}
                             </div>
                             <p className="text-sm text-muted-foreground">
                               @{bot.bot_username}
                             </p>
+                            {botHealthStatuses[bot.id]?.isOnline === false && (
+                              <p className="text-xs text-destructive mt-1">
+                                {botHealthStatuses[bot.id]?.error || 'Token inválido ou bot inacessível'}
+                              </p>
+                            )}
                             {bot.chat_id && (
                               <p className="text-sm text-success mt-1">
                                 Destino: {bot.chat_title || bot.chat_id}

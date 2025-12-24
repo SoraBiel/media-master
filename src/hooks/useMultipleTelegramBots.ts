@@ -25,12 +25,21 @@ export interface TelegramChat {
   username?: string;
 }
 
+export interface BotHealthStatus {
+  botId: string;
+  isOnline: boolean;
+  lastCheckedAt: string;
+  error?: string;
+}
+
 export const useMultipleTelegramBots = () => {
   const { user, session } = useAuth();
   const { toast } = useToast();
   const [bots, setBots] = useState<TelegramBot[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isValidating, setIsValidating] = useState(false);
+  const [botHealthStatuses, setBotHealthStatuses] = useState<Record<string, BotHealthStatus>>({});
+  const [isCheckingHealth, setIsCheckingHealth] = useState(false);
 
   const fetchBots = async () => {
     if (!user) {
@@ -206,6 +215,50 @@ export const useMultipleTelegramBots = () => {
     }
   };
 
+  const checkBotHealth = async (bot: TelegramBot): Promise<BotHealthStatus> => {
+    try {
+      await callTelegramAPI("validate", { botToken: bot.bot_token });
+      return {
+        botId: bot.id,
+        isOnline: true,
+        lastCheckedAt: new Date().toISOString(),
+      };
+    } catch (error: any) {
+      return {
+        botId: bot.id,
+        isOnline: false,
+        lastCheckedAt: new Date().toISOString(),
+        error: error.message,
+      };
+    }
+  };
+
+  const checkAllBotsHealth = async () => {
+    if (bots.length === 0 || !session?.access_token) return;
+    
+    setIsCheckingHealth(true);
+    const statuses: Record<string, BotHealthStatus> = {};
+    
+    const results = await Promise.all(bots.map(bot => checkBotHealth(bot)));
+    
+    results.forEach(status => {
+      statuses[status.botId] = status;
+      
+      // Show toast for bots that went offline
+      if (!status.isOnline) {
+        const bot = bots.find(b => b.id === status.botId);
+        toast({
+          title: "⚠️ Bot Offline",
+          description: `O bot @${bot?.bot_username || "desconhecido"} está offline. Verifique o token.`,
+          variant: "destructive",
+        });
+      }
+    });
+    
+    setBotHealthStatuses(statuses);
+    setIsCheckingHealth(false);
+  };
+
   useEffect(() => {
     fetchBots();
 
@@ -232,6 +285,20 @@ export const useMultipleTelegramBots = () => {
     }
   }, [user]);
 
+  // Periodic health check every 5 minutes
+  useEffect(() => {
+    if (bots.length === 0 || !session?.access_token) return;
+
+    // Initial check
+    checkAllBotsHealth();
+
+    const interval = setInterval(() => {
+      checkAllBotsHealth();
+    }, 5 * 60 * 1000); // 5 minutes
+
+    return () => clearInterval(interval);
+  }, [bots.length, session?.access_token]);
+
   return {
     bots,
     isLoading,
@@ -243,5 +310,8 @@ export const useMultipleTelegramBots = () => {
     sendMessage,
     fetchBots,
     connectedBotsCount: bots.filter(b => b.is_connected).length,
+    botHealthStatuses,
+    isCheckingHealth,
+    checkAllBotsHealth,
   };
 };
