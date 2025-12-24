@@ -277,7 +277,14 @@ const LandingPage = () => {
                             { name: "Captura Lead", bot: "@sales_bot", leads: "89/67", conv: "75%", active: true },
                             { name: "Suporte Auto", bot: "@help_bot", leads: "23/18", conv: "78%", active: false },
                           ].map((funnel, i) => (
-                            <div key={i} className="grid grid-cols-5 gap-2 text-xs py-2 border-b border-[#1e2533]/50">
+                            <motion.div 
+                              key={i} 
+                              className="grid grid-cols-5 gap-2 text-xs py-2 border-b border-[#1e2533]/50"
+                              initial={{ opacity: 0, x: -20 }}
+                              whileInView={{ opacity: 1, x: 0 }}
+                              viewport={{ once: true }}
+                              transition={{ duration: 0.4, delay: 0.6 + i * 0.15 }}
+                            >
                               <span className="text-foreground font-medium truncate">{funnel.name}</span>
                               <span className="text-muted-foreground truncate">{funnel.bot}</span>
                               <span className="text-center text-foreground">{funnel.leads}</span>
@@ -289,7 +296,7 @@ const LandingPage = () => {
                                   {funnel.active ? 'Ativo' : 'Pausado'}
                                 </span>
                               </span>
-                            </div>
+                            </motion.div>
                           ))}
                         </div>
                       </div>
