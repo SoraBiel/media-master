@@ -133,7 +133,7 @@ const LandingPage = () => {
             </div>
           </motion.div>
 
-          {/* Dashboard Preview */}
+          {/* Mac Mockup Dashboard Preview */}
           <motion.div initial={{
           opacity: 0,
           y: 40
@@ -145,26 +145,129 @@ const LandingPage = () => {
           delay: 0.2
         }} className="mt-16 relative">
             <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent z-10 pointer-events-none" />
-            <div className="glass-card p-2 md:p-4 rounded-2xl shadow-elevated mx-auto max-w-5xl">
-              <div className="bg-background rounded-xl overflow-hidden border border-border">
-                <div className="h-8 bg-secondary flex items-center gap-2 px-4">
-                  <div className="w-3 h-3 rounded-full bg-destructive/50" />
-                  <div className="w-3 h-3 rounded-full bg-warning/50" />
-                  <div className="w-3 h-3 rounded-full bg-success/50" />
+            
+            {/* Mac Frame */}
+            <div className="mx-auto max-w-5xl">
+              {/* Mac Top Bezel */}
+              <div className="bg-[#1a1a1a] rounded-t-2xl pt-3 pb-2 px-4 border-x border-t border-[#333]">
+                <div className="flex items-center justify-center relative">
+                  <div className="absolute left-0 flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-[#ff5f57]" />
+                    <div className="w-3 h-3 rounded-full bg-[#febc2e]" />
+                    <div className="w-3 h-3 rounded-full bg-[#28c840]" />
+                  </div>
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#444]" />
                 </div>
-                <div className="p-6 space-y-4">
-                  <div className="flex gap-4">
-                    <div className="w-48 h-full bg-secondary/50 rounded-lg p-4 space-y-3">
-                      {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-8 bg-muted rounded animate-pulse" />)}
+              </div>
+              
+              {/* Mac Screen */}
+              <div className="bg-[#0a0f1a] border-x border-[#333] overflow-hidden">
+                {/* Browser Bar */}
+                <div className="bg-[#1a1f2e] py-2 px-4 flex items-center justify-center">
+                  <div className="bg-[#0d1117] rounded-md px-4 py-1.5 text-xs text-muted-foreground flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-success/50 flex items-center justify-center">
+                      <div className="w-1.5 h-1.5 rounded-full bg-success" />
                     </div>
-                    <div className="flex-1 space-y-4">
-                      <div className="grid grid-cols-3 gap-4">
-                        {[1, 2, 3].map(i => <div key={i} className="h-24 bg-secondary/50 rounded-lg animate-pulse" />)}
+                    <span>app.nexotg.com/dashboard</span>
+                  </div>
+                </div>
+                
+                {/* Dashboard Content */}
+                <div className="flex min-h-[380px]">
+                  {/* Sidebar */}
+                  <div className="w-14 bg-[#0d1117] border-r border-[#1e2533] flex flex-col items-center py-4 gap-4">
+                    <div className="w-8 h-8 rounded-lg bg-telegram/20 flex items-center justify-center">
+                      <Zap className="w-4 h-4 text-telegram" />
+                    </div>
+                    {[1, 2, 3, 4].map(i => (
+                      <div key={i} className="w-8 h-8 rounded-lg bg-[#1e2533] flex items-center justify-center">
+                        <div className="w-4 h-4 rounded bg-[#2a3441]" />
                       </div>
-                      <div className="h-48 bg-secondary/50 rounded-lg animate-pulse" />
+                    ))}
+                  </div>
+                  
+                  {/* Main Content */}
+                  <div className="flex-1 p-6">
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-6">
+                      <div>
+                        <p className="text-xs text-muted-foreground tracking-widest mb-1">LIVE MARKET ANALYTICS</p>
+                        <div className="flex items-center gap-3">
+                          <h3 className="text-xl font-bold text-foreground">Nexo Quantum Core</h3>
+                          <span className="px-2 py-0.5 text-xs font-medium bg-success/20 text-success rounded">LIVE</span>
+                          <div className="text-xs text-muted-foreground">
+                            VOL 24H <span className="text-telegram font-semibold">$1.2B</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Stats Row */}
+                    <div className="flex gap-8 mb-6">
+                      <div className="text-center">
+                        <p className="text-xs text-muted-foreground mb-1">WIN RATE</p>
+                        <p className="text-2xl font-bold text-success">94.8%</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xs text-muted-foreground mb-1">DRAWDOWN</p>
+                        <p className="text-2xl font-bold text-foreground">0.8%</p>
+                      </div>
+                    </div>
+                    
+                    {/* Chart Area */}
+                    <div className="h-32 flex items-end gap-1">
+                      {[40, 55, 35, 60, 45, 70, 50, 65, 55, 75, 60, 80, 70, 85, 75, 90, 80, 95, 85, 70, 90, 75, 95, 80, 85].map((height, i) => (
+                        <div 
+                          key={i} 
+                          className="flex-1 bg-telegram/80 rounded-t-sm transition-all hover:bg-telegram"
+                          style={{ height: `${height}%` }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  
+                  {/* Right Panel - Signals */}
+                  <div className="w-56 border-l border-[#1e2533] p-4">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+                      <p className="text-xs text-muted-foreground tracking-wider">RECENT SIGNALS</p>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      {[
+                        { pair: "ADA/USDT", type: "VENDA", value: "$8807.81", change: "+2.7%" },
+                        { pair: "ADA/USDT", type: "COMPRA", value: "$29873.39", change: "+4.8%" },
+                        { pair: "BTC/USDT", type: "VENDA", value: "$2535.68", change: "+1.3%" },
+                      ].map((signal, i) => (
+                        <div key={i} className="bg-[#0d1117] rounded-lg p-3 border border-[#1e2533]">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <p className="text-sm font-medium text-foreground">{signal.pair}</p>
+                              <p className={`text-xs ${signal.type === 'VENDA' ? 'text-destructive' : 'text-success'}`}>
+                                {signal.type}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-medium text-foreground">{signal.value}</p>
+                              <p className="text-xs text-success">{signal.change}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
+              </div>
+              
+              {/* Mac Bottom Bezel */}
+              <div className="bg-[#1a1a1a] h-5 rounded-b-2xl border-x border-b border-[#333]" />
+              
+              {/* Mac Stand */}
+              <div className="flex justify-center">
+                <div className="w-28 h-8 bg-gradient-to-b from-[#2a2a2a] to-[#1a1a1a] rounded-b-lg" />
+              </div>
+              <div className="flex justify-center -mt-1">
+                <div className="w-48 h-2 bg-gradient-to-b from-[#2a2a2a] to-[#1a1a1a] rounded-b-xl" />
               </div>
             </div>
           </motion.div>
