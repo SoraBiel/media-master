@@ -1,4 +1,4 @@
-import { Send, Zap, Shield, BarChart3, Clock, Users, ArrowRight, Check, Sparkles, Star, Play } from "lucide-react";
+import { Send, Zap, Shield, BarChart3, Clock, Users, ArrowRight, Check, Sparkles, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { motion, animate } from "framer-motion";
@@ -49,35 +49,35 @@ const LandingPage = () => {
 
   const plans = [{
     name: "Free",
-    price: "R$ 0",
+    price: "R$ 0,00",
     period: "/mês",
-    description: "Para testar a plataforma",
-    features: ["1 destino", "100 mídias/mês", "Suporte por e-mail", "7 dias grátis"],
-    cta: "Começar Grátis",
+    description: "Para conhecer a estrutura por dentro. Teste grátis por 7 dias",
+    features: ["1 destino", "100 mídias/mês", "1 destino (grupo)", "Até 100 mídias/dia", "Acesso à plataforma", "Suporte por e-mail", "Teste grátis por 7 dias"],
+    cta: "Selecionar",
     popular: false
   }, {
     name: "Basic",
-    price: "R$ 49",
+    price: "R$ 49,90",
     period: "/mês",
-    description: "Para começar do zero",
-    features: ["3 destinos", "500 mídias/mês", "Agendamento básico", "Suporte WhatsApp"],
+    description: "Para quem quer sair do zero e começar certo",
+    features: ["3 destinos", "500 mídias/mês", "Agendamento", "3 destinos (grupos)", "500 mídias/dia", "Agendamento básico", "Fluxo de chat padrão", "Suporte prioritário (WhatsApp)"],
     cta: "Selecionar",
     popular: false
   }, {
     name: "Pro",
-    price: "R$ 99",
+    price: "R$ 99,90",
     period: "/mês",
-    description: "Para escalar rápido",
-    features: ["10 destinos", "2.000 mídias/mês", "Model Hub / IA", "Suporte 24/7"],
-    cta: "Começar Agora",
+    description: "Para quem quer ganhar velocidade e escalar",
+    features: ["10 destinos", "2.000 mídias/mês", "Agendamento", "Model Hub", "10 destinos", "2.000 mídias/dia", "Agendamento avançado", "Fluxos de chat otimizado", "Model Hub / IA", "Modelos Vazados", "Suporte 24/7 (WhatsApp)"],
+    cta: "Selecionar",
     popular: true
   }, {
     name: "Agency",
-    price: "R$ 299",
+    price: "R$ 299,90",
     period: "/mês",
-    description: "Escala ilimitada",
-    features: ["Destinos ilimitados", "Mídias ilimitadas", "API access", "Gerente dedicado"],
-    cta: "Falar com Vendas",
+    description: "Escala máxima, sem limite",
+    features: ["∞ destinos", "∞ mídias/mês", "Agendamento", "Model Hub", "Destinos ilimitados", "Mídias ilimitadas", "Todas as ferramentas liberadas", "API access", "Gerente dedicado"],
+    cta: "Selecionar",
     popular: false
   }];
 
@@ -166,14 +166,15 @@ const LandingPage = () => {
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
               <Link to="/signup">
                 <Button variant="gradient" size="xl" className="w-full sm:w-auto shadow-xl shadow-telegram/25 hover:shadow-telegram/40 transition-shadow">
-                  Começar Gratuitamente
+                  Começar Agora
                   <ArrowRight className="w-5 h-5 ml-1" />
                 </Button>
               </Link>
-              <Button variant="outline" size="xl" className="w-full sm:w-auto group">
-                <Play className="w-4 h-4 mr-2 group-hover:text-telegram transition-colors" />
-                Ver Demo
-              </Button>
+              <Link to="/login">
+                <Button variant="outline" size="xl" className="w-full sm:w-auto">
+                  Já tenho conta
+                </Button>
+              </Link>
             </div>
 
             {/* Social Proof Stats */}
