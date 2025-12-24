@@ -173,87 +173,120 @@ const LandingPage = () => {
                 </div>
                 
                 {/* Dashboard Content */}
-                <div className="flex min-h-[380px]">
+                <div className="flex min-h-[420px]">
                   {/* Sidebar */}
-                  <div className="w-14 bg-[#0d1117] border-r border-[#1e2533] flex flex-col items-center py-4 gap-4">
-                    <div className="w-8 h-8 rounded-lg bg-telegram/20 flex items-center justify-center">
+                  <div className="w-14 bg-[#0d1117] border-r border-[#1e2533] flex flex-col items-center py-4 gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-telegram/20 flex items-center justify-center mb-2">
                       <Zap className="w-4 h-4 text-telegram" />
                     </div>
-                    {[1, 2, 3, 4].map(i => (
-                      <div key={i} className="w-8 h-8 rounded-lg bg-[#1e2533] flex items-center justify-center">
-                        <div className="w-4 h-4 rounded bg-[#2a3441]" />
+                    {[
+                      { icon: BarChart3, active: true },
+                      { icon: Users, active: false },
+                      { icon: Send, active: false },
+                      { icon: Clock, active: false },
+                      { icon: Shield, active: false },
+                    ].map((item, i) => (
+                      <div key={i} className={`w-8 h-8 rounded-lg flex items-center justify-center ${item.active ? 'bg-telegram/20' : 'bg-[#1e2533]'}`}>
+                        <item.icon className={`w-4 h-4 ${item.active ? 'text-telegram' : 'text-muted-foreground'}`} />
                       </div>
                     ))}
                   </div>
                   
                   {/* Main Content */}
-                  <div className="flex-1 p-6">
+                  <div className="flex-1 p-5 overflow-hidden">
                     {/* Header */}
-                    <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center justify-between mb-5">
                       <div>
-                        <p className="text-xs text-muted-foreground tracking-widest mb-1">LIVE MARKET ANALYTICS</p>
-                        <div className="flex items-center gap-3">
-                          <h3 className="text-xl font-bold text-foreground">Nexo Quantum Core</h3>
-                          <span className="px-2 py-0.5 text-xs font-medium bg-success/20 text-success rounded">LIVE</span>
-                          <div className="text-xs text-muted-foreground">
-                            VOL 24H <span className="text-telegram font-semibold">$1.2B</span>
-                          </div>
+                        <h3 className="text-lg font-bold text-foreground">Olá, João! 👋</h3>
+                        <p className="text-xs text-muted-foreground">Acompanhe seus funis e conversões em tempo real.</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="px-3 py-1.5 rounded-lg bg-telegram text-white text-xs font-medium flex items-center gap-1">
+                          <span>+</span> Novo Funil
                         </div>
                       </div>
                     </div>
                     
                     {/* Stats Row */}
-                    <div className="flex gap-8 mb-6">
-                      <div className="text-center">
-                        <p className="text-xs text-muted-foreground mb-1">WIN RATE</p>
-                        <p className="text-2xl font-bold text-success">94.8%</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-xs text-muted-foreground mb-1">DRAWDOWN</p>
-                        <p className="text-2xl font-bold text-foreground">0.8%</p>
-                      </div>
-                    </div>
-                    
-                    {/* Chart Area */}
-                    <div className="h-32 flex items-end gap-1">
-                      {[40, 55, 35, 60, 45, 70, 50, 65, 55, 75, 60, 80, 70, 85, 75, 90, 80, 95, 85, 70, 90, 75, 95, 80, 85].map((height, i) => (
-                        <div 
-                          key={i} 
-                          className="flex-1 bg-telegram/80 rounded-t-sm transition-all hover:bg-telegram"
-                          style={{ height: `${height}%` }}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                  
-                  {/* Right Panel - Signals */}
-                  <div className="w-56 border-l border-[#1e2533] p-4">
-                    <div className="flex items-center gap-2 mb-4">
-                      <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
-                      <p className="text-xs text-muted-foreground tracking-wider">RECENT SIGNALS</p>
-                    </div>
-                    
-                    <div className="space-y-3">
+                    <div className="grid grid-cols-6 gap-3 mb-5">
                       {[
-                        { pair: "ADA/USDT", type: "VENDA", value: "$8807.81", change: "+2.7%" },
-                        { pair: "ADA/USDT", type: "COMPRA", value: "$29873.39", change: "+4.8%" },
-                        { pair: "BTC/USDT", type: "VENDA", value: "$2535.68", change: "+1.3%" },
-                      ].map((signal, i) => (
-                        <div key={i} className="bg-[#0d1117] rounded-lg p-3 border border-[#1e2533]">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <p className="text-sm font-medium text-foreground">{signal.pair}</p>
-                              <p className={`text-xs ${signal.type === 'VENDA' ? 'text-destructive' : 'text-success'}`}>
-                                {signal.type}
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-sm font-medium text-foreground">{signal.value}</p>
-                              <p className="text-xs text-success">{signal.change}</p>
-                            </div>
+                        { label: "Leads Hoje", value: "127", icon: Users, color: "text-telegram", bg: "bg-telegram/10" },
+                        { label: "Funis Ativos", value: "8", icon: BarChart3, color: "text-success", bg: "bg-success/10" },
+                        { label: "Sessões Ativas", value: "43", icon: Clock, color: "text-purple-400", bg: "bg-purple-400/10" },
+                        { label: "Mensagens Hoje", value: "892", icon: Send, color: "text-warning", bg: "bg-warning/10" },
+                        { label: "Taxa Conversão", value: "72%", icon: BarChart3, color: "text-pink-400", bg: "bg-pink-400/10" },
+                        { label: "Status Bot", value: "OK", icon: Shield, color: "text-success", bg: "bg-success/10" },
+                      ].map((stat, i) => (
+                        <div key={i} className="bg-[#0d1117] border border-[#1e2533] rounded-lg p-3">
+                          <div className={`w-6 h-6 rounded-md ${stat.bg} flex items-center justify-center mb-2`}>
+                            <stat.icon className={`w-3 h-3 ${stat.color}`} />
                           </div>
+                          <p className="text-lg font-bold text-foreground">{stat.value}</p>
+                          <p className="text-[10px] text-muted-foreground">{stat.label}</p>
                         </div>
                       ))}
+                    </div>
+                    
+                    {/* Content Grid */}
+                    <div className="grid grid-cols-3 gap-4">
+                      {/* Funnel Table */}
+                      <div className="col-span-2 bg-[#0d1117] border border-[#1e2533] rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <p className="text-sm font-medium text-foreground flex items-center gap-2">
+                            <BarChart3 className="w-4 h-4" /> Visão Geral dos Funis
+                          </p>
+                          <span className="text-xs text-telegram">Ver todos →</span>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="grid grid-cols-5 gap-2 text-[10px] text-muted-foreground pb-2 border-b border-[#1e2533]">
+                            <span>Funil</span>
+                            <span>Bot</span>
+                            <span className="text-center">Leads</span>
+                            <span className="text-center">Conversão</span>
+                            <span className="text-center">Status</span>
+                          </div>
+                          {[
+                            { name: "Vendas VIP", bot: "@nexo_bot", leads: "45/32", conv: "71%", active: true },
+                            { name: "Captura Lead", bot: "@sales_bot", leads: "89/67", conv: "75%", active: true },
+                            { name: "Suporte Auto", bot: "@help_bot", leads: "23/18", conv: "78%", active: false },
+                          ].map((funnel, i) => (
+                            <div key={i} className="grid grid-cols-5 gap-2 text-xs py-2 border-b border-[#1e2533]/50">
+                              <span className="text-foreground font-medium truncate">{funnel.name}</span>
+                              <span className="text-muted-foreground truncate">{funnel.bot}</span>
+                              <span className="text-center text-foreground">{funnel.leads}</span>
+                              <span className="text-center">
+                                <span className="px-1.5 py-0.5 rounded bg-success/20 text-success text-[10px]">{funnel.conv}</span>
+                              </span>
+                              <span className="text-center">
+                                <span className={`px-1.5 py-0.5 rounded text-[10px] ${funnel.active ? 'bg-success/20 text-success' : 'bg-muted/20 text-muted-foreground'}`}>
+                                  {funnel.active ? 'Ativo' : 'Pausado'}
+                                </span>
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      {/* Recent Activity */}
+                      <div className="bg-[#0d1117] border border-[#1e2533] rounded-lg p-4">
+                        <p className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+                          <Clock className="w-4 h-4" /> Atividade Recente
+                        </p>
+                        <div className="space-y-2">
+                          {[
+                            { msg: "Novo lead: @maria_silva", time: "agora", color: "bg-telegram/20", textColor: "text-telegram" },
+                            { msg: "Mensagem enviada", time: "2min", color: "bg-success/20", textColor: "text-success" },
+                            { msg: "Lead respondeu", time: "5min", color: "bg-purple-400/20", textColor: "text-purple-400" },
+                            { msg: "Funil concluído", time: "12min", color: "bg-success/20", textColor: "text-success" },
+                          ].map((activity, i) => (
+                            <div key={i} className="flex items-center gap-2 p-2 rounded bg-[#1e2533]/30">
+                              <div className={`w-2 h-2 rounded-full ${activity.color}`} />
+                              <span className="text-[11px] text-foreground flex-1 truncate">{activity.msg}</span>
+                              <span className="text-[10px] text-muted-foreground">{activity.time}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
