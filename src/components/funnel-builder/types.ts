@@ -19,6 +19,8 @@ export interface BlockData {
   text?: string;
   mediaType?: 'image' | 'video' | 'audio';
   mediaUrl?: string;
+  imageUrl?: string;
+  videoUrl?: string;
   caption?: string;
   
   // Question block
