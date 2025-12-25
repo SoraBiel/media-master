@@ -1,6 +1,6 @@
 import { useCallback, useState, useEffect, useRef } from 'react';
 import { Node } from '@xyflow/react';
-import { Trash2, Plus, GripVertical } from 'lucide-react';
+import { Trash2, Plus, GripVertical, Upload, X, Image, Video } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,6 +14,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { BlockType, BLOCK_INFO, BlockData } from './types';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface PropertiesPanelProps {
   selectedNode: Node | null;
@@ -27,8 +29,13 @@ export const PropertiesPanel = ({
   onDeleteNode 
 }: PropertiesPanelProps) => {
   const [localData, setLocalData] = useState<BlockData>({});
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
   const debounceRef = useRef<NodeJS.Timeout>();
   const nodeIdRef = useRef<string | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   // Sync local state with selected node
   useEffect(() => {
@@ -157,33 +164,180 @@ export const PropertiesPanel = ({
                 className="min-h-[100px]"
               />
             </div>
+
+            {/* Image Section */}
             <div className="space-y-2">
-              <Label>Tipo de Mídia</Label>
-              <Select
-                value={localData.mediaType || 'none'}
-                onValueChange={(v) => handleChange('mediaType', v === 'none' ? undefined : v)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Nenhuma" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Nenhuma</SelectItem>
-                  <SelectItem value="image">Imagem</SelectItem>
-                  <SelectItem value="video">Vídeo</SelectItem>
-                  <SelectItem value="audio">Áudio</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label className="flex items-center gap-2">
+                <Image className="w-4 h-4" />
+                Imagem (opcional)
+              </Label>
+              {localData.imageUrl ? (
+                <div className="relative">
+                  <img 
+                    src={localData.imageUrl} 
+                    alt="Preview" 
+                    className="w-full h-32 object-cover rounded-md border"
+                  />
+                  <Button
+                    size="icon"
+                    variant="destructive"
+                    className="absolute top-1 right-1 h-6 w-6"
+                    onClick={() => {
+                      handleChange('imageUrl', undefined);
+                    }}
+                  >
+                    <X className="w-3 h-3" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <input
+                    type="file"
+                    ref={imageInputRef}
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      
+                      setUploadingImage(true);
+                      try {
+                        const fileExt = file.name.split('.').pop();
+                        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+                        const filePath = `funnel-media/${fileName}`;
+                        
+                        const { error: uploadError } = await supabase.storage
+                          .from('user-media')
+                          .upload(filePath, file);
+                        
+                        if (uploadError) throw uploadError;
+                        
+                        const { data: { publicUrl } } = supabase.storage
+                          .from('user-media')
+                          .getPublicUrl(filePath);
+                        
+                        handleChange('imageUrl', publicUrl);
+                        toast({ title: 'Imagem enviada com sucesso!' });
+                      } catch (error: any) {
+                        toast({ 
+                          title: 'Erro ao enviar imagem', 
+                          description: error.message,
+                          variant: 'destructive' 
+                        });
+                      } finally {
+                        setUploadingImage(false);
+                        if (imageInputRef.current) imageInputRef.current.value = '';
+                      }
+                    }}
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      disabled={uploadingImage}
+                      onClick={() => imageInputRef.current?.click()}
+                    >
+                      <Upload className="w-4 h-4 mr-2" />
+                      {uploadingImage ? 'Enviando...' : 'Upload do PC'}
+                    </Button>
+                  </div>
+                  <Input
+                    value={localData.imageUrl || ''}
+                    onChange={(e) => handleChange('imageUrl', e.target.value)}
+                    placeholder="Ou cole a URL da imagem..."
+                  />
+                </div>
+              )}
             </div>
-            {localData.mediaType && (
-              <div className="space-y-2">
-                <Label>URL da Mídia</Label>
-                <Input
-                  value={localData.mediaUrl || ''}
-                  onChange={(e) => handleChange('mediaUrl', e.target.value)}
-                  placeholder="https://..."
-                />
-              </div>
-            )}
+
+            {/* Video Section */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Video className="w-4 h-4" />
+                Vídeo (opcional)
+              </Label>
+              {localData.videoUrl ? (
+                <div className="relative">
+                  <video 
+                    src={localData.videoUrl} 
+                    className="w-full h-32 object-cover rounded-md border"
+                    controls
+                  />
+                  <Button
+                    size="icon"
+                    variant="destructive"
+                    className="absolute top-1 right-1 h-6 w-6"
+                    onClick={() => {
+                      handleChange('videoUrl', undefined);
+                    }}
+                  >
+                    <X className="w-3 h-3" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <input
+                    type="file"
+                    ref={videoInputRef}
+                    accept="video/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      
+                      setUploadingVideo(true);
+                      try {
+                        const fileExt = file.name.split('.').pop();
+                        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+                        const filePath = `funnel-media/${fileName}`;
+                        
+                        const { error: uploadError } = await supabase.storage
+                          .from('user-media')
+                          .upload(filePath, file);
+                        
+                        if (uploadError) throw uploadError;
+                        
+                        const { data: { publicUrl } } = supabase.storage
+                          .from('user-media')
+                          .getPublicUrl(filePath);
+                        
+                        handleChange('videoUrl', publicUrl);
+                        toast({ title: 'Vídeo enviado com sucesso!' });
+                      } catch (error: any) {
+                        toast({ 
+                          title: 'Erro ao enviar vídeo', 
+                          description: error.message,
+                          variant: 'destructive' 
+                        });
+                      } finally {
+                        setUploadingVideo(false);
+                        if (videoInputRef.current) videoInputRef.current.value = '';
+                      }
+                    }}
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      disabled={uploadingVideo}
+                      onClick={() => videoInputRef.current?.click()}
+                    >
+                      <Upload className="w-4 h-4 mr-2" />
+                      {uploadingVideo ? 'Enviando...' : 'Upload do PC'}
+                    </Button>
+                  </div>
+                  <Input
+                    value={localData.videoUrl || ''}
+                    onChange={(e) => handleChange('videoUrl', e.target.value)}
+                    placeholder="Ou cole a URL do vídeo..."
+                  />
+                </div>
+              )}
+            </div>
           </>
         )}
 
