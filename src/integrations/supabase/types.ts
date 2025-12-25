@@ -509,6 +509,7 @@ export type Database = {
       }
       funnels: {
         Row: {
+          channel: string | null
           created_at: string
           description: string | null
           id: string
@@ -523,6 +524,7 @@ export type Database = {
           webhook_url: string | null
         }
         Insert: {
+          channel?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -537,6 +539,7 @@ export type Database = {
           webhook_url?: string | null
         }
         Update: {
+          channel?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -1136,6 +1139,345 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      wpp_accounts: {
+        Row: {
+          access_token: string
+          business_name: string | null
+          created_at: string
+          id: string
+          is_connected: boolean | null
+          last_validated_at: string | null
+          phone_display: string | null
+          phone_number_id: string
+          status: string | null
+          updated_at: string
+          user_id: string
+          waba_id: string
+          webhook_verify_token: string
+        }
+        Insert: {
+          access_token: string
+          business_name?: string | null
+          created_at?: string
+          id?: string
+          is_connected?: boolean | null
+          last_validated_at?: string | null
+          phone_display?: string | null
+          phone_number_id: string
+          status?: string | null
+          updated_at?: string
+          user_id: string
+          waba_id: string
+          webhook_verify_token?: string
+        }
+        Update: {
+          access_token?: string
+          business_name?: string | null
+          created_at?: string
+          id?: string
+          is_connected?: boolean | null
+          last_validated_at?: string | null
+          phone_display?: string | null
+          phone_number_id?: string
+          status?: string | null
+          updated_at?: string
+          user_id?: string
+          waba_id?: string
+          webhook_verify_token?: string
+        }
+        Relationships: []
+      }
+      wpp_contacts: {
+        Row: {
+          created_at: string
+          id: string
+          last_seen_at: string | null
+          name: string | null
+          opt_in_status: string | null
+          phone: string
+          profile_name: string | null
+          updated_at: string
+          user_id: string
+          wa_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_seen_at?: string | null
+          name?: string | null
+          opt_in_status?: string | null
+          phone: string
+          profile_name?: string | null
+          updated_at?: string
+          user_id: string
+          wa_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_seen_at?: string | null
+          name?: string | null
+          opt_in_status?: string | null
+          phone?: string
+          profile_name?: string | null
+          updated_at?: string
+          user_id?: string
+          wa_id?: string
+        }
+        Relationships: []
+      }
+      wpp_conversations: {
+        Row: {
+          conversation_id: string | null
+          created_at: string
+          id: string
+          last_message_at: string | null
+          pricing_category: string | null
+          updated_at: string
+          user_id: string
+          wa_id: string
+          window_open_until: string | null
+          wpp_account_id: string | null
+        }
+        Insert: {
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          pricing_category?: string | null
+          updated_at?: string
+          user_id: string
+          wa_id: string
+          window_open_until?: string | null
+          wpp_account_id?: string | null
+        }
+        Update: {
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          pricing_category?: string | null
+          updated_at?: string
+          user_id?: string
+          wa_id?: string
+          window_open_until?: string | null
+          wpp_account_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wpp_conversations_wpp_account_id_fkey"
+            columns: ["wpp_account_id"]
+            isOneToOne: false
+            referencedRelation: "wpp_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wpp_logs: {
+        Row: {
+          created_at: string | null
+          event_type: string
+          funnel_id: string | null
+          id: string
+          node_id: string | null
+          payload: Json | null
+          session_id: string | null
+          user_id: string
+          wpp_account_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          event_type: string
+          funnel_id?: string | null
+          id?: string
+          node_id?: string | null
+          payload?: Json | null
+          session_id?: string | null
+          user_id: string
+          wpp_account_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          event_type?: string
+          funnel_id?: string | null
+          id?: string
+          node_id?: string | null
+          payload?: Json | null
+          session_id?: string | null
+          user_id?: string
+          wpp_account_id?: string | null
+        }
+        Relationships: []
+      }
+      wpp_messages: {
+        Row: {
+          created_at: string
+          direction: string
+          error_message: string | null
+          id: string
+          message_id: string | null
+          message_type: string | null
+          payload: Json | null
+          status: string | null
+          updated_at: string
+          user_id: string
+          wa_id: string
+          wpp_account_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          direction?: string
+          error_message?: string | null
+          id?: string
+          message_id?: string | null
+          message_type?: string | null
+          payload?: Json | null
+          status?: string | null
+          updated_at?: string
+          user_id: string
+          wa_id: string
+          wpp_account_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          direction?: string
+          error_message?: string | null
+          id?: string
+          message_id?: string | null
+          message_type?: string | null
+          payload?: Json | null
+          status?: string | null
+          updated_at?: string
+          user_id?: string
+          wa_id?: string
+          wpp_account_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wpp_messages_wpp_account_id_fkey"
+            columns: ["wpp_account_id"]
+            isOneToOne: false
+            referencedRelation: "wpp_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wpp_sessions: {
+        Row: {
+          chat_id: string
+          created_at: string
+          current_node_id: string | null
+          funnel_id: string | null
+          history: Json | null
+          id: string
+          is_finished: boolean | null
+          last_message_at: string | null
+          updated_at: string
+          user_id: string
+          variables: Json | null
+          wa_id: string
+          wpp_account_id: string | null
+        }
+        Insert: {
+          chat_id: string
+          created_at?: string
+          current_node_id?: string | null
+          funnel_id?: string | null
+          history?: Json | null
+          id?: string
+          is_finished?: boolean | null
+          last_message_at?: string | null
+          updated_at?: string
+          user_id: string
+          variables?: Json | null
+          wa_id: string
+          wpp_account_id?: string | null
+        }
+        Update: {
+          chat_id?: string
+          created_at?: string
+          current_node_id?: string | null
+          funnel_id?: string | null
+          history?: Json | null
+          id?: string
+          is_finished?: boolean | null
+          last_message_at?: string | null
+          updated_at?: string
+          user_id?: string
+          variables?: Json | null
+          wa_id?: string
+          wpp_account_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wpp_sessions_funnel_id_fkey"
+            columns: ["funnel_id"]
+            isOneToOne: false
+            referencedRelation: "funnels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wpp_sessions_wpp_account_id_fkey"
+            columns: ["wpp_account_id"]
+            isOneToOne: false
+            referencedRelation: "wpp_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wpp_templates: {
+        Row: {
+          category: string | null
+          components: Json | null
+          created_at: string
+          id: string
+          language: string | null
+          status: string | null
+          template_id: string | null
+          template_name: string
+          updated_at: string
+          user_id: string
+          variables: Json | null
+          wpp_account_id: string | null
+        }
+        Insert: {
+          category?: string | null
+          components?: Json | null
+          created_at?: string
+          id?: string
+          language?: string | null
+          status?: string | null
+          template_id?: string | null
+          template_name: string
+          updated_at?: string
+          user_id: string
+          variables?: Json | null
+          wpp_account_id?: string | null
+        }
+        Update: {
+          category?: string | null
+          components?: Json | null
+          created_at?: string
+          id?: string
+          language?: string | null
+          status?: string | null
+          template_id?: string | null
+          template_name?: string
+          updated_at?: string
+          user_id?: string
+          variables?: Json | null
+          wpp_account_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wpp_templates_wpp_account_id_fkey"
+            columns: ["wpp_account_id"]
+            isOneToOne: false
+            referencedRelation: "wpp_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
