@@ -34,6 +34,7 @@ import {
   Phone,
   Mail,
   User,
+  MessageSquare,
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend } from "recharts";
 import { Button } from "@/components/ui/button";
@@ -2172,6 +2173,28 @@ const AdminDashboardPage = () => {
                   <Switch
                     checked={adminSettings.funnels_enabled}
                     onCheckedChange={(checked) => updateSetting("funnels_enabled", checked)}
+                  />
+                </CardContent>
+              </Card>
+
+              {/* WhatsApp Toggle */}
+              <Card className="border-dashed">
+                <CardContent className="flex items-center justify-between py-4">
+                  <div className="space-y-0.5">
+                    <div className="font-medium flex items-center gap-2">
+                      <MessageSquare className="w-4 h-4 text-muted-foreground" />
+                      WhatsApp
+                      <Badge variant={adminSettings.whatsapp_enabled ? "default" : "secondary"}>
+                        {adminSettings.whatsapp_enabled ? "Ativo" : "Desativado"}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Integração WhatsApp Business Cloud API
+                    </p>
+                  </div>
+                  <Switch
+                    checked={adminSettings.whatsapp_enabled}
+                    onCheckedChange={(checked) => updateSetting("whatsapp_enabled", checked)}
                   />
                 </CardContent>
               </Card>

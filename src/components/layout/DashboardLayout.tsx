@@ -59,11 +59,24 @@ const DashboardLayout = ({
       label: "Telegram",
       path: "/telegram"
     });
-    items.push({
-      icon: MessageSquare,
-      label: "WhatsApp",
-      path: "/whatsapp"
-    });
+    
+    // Only show Funnels if enabled by admin
+    if (adminSettings.funnels_enabled) {
+      items.push({
+        icon: GitBranch,
+        label: "Funis",
+        path: "/funnels"
+      });
+    }
+    
+    // Only show WhatsApp if enabled by admin
+    if (adminSettings.whatsapp_enabled) {
+      items.push({
+        icon: MessageSquare,
+        label: "WhatsApp",
+        path: "/whatsapp"
+      });
+    }
     
     // Only show Destinations if enabled by admin
     if (adminSettings.destinations_enabled) {
@@ -101,14 +114,6 @@ const DashboardLayout = ({
       });
     }
     
-    // Only show Funnels if enabled by admin
-    if (adminSettings.funnels_enabled) {
-      items.push({
-        icon: GitBranch,
-        label: "Funis",
-        path: "/funnels"
-      });
-    }
     return items;
   };
   
