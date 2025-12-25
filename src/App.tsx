@@ -23,6 +23,7 @@ import ThankYouPage from "./pages/ThankYouPage";
 import TikTokAccountsPage from "./pages/TikTokAccountsPage";
 import FunnelsPage from "./pages/FunnelsPage";
 import FunnelBuilderPage from "./pages/FunnelBuilderPage";
+import WhatsAppPage from "./pages/WhatsAppPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
 import SettingsPage from "./pages/SettingsPage";
 import DeliveryPage from "./pages/DeliveryPage";
@@ -48,6 +49,7 @@ const App = () => (
             <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
             <Route path="/billing" element={<ProtectedRoute><BillingPage /></ProtectedRoute>} />
             <Route path="/telegram" element={<ProtectedRoute><TelegramPage /></ProtectedRoute>} />
+            <Route path="/whatsapp" element={<ProtectedRoute><WhatsAppPage /></ProtectedRoute>} />
             <Route path="/destinations" element={
               <ProtectedRoute>
                 <FeatureProtectedRoute featureKey="destinations_enabled">

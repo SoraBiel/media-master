@@ -1,7 +1,7 @@
 import { ReactNode, useState, useEffect, useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Send, LayoutDashboard, CreditCard, MessageCircle, Target, Megaphone, Sparkles, Settings, LogOut, ChevronLeft, ChevronRight, Bell, User, Shield, Menu, Video, Crown, Headphones, GitBranch } from "lucide-react";
+import { Send, LayoutDashboard, CreditCard, MessageCircle, Target, Megaphone, Sparkles, Settings, LogOut, ChevronLeft, ChevronRight, Bell, User, Shield, Menu, Video, Crown, Headphones, GitBranch, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/AuthContext";
@@ -58,6 +58,11 @@ const DashboardLayout = ({
       icon: MessageCircle,
       label: "Telegram",
       path: "/telegram"
+    });
+    items.push({
+      icon: MessageSquare,
+      label: "WhatsApp",
+      path: "/whatsapp"
     });
     
     // Only show Destinations if enabled by admin
