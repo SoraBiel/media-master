@@ -13,9 +13,16 @@ import {
   Flag,
   RefreshCcw,
   CreditCard,
+  GripVertical,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { BlockType, BLOCK_INFO, BLOCK_CATEGORIES } from './types';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 const ICONS: Record<BlockType, typeof Play> = {
   start: Play,
@@ -38,59 +45,140 @@ interface BlockSidebarProps {
   onDragStart: (event: React.DragEvent, blockType: BlockType) => void;
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
-  messages: 'Mensagens',
-  questions: 'Perguntas',
-  logic: 'Lógica',
-  actions: 'Ações',
-  automation: 'Automação',
-  payments: 'Pagamentos',
+const CATEGORY_CONFIG: Record<string, { label: string; icon: typeof Play; gradient: string }> = {
+  messages: { 
+    label: 'Mensagens', 
+    icon: MessageSquare,
+    gradient: 'from-blue-500/20 to-blue-600/5'
+  },
+  questions: { 
+    label: 'Perguntas', 
+    icon: HelpCircle,
+    gradient: 'from-violet-500/20 to-violet-600/5'
+  },
+  logic: { 
+    label: 'Lógica', 
+    icon: GitBranch,
+    gradient: 'from-amber-500/20 to-amber-600/5'
+  },
+  actions: { 
+    label: 'Ações', 
+    icon: Send,
+    gradient: 'from-pink-500/20 to-pink-600/5'
+  },
+  automation: { 
+    label: 'Automação', 
+    icon: RefreshCcw,
+    gradient: 'from-rose-500/20 to-rose-600/5'
+  },
+  payments: { 
+    label: 'Pagamentos', 
+    icon: CreditCard,
+    gradient: 'from-green-500/20 to-green-600/5'
+  },
 };
 
 export const BlockSidebar = ({ onDragStart }: BlockSidebarProps) => {
   return (
-    <div className="w-64 h-full min-h-0 border-r border-border bg-card/50 p-4 flex flex-col flex-shrink-0">
-      <h3 className="font-semibold text-sm text-muted-foreground mb-4 uppercase tracking-wider">
-        Blocos
-      </h3>
-
-      <div className="flex-1 min-h-0 overflow-y-auto pr-1">
-        {Object.entries(BLOCK_CATEGORIES).map(([category, types]) => (
-          <div key={category} className="mb-6">
-            <h4 className="text-xs font-medium text-muted-foreground mb-2 uppercase">
-              {CATEGORY_LABELS[category]}
-            </h4>
-            <div className="space-y-2">
-              {types.map((type) => {
-                const info = BLOCK_INFO[type as BlockType];
-                const Icon = ICONS[type as BlockType];
-
-                return (
-                  <div
-                    key={type}
-                    draggable
-                    onDragStart={(e) => onDragStart(e, type as BlockType)}
-                    className={cn(
-                      'flex items-center gap-3 p-3 rounded-lg border border-border',
-                      'cursor-grab active:cursor-grabbing hover:border-primary/50 transition-all',
-                      'bg-background hover:bg-muted/50'
-                    )}
-                  >
-                    <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center text-white', info.color)}>
-                      <Icon className="w-4 h-4" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{info.label}</p>
-                      <p className="text-[10px] text-muted-foreground truncate">
-                        {info.description}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+    <div className="w-72 h-full min-h-0 border-r border-border bg-gradient-to-b from-card to-background flex flex-col flex-shrink-0">
+      {/* Header */}
+      <div className="p-4 border-b border-border bg-card/80 backdrop-blur-sm">
+        <h3 className="font-semibold text-base flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+            <GripVertical className="w-4 h-4 text-primary" />
           </div>
-        ))}
+          Blocos do Funil
+        </h3>
+        <p className="text-xs text-muted-foreground mt-1">
+          Arraste os blocos para o canvas
+        </p>
+      </div>
+
+      {/* Blocks List */}
+      <ScrollArea className="flex-1">
+        <div className="p-3 space-y-4">
+          {Object.entries(BLOCK_CATEGORIES).map(([category, types]) => {
+            const config = CATEGORY_CONFIG[category];
+            const CategoryIcon = config.icon;
+            
+            return (
+              <div key={category} className="space-y-2">
+                {/* Category Header */}
+                <div className={cn(
+                  "flex items-center gap-2 px-3 py-2 rounded-lg",
+                  "bg-gradient-to-r",
+                  config.gradient
+                )}>
+                  <CategoryIcon className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    {config.label}
+                  </span>
+                </div>
+
+                {/* Blocks */}
+                <div className="space-y-1.5 pl-1">
+                  {types.map((type) => {
+                    const info = BLOCK_INFO[type as BlockType];
+                    const Icon = ICONS[type as BlockType];
+
+                    return (
+                      <Tooltip key={type} delayDuration={300}>
+                        <TooltipTrigger asChild>
+                          <div
+                            draggable
+                            onDragStart={(e) => onDragStart(e, type as BlockType)}
+                            className={cn(
+                              'group flex items-center gap-3 p-2.5 rounded-xl border border-transparent',
+                              'cursor-grab active:cursor-grabbing',
+                              'bg-card hover:bg-muted/80 hover:border-border',
+                              'transition-all duration-200 hover:shadow-md hover:scale-[1.02]',
+                              'active:scale-[0.98]'
+                            )}
+                          >
+                            {/* Icon */}
+                            <div className={cn(
+                              'w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-sm',
+                              'transition-transform group-hover:scale-110',
+                              info.color
+                            )}>
+                              <Icon className="w-5 h-5" />
+                            </div>
+
+                            {/* Content */}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-foreground truncate">
+                                {info.label}
+                              </p>
+                              <p className="text-[11px] text-muted-foreground truncate leading-tight">
+                                {info.description}
+                              </p>
+                            </div>
+
+                            {/* Drag indicator */}
+                            <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                              <GripVertical className="w-4 h-4 text-muted-foreground/50" />
+                            </div>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="right" className="max-w-[200px]">
+                          <p className="font-medium">{info.label}</p>
+                          <p className="text-xs text-muted-foreground">{info.description}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </ScrollArea>
+
+      {/* Footer hint */}
+      <div className="p-3 border-t border-border bg-muted/30">
+        <p className="text-[10px] text-muted-foreground text-center">
+          💡 Dica: Conecte os blocos para criar o fluxo
+        </p>
       </div>
     </div>
   );
