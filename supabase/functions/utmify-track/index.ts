@@ -91,28 +91,45 @@ Deno.serve(async (req) => {
 
       console.log('Testing UTMify API Token...');
 
-      // Send a test request to validate the token
+      // Send a test request to validate the token with all required fields
       const testPayload: UTMifyOrderPayload = {
         orderId: `test_${Date.now()}`,
         platform: 'nexo_funnels',
         paymentMethod: 'pix',
         status: 'waiting_payment',
         createdAt: formatDateForUtmify(new Date().toISOString()),
+        approvedDate: null,
+        refundedAt: null,
         customer: {
           name: 'Teste Conexão Nexo',
           email: 'teste@nexo.app',
+          phone: null,
+          document: null,
         },
         products: [
           {
             id: 'test_product',
             name: 'Teste de Conexão',
+            planId: null,
+            planName: null,
             quantity: 1,
             priceInCents: 100,
           },
         ],
         trackingParameters: {
+          src: null,
+          sck: null,
           utm_source: 'nexo_test',
           utm_medium: 'api_test',
+          utm_campaign: null,
+          utm_content: null,
+          utm_term: null,
+        },
+        commission: {
+          totalPriceInCents: 100,
+          gatewayFeeInCents: 0,
+          userCommissionInCents: 100,
+          currency: 'BRL',
         },
         isTest: true,
       };
