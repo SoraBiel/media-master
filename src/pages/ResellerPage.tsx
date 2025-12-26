@@ -1236,6 +1236,7 @@ const ResellerPage = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="w-[60px]">Foto</TableHead>
                         <TableHead>Username</TableHead>
                         <TableHead>Seguidores</TableHead>
                         <TableHead>Nicho</TableHead>
@@ -1247,6 +1248,15 @@ const ResellerPage = () => {
                     <TableBody>
                       {instagramAccounts.map((account) => (
                         <TableRow key={account.id}>
+                          <TableCell>
+                            {account.image_url ? (
+                              <img src={account.image_url} alt={account.username} className="w-10 h-10 rounded-lg object-cover" />
+                            ) : (
+                              <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
+                                <Instagram className="w-5 h-5 text-muted-foreground" />
+                              </div>
+                            )}
+                          </TableCell>
                           <TableCell className="font-medium">@{account.username}</TableCell>
                           <TableCell>{account.followers.toLocaleString()}</TableCell>
                           <TableCell>{account.niche || "-"}</TableCell>
@@ -1451,6 +1461,7 @@ const ResellerPage = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="w-[60px]">Foto</TableHead>
                         <TableHead>Username</TableHead>
                         <TableHead>Seguidores</TableHead>
                         <TableHead>Curtidas</TableHead>
@@ -1463,6 +1474,15 @@ const ResellerPage = () => {
                     <TableBody>
                       {tiktokAccounts.map((account) => (
                         <TableRow key={account.id}>
+                          <TableCell>
+                            {account.image_url ? (
+                              <img src={account.image_url} alt={account.username} className="w-10 h-10 rounded-lg object-cover" />
+                            ) : (
+                              <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
+                                <Music2 className="w-5 h-5 text-muted-foreground" />
+                              </div>
+                            )}
+                          </TableCell>
                           <TableCell className="font-medium">@{account.username}</TableCell>
                           <TableCell>{account.followers.toLocaleString()}</TableCell>
                           <TableCell>{account.likes.toLocaleString()}</TableCell>
@@ -1663,6 +1683,7 @@ const ResellerPage = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="w-[60px]">Foto</TableHead>
                         <TableHead>Nome</TableHead>
                         <TableHead>Username</TableHead>
                         <TableHead>Membros</TableHead>
@@ -1675,6 +1696,15 @@ const ResellerPage = () => {
                     <TableBody>
                       {telegramGroups.map((group) => (
                         <TableRow key={group.id}>
+                          <TableCell>
+                            {group.image_url ? (
+                              <img src={group.image_url} alt={group.group_name} className="w-10 h-10 rounded-lg object-cover" />
+                            ) : (
+                              <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
+                                <MessageSquare className="w-5 h-5 text-muted-foreground" />
+                              </div>
+                            )}
+                          </TableCell>
                           <TableCell className="font-medium">{group.group_name}</TableCell>
                           <TableCell>{group.group_username ? `@${group.group_username}` : "-"}</TableCell>
                           <TableCell>{group.members_count.toLocaleString()}</TableCell>
@@ -1898,9 +1928,9 @@ const ResellerPage = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="w-[60px]">Foto</TableHead>
                         <TableHead>Nome</TableHead>
                         <TableHead>Nicho</TableHead>
-                        <TableHead>Categoria</TableHead>
                         <TableHead>Preço</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="text-right">Ações</TableHead>
@@ -1909,11 +1939,17 @@ const ResellerPage = () => {
                     <TableBody>
                       {models.map((model) => (
                         <TableRow key={model.id}>
+                          <TableCell>
+                            {model.image_url ? (
+                              <img src={model.image_url} alt={model.name} className="w-10 h-10 rounded-lg object-cover" />
+                            ) : (
+                              <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
+                                <Sparkles className="w-5 h-5 text-muted-foreground" />
+                              </div>
+                            )}
+                          </TableCell>
                           <TableCell className="font-medium">{model.name}</TableCell>
                           <TableCell>{model.niche || "-"}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="capitalize">{model.category}</Badge>
-                          </TableCell>
                           <TableCell>{formatPrice(model.price_cents)}</TableCell>
                           <TableCell>
                             {model.is_sold ? (
