@@ -1,3 +1,4 @@
+import { useRef, useEffect } from 'react';
 import { 
   Play, 
   MessageSquare, 
@@ -78,7 +79,120 @@ const CATEGORY_CONFIG: Record<string, { label: string; icon: typeof Play; gradie
   },
 };
 
+// Create drag preview element
+const createDragImage = (blockType: BlockType): HTMLElement => {
+  const info = BLOCK_INFO[blockType];
+  const preview = document.createElement('div');
+  
+  preview.style.cssText = `
+    position: absolute;
+    top: -1000px;
+    left: -1000px;
+    width: 200px;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+    transform: rotate(-2deg);
+    border: 2px solid #8b5cf6;
+    background: white;
+    font-family: system-ui, -apple-system, sans-serif;
+  `;
+  
+  // Get color class and convert to actual color
+  const colorMap: Record<string, string> = {
+    'bg-emerald-500': '#10b981',
+    'bg-blue-500': '#3b82f6',
+    'bg-violet-500': '#8b5cf6',
+    'bg-amber-500': '#f59e0b',
+    'bg-slate-500': '#64748b',
+    'bg-cyan-500': '#06b6d4',
+    'bg-pink-500': '#ec4899',
+    'bg-orange-500': '#f97316',
+    'bg-red-500': '#ef4444',
+    'bg-gray-500': '#6b7280',
+    'bg-rose-500': '#f43f5e',
+    'bg-green-500': '#22c55e',
+  };
+  
+  const bgColor = colorMap[info.color] || '#8b5cf6';
+  
+  preview.innerHTML = `
+    <div style="
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px;
+      background: ${bgColor};
+      color: white;
+    ">
+      <div style="
+        width: 16px;
+        height: 16px;
+        border-radius: 4px;
+        background: rgba(255,255,255,0.3);
+      "></div>
+      <span style="font-size: 14px; font-weight: 600;">${info.label}</span>
+    </div>
+    <div style="
+      padding: 12px;
+      background: white;
+    ">
+      <p style="
+        font-size: 13px;
+        color: #71717a;
+        margin: 0;
+      ">${info.description}</p>
+    </div>
+    <div style="
+      position: absolute;
+      bottom: -6px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 12px;
+      height: 12px;
+      background: #8b5cf6;
+      border-radius: 50%;
+      border: 2px solid white;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    "></div>
+  `;
+  
+  document.body.appendChild(preview);
+  return preview;
+};
+
 export const BlockSidebar = ({ onDragStart }: BlockSidebarProps) => {
+  const dragPreviewRef = useRef<HTMLElement | null>(null);
+
+  const handleDragStart = (e: React.DragEvent, blockType: BlockType) => {
+    // Create custom drag image
+    const preview = createDragImage(blockType);
+    dragPreviewRef.current = preview;
+    
+    // Set the drag image
+    e.dataTransfer.setDragImage(preview, 100, 50);
+    
+    // Call the original handler
+    onDragStart(e, blockType);
+  };
+
+  const handleDragEnd = () => {
+    // Clean up drag preview
+    if (dragPreviewRef.current) {
+      document.body.removeChild(dragPreviewRef.current);
+      dragPreviewRef.current = null;
+    }
+  };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (dragPreviewRef.current) {
+        document.body.removeChild(dragPreviewRef.current);
+      }
+    };
+  }, []);
+
   return (
     <div className="w-72 h-full min-h-0 border-r border-border bg-gradient-to-b from-card to-background flex flex-col flex-shrink-0">
       {/* Header */}
@@ -126,7 +240,8 @@ export const BlockSidebar = ({ onDragStart }: BlockSidebarProps) => {
                         <TooltipTrigger asChild>
                           <div
                             draggable
-                            onDragStart={(e) => onDragStart(e, type as BlockType)}
+                            onDragStart={(e) => handleDragStart(e, type as BlockType)}
+                            onDragEnd={handleDragEnd}
                             className={cn(
                               'group flex items-center gap-3 p-2.5 rounded-xl border border-transparent',
                               'cursor-grab active:cursor-grabbing',
