@@ -538,7 +538,9 @@ const CampaignsSection = () => {
               <TabsTrigger value="my" className="gap-2">
                 <FolderOpen className="w-4 h-4" />
                 Minhas Mídias
-                <Badge variant="outline" className="ml-1">{userMedia.length}/{planLimits.maxFiles}</Badge>
+                <Badge variant="outline" className="ml-1">
+                  {userMedia.length}/{planLimits.maxFiles === Infinity ? "∞" : planLimits.maxFiles}
+                </Badge>
               </TabsTrigger>
             </TabsList>
 
@@ -609,73 +611,128 @@ const CampaignsSection = () => {
 
             {/* User's Own Media */}
             <TabsContent value="my" className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">Plano {currentPlan?.name || "Free"}</Badge>
-                  <span className="text-sm text-muted-foreground">
-                    Limite: {planLimits.maxFiles} arquivos • {planLimits.maxSizeMB}MB por arquivo
-                  </span>
-                </div>
-                <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button variant="gradient" disabled={userMedia.length >= planLimits.maxFiles}>
-                      <Upload className="w-4 h-4 mr-2" />
-                      Upload Mídia
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Upload de Mídias</DialogTitle>
-                      <DialogDescription>
-                        Envie imagens ou vídeos do seu computador. Máximo {planLimits.maxSizeMB}MB por arquivo.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                      <input
-                        type="file"
-                        ref={fileInputRef}
-                        multiple
-                        accept="image/*,video/*"
-                        className="hidden"
-                        onChange={handleFileSelect}
-                      />
-                      <div 
-                        className="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover:border-primary/50 transition-colors"
-                        onClick={() => fileInputRef.current?.click()}
-                      >
-                        <Upload className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-                        <p className="font-medium">Clique para selecionar arquivos</p>
-                        <p className="text-sm text-muted-foreground mt-1">ou arraste e solte aqui</p>
+              {/* Plan Usage Card */}
+              <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
+                <CardContent className="p-4">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex-1 space-y-3">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-primary/10">
+                          <Crown className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold">Plano {currentPlan?.name || "Free"}</h3>
+                          <p className="text-sm text-muted-foreground">
+                            Máximo de {planLimits.maxSizeMB}MB por arquivo
+                          </p>
+                        </div>
                       </div>
                       
-                      {selectedFiles.length > 0 && (
-                        <div className="space-y-2">
-                          <Label>Arquivos selecionados ({selectedFiles.length})</Label>
-                          <div className="max-h-40 overflow-y-auto space-y-2">
-                            {selectedFiles.map((file, i) => (
-                              <div key={i} className="flex items-center gap-2 p-2 bg-muted rounded-lg">
-                                {file.type.startsWith("video") ? (
-                                  <Video className="w-4 h-4 text-primary" />
-                                ) : (
-                                  <Image className="w-4 h-4 text-primary" />
-                                )}
-                                <span className="flex-1 text-sm truncate">{file.name}</span>
-                                <span className="text-xs text-muted-foreground">{formatFileSize(file.size)}</span>
-                              </div>
-                            ))}
-                          </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">Mídias utilizadas</span>
+                          <span className="font-medium">
+                            {userMedia.length} / {planLimits.maxFiles === Infinity ? "∞" : planLimits.maxFiles}
+                          </span>
                         </div>
+                        <Progress 
+                          value={planLimits.maxFiles === Infinity ? 0 : (userMedia.length / planLimits.maxFiles) * 100} 
+                          className="h-2"
+                        />
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span>
+                            {planLimits.maxFiles === Infinity 
+                              ? "Armazenamento ilimitado" 
+                              : `${planLimits.maxFiles - userMedia.length} arquivos restantes`
+                            }
+                          </span>
+                          {planLimits.maxFiles !== Infinity && (
+                            <span>
+                              {((userMedia.length / planLimits.maxFiles) * 100).toFixed(0)}% usado
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-col gap-2">
+                      <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
+                        <DialogTrigger asChild>
+                          <Button 
+                            variant="gradient" 
+                            disabled={planLimits.maxFiles !== Infinity && userMedia.length >= planLimits.maxFiles}
+                          >
+                            <Upload className="w-4 h-4 mr-2" />
+                            Upload Mídia
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Upload de Mídias</DialogTitle>
+                            <DialogDescription>
+                              Envie imagens ou vídeos do seu computador. Máximo {planLimits.maxSizeMB}MB por arquivo.
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-4 py-4">
+                            <input
+                              type="file"
+                              ref={fileInputRef}
+                              multiple
+                              accept="image/*,video/*"
+                              className="hidden"
+                              onChange={handleFileSelect}
+                            />
+                            <div 
+                              className="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover:border-primary/50 transition-colors"
+                              onClick={() => fileInputRef.current?.click()}
+                            >
+                              <Upload className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                              <p className="font-medium">Clique para selecionar arquivos</p>
+                              <p className="text-sm text-muted-foreground mt-1">ou arraste e solte aqui</p>
+                            </div>
+                            
+                            {selectedFiles.length > 0 && (
+                              <div className="space-y-2">
+                                <Label>Arquivos selecionados ({selectedFiles.length})</Label>
+                                <div className="max-h-40 overflow-y-auto space-y-2">
+                                  {selectedFiles.map((file, i) => (
+                                    <div key={i} className="flex items-center gap-2 p-2 bg-muted rounded-lg">
+                                      {file.type.startsWith("video") ? (
+                                        <Video className="w-4 h-4 text-primary" />
+                                      ) : (
+                                        <Image className="w-4 h-4 text-primary" />
+                                      )}
+                                      <span className="flex-1 text-sm truncate">{file.name}</span>
+                                      <span className="text-xs text-muted-foreground">{formatFileSize(file.size)}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          <DialogFooter>
+                            <Button variant="outline" onClick={() => { setSelectedFiles([]); setIsUploadDialogOpen(false); }}>Cancelar</Button>
+                            <Button variant="gradient" onClick={handleUploadMedia} disabled={selectedFiles.length === 0 || isUploading}>
+                              {isUploading ? <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />Enviando...</> : <><Upload className="w-4 h-4 mr-2" />Enviar</>}
+                            </Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                      
+                      {userMedia.length > 0 && (
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleUseMedia("", true)}
+                        >
+                          <Megaphone className="w-4 h-4 mr-2" />
+                          Usar em Campanha
+                        </Button>
                       )}
                     </div>
-                    <DialogFooter>
-                      <Button variant="outline" onClick={() => { setSelectedFiles([]); setIsUploadDialogOpen(false); }}>Cancelar</Button>
-                      <Button variant="gradient" onClick={handleUploadMedia} disabled={selectedFiles.length === 0 || isUploading}>
-                        {isUploading ? <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />Enviando...</> : <><Upload className="w-4 h-4 mr-2" />Enviar</>}
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </div>
+                  </div>
+                </CardContent>
+              </Card>
 
               {filteredUserMedia.length > 0 ? (
                 <>
