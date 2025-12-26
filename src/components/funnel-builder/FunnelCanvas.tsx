@@ -16,7 +16,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Pencil, ScrollText, Webhook, Package } from 'lucide-react';
+import { Pencil, ScrollText, Webhook, Package, Settings } from 'lucide-react';
 
 import BlockNode from './BlockNode';
 import { BlockSidebar } from './BlockSidebar';
@@ -25,6 +25,7 @@ import { FunnelToolbar } from './FunnelToolbar';
 import { FunnelLogsPanel } from './FunnelLogsPanel';
 import { WebhookConfig } from './WebhookConfig';
 import FunnelProductsTab from './FunnelProductsTab';
+import { FunnelSettingsTab } from './FunnelSettingsTab';
 import { BlockType, BLOCK_INFO, BlockData, FunnelNode, FunnelEdge, SCHEMA_VERSION } from './types';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -377,6 +378,10 @@ const FunnelCanvasInner = ({
               <Package className="h-4 w-4" />
               Produto
             </TabsTrigger>
+            <TabsTrigger value="settings" className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              Configurações
+            </TabsTrigger>
           </TabsList>
           <Button
             variant="outline"
@@ -446,6 +451,10 @@ const FunnelCanvasInner = ({
 
         <TabsContent value="products" className="flex-1 m-0 p-4 data-[state=inactive]:hidden overflow-auto">
           <FunnelProductsTab funnelId={funnelId} />
+        </TabsContent>
+
+        <TabsContent value="settings" className="flex-1 m-0 data-[state=inactive]:hidden overflow-auto">
+          <FunnelSettingsTab funnelId={funnelId} />
         </TabsContent>
       </Tabs>
 
