@@ -158,6 +158,24 @@ interface TikTokAccount {
   created_at: string;
 }
 
+interface TelegramGroup {
+  id: string;
+  group_name: string;
+  group_username: string | null;
+  members_count: number;
+  description: string | null;
+  niche: string | null;
+  price_cents: number;
+  is_verified: boolean;
+  is_sold: boolean;
+  image_url: string | null;
+  group_type: string;
+  deliverable_info: string | null;
+  deliverable_notes: string | null;
+  deliverable_invite_link: string | null;
+  created_at: string;
+}
+
 interface ModelForSale {
   id: string;
   name: string;
@@ -210,6 +228,7 @@ const AdminDashboardPage = () => {
   const [checkouts, setCheckouts] = useState<CheckoutSession[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [tiktokAccounts, setTiktokAccounts] = useState<TikTokAccount[]>([]);
+  const [telegramGroups, setTelegramGroups] = useState<TelegramGroup[]>([]);
   const [models, setModels] = useState<ModelForSale[]>([]);
   const [adminMedia, setAdminMedia] = useState<AdminMedia[]>([]);
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
@@ -238,6 +257,7 @@ const AdminDashboardPage = () => {
   
   // Dialogs
   const [tiktokDialogOpen, setTiktokDialogOpen] = useState(false);
+  const [telegramGroupDialogOpen, setTelegramGroupDialogOpen] = useState(false);
   const [modelDialogOpen, setModelDialogOpen] = useState(false);
   const [mediaDialogOpen, setMediaDialogOpen] = useState(false);
   const [planDialogOpen, setPlanDialogOpen] = useState(false);
@@ -293,8 +313,23 @@ const AdminDashboardPage = () => {
   const [isUploadingMedia, setIsUploadingMedia] = useState(false);
   const [isUploadingTiktok, setIsUploadingTiktok] = useState(false);
   const [isUploadingModel, setIsUploadingModel] = useState(false);
+  const [isUploadingTelegramGroup, setIsUploadingTelegramGroup] = useState(false);
   const mediaFilesInputRef = useRef<HTMLInputElement>(null);
   const mediaCoverInputRef = useRef<HTMLInputElement>(null);
+  
+  const [telegramGroupForm, setTelegramGroupForm] = useState({
+    group_name: "",
+    group_username: "",
+    members_count: "",
+    description: "",
+    niche: "",
+    price: "",
+    group_type: "group",
+    deliverable_invite_link: "",
+    deliverable_notes: "",
+  });
+  const [telegramGroupImageFile, setTelegramGroupImageFile] = useState<File | null>(null);
+  const telegramGroupImageInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchAllData();
@@ -306,6 +341,7 @@ const AdminDashboardPage = () => {
       .on("postgres_changes", { event: "*", schema: "public", table: "subscriptions" }, () => fetchSubscriptions())
       .on("postgres_changes", { event: "*", schema: "public", table: "checkout_sessions" }, () => fetchCheckouts())
       .on("postgres_changes", { event: "*", schema: "public", table: "tiktok_accounts" }, () => fetchTikTokAccounts())
+      .on("postgres_changes", { event: "*", schema: "public", table: "telegram_groups" }, () => fetchTelegramGroups())
       .on("postgres_changes", { event: "*", schema: "public", table: "models_for_sale" }, () => fetchModels())
       .on("postgres_changes", { event: "*", schema: "public", table: "admin_media" }, () => fetchAdminMedia())
       .on("postgres_changes", { event: "*", schema: "public", table: "user_roles" }, () => fetchUserRoles())
@@ -323,6 +359,7 @@ const AdminDashboardPage = () => {
       fetchSubscriptions(),
       fetchCheckouts(),
       fetchTikTokAccounts(),
+      fetchTelegramGroups(),
       fetchModels(),
       fetchAdminMedia(),
       fetchPlans(),
@@ -446,6 +483,14 @@ const AdminDashboardPage = () => {
       .select("*")
       .order("created_at", { ascending: false });
     setTiktokAccounts(data || []);
+  };
+
+  const fetchTelegramGroups = async () => {
+    const { data } = await supabase
+      .from("telegram_groups")
+      .select("*")
+      .order("created_at", { ascending: false });
+    setTelegramGroups(data || []);
   };
 
   const fetchModels = async () => {
@@ -604,6 +649,47 @@ const AdminDashboardPage = () => {
   const handleDeleteTikTokAccount = async (id: string) => {
     const { error } = await supabase.from("tiktok_accounts").delete().eq("id", id);
     if (!error) toast({ title: "Conta removida!" });
+  };
+
+  const handleAddTelegramGroup = async () => {
+    setIsUploadingTelegramGroup(true);
+    try {
+      let imageUrl: string | null = null;
+      if (telegramGroupImageFile) {
+        imageUrl = await handleUploadImage(telegramGroupImageFile, "product-images");
+      }
+
+      const { error } = await supabase.from("telegram_groups").insert({
+        group_name: telegramGroupForm.group_name,
+        group_username: telegramGroupForm.group_username || null,
+        members_count: parseInt(telegramGroupForm.members_count) || 0,
+        description: telegramGroupForm.description || null,
+        niche: telegramGroupForm.niche || null,
+        price_cents: Math.round(parseFloat(telegramGroupForm.price) * 100) || 0,
+        group_type: telegramGroupForm.group_type,
+        image_url: imageUrl,
+        deliverable_invite_link: telegramGroupForm.deliverable_invite_link || null,
+        deliverable_notes: telegramGroupForm.deliverable_notes || null,
+      });
+
+      if (!error) {
+        toast({ title: "Grupo adicionado!" });
+        setTelegramGroupDialogOpen(false);
+        setTelegramGroupForm({
+          group_name: "", group_username: "", members_count: "", description: "",
+          niche: "", price: "", group_type: "group", deliverable_invite_link: "", deliverable_notes: "",
+        });
+        setTelegramGroupImageFile(null);
+        fetchTelegramGroups();
+      }
+    } finally {
+      setIsUploadingTelegramGroup(false);
+    }
+  };
+
+  const handleDeleteTelegramGroup = async (id: string) => {
+    const { error } = await supabase.from("telegram_groups").delete().eq("id", id);
+    if (!error) toast({ title: "Grupo removido!" });
   };
 
   const handleAddModel = async () => {
@@ -948,6 +1034,7 @@ const AdminDashboardPage = () => {
             <TabsTrigger value="billing">Faturamento</TabsTrigger>
             <TabsTrigger value="media">Mídias</TabsTrigger>
             <TabsTrigger value="tiktok">Contas TikTok</TabsTrigger>
+            <TabsTrigger value="telegram-groups">Grupos Telegram</TabsTrigger>
             <TabsTrigger value="models">Modelos</TabsTrigger>
             <TabsTrigger value="templates" className="flex items-center gap-1">
               <GitBranch className="h-4 w-4" />

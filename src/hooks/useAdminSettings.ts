@@ -10,6 +10,7 @@ export interface AdminSettings {
   funnels_enabled: boolean;
   media_library_enabled: boolean;
   whatsapp_enabled: boolean;
+  telegram_groups_enabled: boolean;
 }
 
 export interface SettingsHistoryEntry {
@@ -30,16 +31,18 @@ const defaultSettings: AdminSettings = {
   funnels_enabled: true,
   media_library_enabled: true,
   whatsapp_enabled: true,
+  telegram_groups_enabled: true,
 };
 
 const settingLabels: Record<keyof AdminSettings, string> = {
-  tiktok_enabled: "TikTok Accounts",
+  tiktok_enabled: "Contas TikTok",
   models_enabled: "Model Hub",
   campaigns_enabled: "Campanhas",
   destinations_enabled: "Destinos",
   funnels_enabled: "Funis",
   media_library_enabled: "Biblioteca de Mídias",
   whatsapp_enabled: "WhatsApp",
+  telegram_groups_enabled: "Grupos Telegram",
 };
 
 export const getSettingLabel = (key: string): string => {
