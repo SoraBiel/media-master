@@ -1078,39 +1078,51 @@ const ResellerPage = () => {
                       Adicionar Conta
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                  <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>{editingInstagram ? "Editar Conta" : "Nova Conta Instagram"}</DialogTitle>
-                      <DialogDescription>
-                        Preencha os dados da conta Instagram
-                      </DialogDescription>
                     </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>Username *</Label>
-                          <Input
-                            placeholder="@username"
-                            value={instagramForm.username}
-                            onChange={(e) => setInstagramForm(prev => ({ ...prev, username: e.target.value }))}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Preço (R$) *</Label>
-                          <Input
-                            type="number"
-                            placeholder="0.00"
-                            value={instagramForm.price_cents / 100}
-                            onChange={(e) => setInstagramForm(prev => ({ ...prev, price_cents: Number(e.target.value) * 100 }))}
-                          />
-                        </div>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <Label>Username</Label>
+                        <Input
+                          placeholder="@username"
+                          value={instagramForm.username}
+                          onChange={(e) => setInstagramForm(prev => ({ ...prev, username: e.target.value }))}
+                        />
                       </div>
-                      <div className="grid grid-cols-4 gap-4">
+                      <div className="space-y-2">
+                        <Label>Descrição</Label>
+                        <Textarea
+                          placeholder="Descreva a conta..."
+                          value={instagramForm.description}
+                          onChange={(e) => setInstagramForm(prev => ({ ...prev, description: e.target.value }))}
+                          rows={2}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Nicho</Label>
+                        <Input
+                          placeholder="Estratégia, Vendas, etc."
+                          value={instagramForm.niche}
+                          onChange={(e) => setInstagramForm(prev => ({ ...prev, niche: e.target.value }))}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Preço (R$)</Label>
+                        <Input
+                          type="number"
+                          placeholder="499.90"
+                          value={instagramForm.price_cents / 100 || ""}
+                          onChange={(e) => setInstagramForm(prev => ({ ...prev, price_cents: Number(e.target.value) * 100 }))}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label>Seguidores</Label>
                           <Input
                             type="number"
-                            value={instagramForm.followers}
+                            value={instagramForm.followers || ""}
                             onChange={(e) => setInstagramForm(prev => ({ ...prev, followers: Number(e.target.value) }))}
                           />
                         </div>
@@ -1118,7 +1130,7 @@ const ResellerPage = () => {
                           <Label>Seguindo</Label>
                           <Input
                             type="number"
-                            value={instagramForm.following}
+                            value={instagramForm.following || ""}
                             onChange={(e) => setInstagramForm(prev => ({ ...prev, following: Number(e.target.value) }))}
                           />
                         </div>
@@ -1126,7 +1138,7 @@ const ResellerPage = () => {
                           <Label>Posts</Label>
                           <Input
                             type="number"
-                            value={instagramForm.posts_count}
+                            value={instagramForm.posts_count || ""}
                             onChange={(e) => setInstagramForm(prev => ({ ...prev, posts_count: Number(e.target.value) }))}
                           />
                         </div>
@@ -1135,52 +1147,37 @@ const ResellerPage = () => {
                           <Input
                             type="number"
                             step="0.01"
-                            value={instagramForm.engagement_rate}
+                            value={instagramForm.engagement_rate || ""}
                             onChange={(e) => setInstagramForm(prev => ({ ...prev, engagement_rate: Number(e.target.value) }))}
                           />
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>Nicho</Label>
-                          <Input
-                            placeholder="Ex: Fitness, Moda..."
-                            value={instagramForm.niche}
-                            onChange={(e) => setInstagramForm(prev => ({ ...prev, niche: e.target.value }))}
-                          />
-                        </div>
-                        <div className="space-y-2 col-span-2">
-                          <Label>Foto da Conta</Label>
-                          <input type="file" ref={instagramImageInputRef} accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) setInstagramImageFile(file); }} />
-                          <div className="mt-2">
-                            {instagramImageFile ? (
-                              <div className="flex items-center gap-2 p-2 bg-secondary/50 rounded-lg">
-                                <Image className="w-4 h-4" />
-                                <span className="text-sm flex-1 truncate">{instagramImageFile.name}</span>
-                                <Button variant="ghost" size="sm" onClick={() => setInstagramImageFile(null)}><Trash2 className="w-4 h-4" /></Button>
-                              </div>
-                            ) : (
-                              <Button variant="outline" className="w-full" onClick={() => instagramImageInputRef.current?.click()}>
-                                <Upload className="w-4 h-4 mr-2" />Selecionar Foto
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
                       <div className="space-y-2">
-                        <Label>Descrição</Label>
-                        <Textarea
-                          placeholder="Descreva a conta..."
-                          value={instagramForm.description}
-                          onChange={(e) => setInstagramForm(prev => ({ ...prev, description: e.target.value }))}
-                        />
+                        <Label>Foto da Conta</Label>
+                        <input type="file" ref={instagramImageInputRef} accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) setInstagramImageFile(file); }} />
+                        {instagramImageFile ? (
+                          <div className="flex items-center gap-2 p-3 bg-secondary/50 rounded-lg border border-border">
+                            <Image className="w-4 h-4" />
+                            <span className="text-sm flex-1 truncate">{instagramImageFile.name}</span>
+                            <Button variant="ghost" size="sm" onClick={() => setInstagramImageFile(null)}><Trash2 className="w-4 h-4" /></Button>
+                          </div>
+                        ) : (
+                          <Button variant="outline" className="w-full h-10" onClick={() => instagramImageInputRef.current?.click()}>
+                            <Upload className="w-4 h-4 mr-2" />Selecionar Foto
+                          </Button>
+                        )}
                       </div>
-                      <div className="border-t pt-4 mt-4">
-                        <h4 className="font-medium mb-4">Dados de Entrega (visíveis após compra)</h4>
-                        <div className="grid grid-cols-2 gap-4">
+
+                      <div className="border-t border-border pt-4 mt-4">
+                        <div className="flex items-center gap-2 mb-4">
+                          <div className="w-2 h-2 rounded-full bg-primary" />
+                          <span className="font-medium text-sm">Dados para Entrega</span>
+                        </div>
+                        <div className="space-y-4">
                           <div className="space-y-2">
                             <Label>Login</Label>
                             <Input
+                              placeholder="Login da conta"
                               value={instagramForm.deliverable_login}
                               onChange={(e) => setInstagramForm(prev => ({ ...prev, deliverable_login: e.target.value }))}
                             />
@@ -1189,48 +1186,39 @@ const ResellerPage = () => {
                             <Label>Senha</Label>
                             <Input
                               type="password"
+                              placeholder="Senha da conta"
                               value={instagramForm.deliverable_password}
                               onChange={(e) => setInstagramForm(prev => ({ ...prev, deliverable_password: e.target.value }))}
                             />
                           </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4 mt-4">
                           <div className="space-y-2">
                             <Label>Email da conta</Label>
                             <Input
+                              placeholder="email@exemplo.com"
                               value={instagramForm.deliverable_email}
                               onChange={(e) => setInstagramForm(prev => ({ ...prev, deliverable_email: e.target.value }))}
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label>Informações adicionais</Label>
-                            <Input
-                              value={instagramForm.deliverable_info}
-                              onChange={(e) => setInstagramForm(prev => ({ ...prev, deliverable_info: e.target.value }))}
+                            <Label>Notas/Instruções</Label>
+                            <Textarea
+                              placeholder="Instruções para o comprador..."
+                              value={instagramForm.deliverable_notes}
+                              onChange={(e) => setInstagramForm(prev => ({ ...prev, deliverable_notes: e.target.value }))}
+                              rows={2}
                             />
                           </div>
                         </div>
-                        <div className="space-y-2 mt-4">
-                          <Label>Notas</Label>
-                          <Textarea
-                            value={instagramForm.deliverable_notes}
-                            onChange={(e) => setInstagramForm(prev => ({ ...prev, deliverable_notes: e.target.value }))}
-                          />
-                        </div>
                       </div>
                     </div>
-                    <DialogFooter>
-                      <Button variant="outline" onClick={() => setInstagramDialogOpen(false)}>
-                        Cancelar
-                      </Button>
-                      <Button 
-                        onClick={editingInstagram ? handleUpdateInstagram : handleAddInstagram}
-                        disabled={isAddingInstagram}
-                      >
-                        {isAddingInstagram && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                        {editingInstagram ? "Salvar" : "Adicionar"}
-                      </Button>
-                    </DialogFooter>
+                    <Button 
+                      className="w-full"
+                      onClick={editingInstagram ? handleUpdateInstagram : handleAddInstagram}
+                      disabled={isAddingInstagram}
+                    >
+                      {isAddingInstagram && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                      {editingInstagram ? "Salvar Conta" : "Adicionar Conta"}
+                    </Button>
                   </DialogContent>
                 </Dialog>
               </CardHeader>
@@ -1322,75 +1310,18 @@ const ResellerPage = () => {
                       Adicionar Conta
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                  <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>{editingTiktok ? "Editar Conta" : "Nova Conta TikTok"}</DialogTitle>
-                      <DialogDescription>
-                        Preencha os dados da conta TikTok
-                      </DialogDescription>
                     </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>Username *</Label>
-                          <Input
-                            placeholder="@username"
-                            value={tiktokForm.username}
-                            onChange={(e) => setTiktokForm(prev => ({ ...prev, username: e.target.value }))}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Preço (R$) *</Label>
-                          <Input
-                            type="number"
-                            placeholder="0.00"
-                            value={tiktokForm.price_cents / 100}
-                            onChange={(e) => setTiktokForm(prev => ({ ...prev, price_cents: Number(e.target.value) * 100 }))}
-                          />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>Seguidores</Label>
-                          <Input
-                            type="number"
-                            value={tiktokForm.followers}
-                            onChange={(e) => setTiktokForm(prev => ({ ...prev, followers: Number(e.target.value) }))}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Curtidas</Label>
-                          <Input
-                            type="number"
-                            value={tiktokForm.likes}
-                            onChange={(e) => setTiktokForm(prev => ({ ...prev, likes: Number(e.target.value) }))}
-                          />
-                        </div>
-                      </div>
+                    <div className="space-y-4 py-4">
                       <div className="space-y-2">
-                        <Label>Nicho</Label>
+                        <Label>Username</Label>
                         <Input
-                          placeholder="Ex: Fitness, Humor..."
-                          value={tiktokForm.niche}
-                          onChange={(e) => setTiktokForm(prev => ({ ...prev, niche: e.target.value }))}
+                          placeholder="@username"
+                          value={tiktokForm.username}
+                          onChange={(e) => setTiktokForm(prev => ({ ...prev, username: e.target.value }))}
                         />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Foto da Conta</Label>
-                        <input type="file" ref={tiktokImageInputRef} accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) setTiktokImageFile(file); }} />
-                        <div className="mt-2">
-                          {tiktokImageFile ? (
-                            <div className="flex items-center gap-2 p-2 bg-secondary/50 rounded-lg">
-                              <Image className="w-4 h-4" />
-                              <span className="text-sm flex-1 truncate">{tiktokImageFile.name}</span>
-                              <Button variant="ghost" size="sm" onClick={() => setTiktokImageFile(null)}><Trash2 className="w-4 h-4" /></Button>
-                            </div>
-                          ) : (
-                            <Button variant="outline" className="w-full" onClick={() => tiktokImageInputRef.current?.click()}>
-                              <Upload className="w-4 h-4 mr-2" />Selecionar Foto
-                            </Button>
-                          )}
-                        </div>
                       </div>
                       <div className="space-y-2">
                         <Label>Descrição</Label>
@@ -1398,14 +1329,70 @@ const ResellerPage = () => {
                           placeholder="Descreva a conta..."
                           value={tiktokForm.description}
                           onChange={(e) => setTiktokForm(prev => ({ ...prev, description: e.target.value }))}
+                          rows={2}
                         />
                       </div>
-                      <div className="border-t pt-4 mt-4">
-                        <h4 className="font-medium mb-4">Dados de Entrega (visíveis após compra)</h4>
-                        <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Nicho</Label>
+                        <Input
+                          placeholder="Estratégia, Vendas, etc."
+                          value={tiktokForm.niche}
+                          onChange={(e) => setTiktokForm(prev => ({ ...prev, niche: e.target.value }))}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Preço (R$)</Label>
+                        <Input
+                          type="number"
+                          placeholder="499.90"
+                          value={tiktokForm.price_cents / 100 || ""}
+                          onChange={(e) => setTiktokForm(prev => ({ ...prev, price_cents: Number(e.target.value) * 100 }))}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Seguidores</Label>
+                          <Input
+                            type="number"
+                            value={tiktokForm.followers || ""}
+                            onChange={(e) => setTiktokForm(prev => ({ ...prev, followers: Number(e.target.value) }))}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Curtidas</Label>
+                          <Input
+                            type="number"
+                            value={tiktokForm.likes || ""}
+                            onChange={(e) => setTiktokForm(prev => ({ ...prev, likes: Number(e.target.value) }))}
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Foto da Conta</Label>
+                        <input type="file" ref={tiktokImageInputRef} accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) setTiktokImageFile(file); }} />
+                        {tiktokImageFile ? (
+                          <div className="flex items-center gap-2 p-3 bg-secondary/50 rounded-lg border border-border">
+                            <Image className="w-4 h-4" />
+                            <span className="text-sm flex-1 truncate">{tiktokImageFile.name}</span>
+                            <Button variant="ghost" size="sm" onClick={() => setTiktokImageFile(null)}><Trash2 className="w-4 h-4" /></Button>
+                          </div>
+                        ) : (
+                          <Button variant="outline" className="w-full h-10" onClick={() => tiktokImageInputRef.current?.click()}>
+                            <Upload className="w-4 h-4 mr-2" />Selecionar Foto
+                          </Button>
+                        )}
+                      </div>
+
+                      <div className="border-t border-border pt-4 mt-4">
+                        <div className="flex items-center gap-2 mb-4">
+                          <div className="w-2 h-2 rounded-full bg-primary" />
+                          <span className="font-medium text-sm">Dados para Entrega</span>
+                        </div>
+                        <div className="space-y-4">
                           <div className="space-y-2">
                             <Label>Login</Label>
                             <Input
+                              placeholder="Login da conta"
                               value={tiktokForm.deliverable_login}
                               onChange={(e) => setTiktokForm(prev => ({ ...prev, deliverable_login: e.target.value }))}
                             />
@@ -1414,48 +1401,39 @@ const ResellerPage = () => {
                             <Label>Senha</Label>
                             <Input
                               type="password"
+                              placeholder="Senha da conta"
                               value={tiktokForm.deliverable_password}
                               onChange={(e) => setTiktokForm(prev => ({ ...prev, deliverable_password: e.target.value }))}
                             />
                           </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4 mt-4">
                           <div className="space-y-2">
                             <Label>Email da conta</Label>
                             <Input
+                              placeholder="email@exemplo.com"
                               value={tiktokForm.deliverable_email}
                               onChange={(e) => setTiktokForm(prev => ({ ...prev, deliverable_email: e.target.value }))}
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label>Informações adicionais</Label>
-                            <Input
-                              value={tiktokForm.deliverable_info}
-                              onChange={(e) => setTiktokForm(prev => ({ ...prev, deliverable_info: e.target.value }))}
+                            <Label>Notas/Instruções</Label>
+                            <Textarea
+                              placeholder="Instruções para o comprador..."
+                              value={tiktokForm.deliverable_notes}
+                              onChange={(e) => setTiktokForm(prev => ({ ...prev, deliverable_notes: e.target.value }))}
+                              rows={2}
                             />
                           </div>
                         </div>
-                        <div className="space-y-2 mt-4">
-                          <Label>Notas</Label>
-                          <Textarea
-                            value={tiktokForm.deliverable_notes}
-                            onChange={(e) => setTiktokForm(prev => ({ ...prev, deliverable_notes: e.target.value }))}
-                          />
-                        </div>
                       </div>
                     </div>
-                    <DialogFooter>
-                      <Button variant="outline" onClick={() => setTiktokDialogOpen(false)}>
-                        Cancelar
-                      </Button>
-                      <Button 
-                        onClick={editingTiktok ? handleUpdateTiktok : handleAddTiktok}
-                        disabled={isAddingTiktok}
-                      >
-                        {isAddingTiktok && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                        {editingTiktok ? "Salvar" : "Adicionar"}
-                      </Button>
-                    </DialogFooter>
+                    <Button 
+                      className="w-full"
+                      onClick={editingTiktok ? handleUpdateTiktok : handleAddTiktok}
+                      disabled={isAddingTiktok}
+                    >
+                      {isAddingTiktok && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                      {editingTiktok ? "Salvar Conta" : "Adicionar Conta"}
+                    </Button>
                   </DialogContent>
                 </Dialog>
               </CardHeader>
@@ -1549,34 +1527,46 @@ const ResellerPage = () => {
                       Adicionar Grupo
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                  <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>{editingTelegram ? "Editar Grupo" : "Novo Grupo Telegram"}</DialogTitle>
-                      <DialogDescription>
-                        Preencha os dados do grupo Telegram
-                      </DialogDescription>
                     </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>Nome do Grupo *</Label>
-                          <Input
-                            placeholder="Nome do grupo"
-                            value={telegramForm.group_name}
-                            onChange={(e) => setTelegramForm(prev => ({ ...prev, group_name: e.target.value }))}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Preço (R$) *</Label>
-                          <Input
-                            type="number"
-                            placeholder="0.00"
-                            value={telegramForm.price_cents / 100}
-                            onChange={(e) => setTelegramForm(prev => ({ ...prev, price_cents: Number(e.target.value) * 100 }))}
-                          />
-                        </div>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <Label>Nome do Grupo</Label>
+                        <Input
+                          placeholder="Nome do grupo"
+                          value={telegramForm.group_name}
+                          onChange={(e) => setTelegramForm(prev => ({ ...prev, group_name: e.target.value }))}
+                        />
                       </div>
-                      <div className="grid grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label>Descrição</Label>
+                        <Textarea
+                          placeholder="Descreva o grupo..."
+                          value={telegramForm.description}
+                          onChange={(e) => setTelegramForm(prev => ({ ...prev, description: e.target.value }))}
+                          rows={2}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Nicho</Label>
+                        <Input
+                          placeholder="Estratégia, Vendas, etc."
+                          value={telegramForm.niche}
+                          onChange={(e) => setTelegramForm(prev => ({ ...prev, niche: e.target.value }))}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Preço (R$)</Label>
+                        <Input
+                          type="number"
+                          placeholder="499.90"
+                          value={telegramForm.price_cents / 100 || ""}
+                          onChange={(e) => setTelegramForm(prev => ({ ...prev, price_cents: Number(e.target.value) * 100 }))}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label>Username</Label>
                           <Input
@@ -1589,89 +1579,73 @@ const ResellerPage = () => {
                           <Label>Membros</Label>
                           <Input
                             type="number"
-                            value={telegramForm.members_count}
+                            value={telegramForm.members_count || ""}
                             onChange={(e) => setTelegramForm(prev => ({ ...prev, members_count: Number(e.target.value) }))}
                           />
                         </div>
-                        <div className="space-y-2">
-                          <Label>Tipo</Label>
-                          <Select value={telegramForm.group_type} onValueChange={(v) => setTelegramForm(prev => ({ ...prev, group_type: v }))}>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="group">Grupo</SelectItem>
-                              <SelectItem value="channel">Canal</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>Nicho</Label>
-                          <Input
-                            placeholder="Ex: Crypto, Apostas..."
-                            value={telegramForm.niche}
-                            onChange={(e) => setTelegramForm(prev => ({ ...prev, niche: e.target.value }))}
-                          />
+                      <div className="space-y-2">
+                        <Label>Tipo</Label>
+                        <Select value={telegramForm.group_type} onValueChange={(v) => setTelegramForm(prev => ({ ...prev, group_type: v }))}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="group">Grupo</SelectItem>
+                            <SelectItem value="channel">Canal</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Foto do Grupo</Label>
+                        <input type="file" ref={telegramImageInputRef} accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) setTelegramImageFile(file); }} />
+                        {telegramImageFile ? (
+                          <div className="flex items-center gap-2 p-3 bg-secondary/50 rounded-lg border border-border">
+                            <Image className="w-4 h-4" />
+                            <span className="text-sm flex-1 truncate">{telegramImageFile.name}</span>
+                            <Button variant="ghost" size="sm" onClick={() => setTelegramImageFile(null)}><Trash2 className="w-4 h-4" /></Button>
+                          </div>
+                        ) : (
+                          <Button variant="outline" className="w-full h-10" onClick={() => telegramImageInputRef.current?.click()}>
+                            <Upload className="w-4 h-4 mr-2" />Selecionar Foto
+                          </Button>
+                        )}
+                      </div>
+
+                      <div className="border-t border-border pt-4 mt-4">
+                        <div className="flex items-center gap-2 mb-4">
+                          <div className="w-2 h-2 rounded-full bg-primary" />
+                          <span className="font-medium text-sm">Dados para Entrega</span>
                         </div>
-                        <div className="space-y-2 col-span-2">
-                          <Label>Foto do Grupo</Label>
-                          <input type="file" ref={telegramImageInputRef} accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) setTelegramImageFile(file); }} />
-                          <div className="mt-2">
-                            {telegramImageFile ? (
-                              <div className="flex items-center gap-2 p-2 bg-secondary/50 rounded-lg">
-                                <Image className="w-4 h-4" />
-                                <span className="text-sm flex-1 truncate">{telegramImageFile.name}</span>
-                                <Button variant="ghost" size="sm" onClick={() => setTelegramImageFile(null)}><Trash2 className="w-4 h-4" /></Button>
-                              </div>
-                            ) : (
-                              <Button variant="outline" className="w-full" onClick={() => telegramImageInputRef.current?.click()}>
-                                <Upload className="w-4 h-4 mr-2" />Selecionar Foto
-                              </Button>
-                            )}
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <Label>Link de Convite</Label>
+                            <Input
+                              placeholder="https://t.me/..."
+                              value={telegramForm.deliverable_invite_link}
+                              onChange={(e) => setTelegramForm(prev => ({ ...prev, deliverable_invite_link: e.target.value }))}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Notas/Instruções</Label>
+                            <Textarea
+                              placeholder="Instruções para o comprador..."
+                              value={telegramForm.deliverable_notes}
+                              onChange={(e) => setTelegramForm(prev => ({ ...prev, deliverable_notes: e.target.value }))}
+                              rows={2}
+                            />
                           </div>
                         </div>
                       </div>
-                      <div className="space-y-2">
-                        <Label>Descrição</Label>
-                        <Textarea
-                          placeholder="Descreva o grupo..."
-                          value={telegramForm.description}
-                          onChange={(e) => setTelegramForm(prev => ({ ...prev, description: e.target.value }))}
-                        />
-                      </div>
-                      <div className="border-t pt-4 mt-4">
-                        <h4 className="font-medium mb-4">Dados de Entrega (visíveis após compra)</h4>
-                        <div className="space-y-2">
-                          <Label>Link de Convite</Label>
-                          <Input
-                            placeholder="https://t.me/..."
-                            value={telegramForm.deliverable_invite_link}
-                            onChange={(e) => setTelegramForm(prev => ({ ...prev, deliverable_invite_link: e.target.value }))}
-                          />
-                        </div>
-                        <div className="space-y-2 mt-4">
-                          <Label>Notas</Label>
-                          <Textarea
-                            value={telegramForm.deliverable_notes}
-                            onChange={(e) => setTelegramForm(prev => ({ ...prev, deliverable_notes: e.target.value }))}
-                          />
-                        </div>
-                      </div>
                     </div>
-                    <DialogFooter>
-                      <Button variant="outline" onClick={() => setTelegramDialogOpen(false)}>
-                        Cancelar
-                      </Button>
-                      <Button 
-                        onClick={editingTelegram ? handleUpdateTelegram : handleAddTelegram}
-                        disabled={isAddingTelegram}
-                      >
-                        {isAddingTelegram && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                        {editingTelegram ? "Salvar" : "Adicionar"}
-                      </Button>
-                    </DialogFooter>
+                    <Button 
+                      className="w-full"
+                      onClick={editingTelegram ? handleUpdateTelegram : handleAddTelegram}
+                      disabled={isAddingTelegram}
+                    >
+                      {isAddingTelegram && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                      {editingTelegram ? "Salvar Grupo" : "Adicionar Grupo"}
+                    </Button>
                   </DialogContent>
                 </Dialog>
               </CardHeader>
@@ -1767,167 +1741,146 @@ const ResellerPage = () => {
                       Adicionar Modelo
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                  <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>{editingModel ? "Editar Modelo" : "Novo Modelo"}</DialogTitle>
-                      <DialogDescription>
-                        Preencha os dados do modelo
-                      </DialogDescription>
                     </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>Nome *</Label>
-                          <Input
-                            placeholder="Nome do modelo"
-                            value={modelForm.name}
-                            onChange={(e) => setModelForm(prev => ({ ...prev, name: e.target.value }))}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Preço (R$) *</Label>
-                          <Input
-                            type="number"
-                            placeholder="0.00"
-                            value={modelForm.price_cents / 100}
-                            onChange={(e) => setModelForm(prev => ({ ...prev, price_cents: Number(e.target.value) * 100 }))}
-                          />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>Nicho</Label>
-                          <Input
-                            placeholder="Ex: Fitness, Moda..."
-                            value={modelForm.niche}
-                            onChange={(e) => setModelForm(prev => ({ ...prev, niche: e.target.value }))}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Categoria</Label>
-                          <Select value={modelForm.category} onValueChange={(v) => setModelForm(prev => ({ ...prev, category: v }))}>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="ia">IA</SelectItem>
-                              <SelectItem value="black">Black</SelectItem>
-                              <SelectItem value="white">White</SelectItem>
-                              <SelectItem value="asian">Asian</SelectItem>
-                              <SelectItem value="latina">Latina</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
+                    <div className="space-y-4 py-4">
                       <div className="space-y-2">
-                        <Label>Foto do Modelo</Label>
-                        <input type="file" ref={modelImageInputRef} accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) setModelImageFile(file); }} />
-                        <div className="mt-2">
-                          {modelImageFile ? (
-                            <div className="flex items-center gap-2 p-2 bg-secondary/50 rounded-lg">
-                              <Image className="w-4 h-4" />
-                              <span className="text-sm flex-1 truncate">{modelImageFile.name}</span>
-                              <Button variant="ghost" size="sm" onClick={() => setModelImageFile(null)}><Trash2 className="w-4 h-4" /></Button>
-                            </div>
-                          ) : (
-                            <Button variant="outline" className="w-full" onClick={() => modelImageInputRef.current?.click()}>
-                              <Upload className="w-4 h-4 mr-2" />Selecionar Foto
-                            </Button>
-                          )}
-                        </div>
+                        <Label>Nome</Label>
+                        <Input
+                          placeholder="Nome do modelo"
+                          value={modelForm.name}
+                          onChange={(e) => setModelForm(prev => ({ ...prev, name: e.target.value }))}
+                        />
                       </div>
                       <div className="space-y-2">
                         <Label>Bio</Label>
                         <Textarea
-                          placeholder="Descrição do modelo..."
+                          placeholder="Descrição..."
                           value={modelForm.bio}
                           onChange={(e) => setModelForm(prev => ({ ...prev, bio: e.target.value }))}
+                          rows={2}
                         />
                       </div>
-                      <div className="border-t pt-4 mt-4">
-                        <h4 className="font-medium mb-4">Dados de Entrega (visíveis após compra)</h4>
-                        <div className="space-y-2">
-                          <Label>Link do Material</Label>
-                          <Input
-                            placeholder="https://..."
-                            value={modelForm.deliverable_link}
-                            onChange={(e) => setModelForm(prev => ({ ...prev, deliverable_link: e.target.value }))}
-                          />
+                      <div className="space-y-2">
+                        <Label>Nicho</Label>
+                        <Input
+                          placeholder="Estratégia, Vendas, etc."
+                          value={modelForm.niche}
+                          onChange={(e) => setModelForm(prev => ({ ...prev, niche: e.target.value }))}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Preço (R$)</Label>
+                        <Input
+                          type="number"
+                          placeholder="499.90"
+                          value={modelForm.price_cents / 100 || ""}
+                          onChange={(e) => setModelForm(prev => ({ ...prev, price_cents: Number(e.target.value) * 100 }))}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Foto do Modelo</Label>
+                        <input type="file" ref={modelImageInputRef} accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) setModelImageFile(file); }} />
+                        {modelImageFile ? (
+                          <div className="flex items-center gap-2 p-3 bg-secondary/50 rounded-lg border border-border">
+                            <Image className="w-4 h-4" />
+                            <span className="text-sm flex-1 truncate">{modelImageFile.name}</span>
+                            <Button variant="ghost" size="sm" onClick={() => setModelImageFile(null)}><Trash2 className="w-4 h-4" /></Button>
+                          </div>
+                        ) : (
+                          <Button variant="outline" className="w-full h-10" onClick={() => modelImageInputRef.current?.click()}>
+                            <Upload className="w-4 h-4 mr-2" />Selecionar Foto
+                          </Button>
+                        )}
+                      </div>
+
+                      <div className="border-t border-border pt-4 mt-4">
+                        <div className="flex items-center gap-2 mb-4">
+                          <div className="w-2 h-2 rounded-full bg-primary" />
+                          <span className="font-medium text-sm">Dados para Entrega</span>
                         </div>
-                        <div className="space-y-2 mt-4">
-                          <Label>Notas/Instruções</Label>
-                          <Textarea
-                            value={modelForm.deliverable_notes}
-                            onChange={(e) => setModelForm(prev => ({ ...prev, deliverable_notes: e.target.value }))}
-                            placeholder="Instruções para o comprador..."
-                          />
-                        </div>
-                        <div className="space-y-2 mt-4">
-                          <Label className="flex items-center gap-2">
-                            <GitBranch className="w-4 h-4" />
-                            Funil JSON (opcional)
-                          </Label>
-                          <p className="text-xs text-muted-foreground mb-2">
-                            O funil será importado automaticamente para a conta do comprador
-                          </p>
-                          <input 
-                            type="file" 
-                            ref={modelFunnelInputRef} 
-                            accept=".json,application/json" 
-                            className="hidden" 
-                            onChange={(e) => { 
-                              const file = e.target.files?.[0]; 
-                              if (file) {
-                                setModelFunnelFile(file);
-                                const reader = new FileReader();
-                                reader.onload = (event) => {
-                                  try {
-                                    const json = JSON.parse(event.target?.result as string);
-                                    setModelFunnelJson(json);
-                                    toast({ title: "Funil carregado!", description: `${json.name || "Funil"} será incluído na entrega.` });
-                                  } catch (err) {
-                                    toast({ title: "Erro", description: "Arquivo JSON inválido", variant: "destructive" });
-                                    setModelFunnelFile(null);
-                                    setModelFunnelJson(null);
-                                  }
-                                };
-                                reader.readAsText(file);
-                              }
-                            }} 
-                          />
-                          <div className="mt-2">
-                            {modelFunnelFile ? (
-                              <div className="flex items-center gap-2 p-2 bg-success/10 border border-success/30 rounded-lg">
-                                <GitBranch className="w-4 h-4 text-success" />
-                                <span className="text-sm flex-1 truncate">{modelFunnelFile.name}</span>
-                                <Badge variant="outline" className="text-success border-success">
-                                  {modelFunnelJson?.nodes?.length || 0} blocos
-                                </Badge>
-                                <Button variant="ghost" size="sm" onClick={() => { setModelFunnelFile(null); setModelFunnelJson(null); }}>
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            ) : (
-                              <Button variant="outline" className="w-full" onClick={() => modelFunnelInputRef.current?.click()}>
-                                <Upload className="w-4 h-4 mr-2" />Selecionar Funil .json
-                              </Button>
-                            )}
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <Label>Link de Acesso</Label>
+                            <Input
+                              placeholder="https://drive.google.com/..."
+                              value={modelForm.deliverable_link}
+                              onChange={(e) => setModelForm(prev => ({ ...prev, deliverable_link: e.target.value }))}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Notas/Instruções</Label>
+                            <Textarea
+                              placeholder="Instruções para o comprador..."
+                              value={modelForm.deliverable_notes}
+                              onChange={(e) => setModelForm(prev => ({ ...prev, deliverable_notes: e.target.value }))}
+                              rows={2}
+                            />
                           </div>
                         </div>
                       </div>
+
+                      <div className="border-t border-border pt-4 mt-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <GitBranch className="w-4 h-4 text-muted-foreground" />
+                          <span className="font-medium text-sm">Funil JSON (opcional)</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mb-3">
+                          O funil será importado automaticamente para a conta do comprador
+                        </p>
+                        <input 
+                          type="file" 
+                          ref={modelFunnelInputRef} 
+                          accept=".json,application/json" 
+                          className="hidden" 
+                          onChange={(e) => { 
+                            const file = e.target.files?.[0]; 
+                            if (file) {
+                              setModelFunnelFile(file);
+                              const reader = new FileReader();
+                              reader.onload = (event) => {
+                                try {
+                                  const json = JSON.parse(event.target?.result as string);
+                                  setModelFunnelJson(json);
+                                  toast({ title: "Funil carregado!", description: `${json.name || "Funil"} será incluído na entrega.` });
+                                } catch (err) {
+                                  toast({ title: "Erro", description: "Arquivo JSON inválido", variant: "destructive" });
+                                  setModelFunnelFile(null);
+                                  setModelFunnelJson(null);
+                                }
+                              };
+                              reader.readAsText(file);
+                            }
+                          }} 
+                        />
+                        {modelFunnelFile ? (
+                          <div className="flex items-center gap-2 p-3 bg-success/10 border border-success/30 rounded-lg">
+                            <GitBranch className="w-4 h-4 text-success" />
+                            <span className="text-sm flex-1 truncate">{modelFunnelFile.name}</span>
+                            <Badge variant="outline" className="text-success border-success">
+                              {modelFunnelJson?.nodes?.length || 0} blocos
+                            </Badge>
+                            <Button variant="ghost" size="sm" onClick={() => { setModelFunnelFile(null); setModelFunnelJson(null); }}>
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button variant="outline" className="w-full h-10" onClick={() => modelFunnelInputRef.current?.click()}>
+                            <Upload className="w-4 h-4 mr-2" />Selecionar Funil .json
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                    <DialogFooter>
-                      <Button variant="outline" onClick={() => setModelDialogOpen(false)}>
-                        Cancelar
-                      </Button>
-                      <Button 
-                        onClick={editingModel ? handleUpdateModel : handleAddModel}
-                        disabled={isAddingModel}
-                      >
-                        {isAddingModel && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                        {editingModel ? "Salvar" : "Adicionar"}
-                      </Button>
-                    </DialogFooter>
+                    <Button 
+                      className="w-full"
+                      onClick={editingModel ? handleUpdateModel : handleAddModel}
+                      disabled={isAddingModel}
+                    >
+                      {isAddingModel && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                      {editingModel ? "Salvar Modelo" : "Adicionar Modelo"}
+                    </Button>
                   </DialogContent>
                 </Dialog>
               </CardHeader>
