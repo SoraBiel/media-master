@@ -284,13 +284,20 @@ Deno.serve(async (req) => {
 
       const product = payment.funnel_products;
 
-      // Build UTMify API payload
+      // Build UTMify API payload with all required fields
       const utmifyPayload: UTMifyOrderPayload = {
         orderId: String(payment.provider_payment_id || payment.id),
         platform: 'nexo_funnels',
         paymentMethod: 'pix',
         status: utmifyStatus,
         createdAt: formatDateForUtmify(payment.created_at),
+        // approvedDate is required even for pending - use null for non-paid
+        approvedDate: (utmifyStatus === 'paid' && payment.paid_at) 
+          ? formatDateForUtmify(payment.paid_at) 
+          : null,
+        refundedAt: utmifyStatus === 'refunded' 
+          ? formatDateForUtmify(new Date().toISOString()) 
+          : null,
         customer: {
           name: payment.lead_name || 'Cliente',
           email: `lead_${payment.lead_chat_id}@telegram.user`,
@@ -301,11 +308,16 @@ Deno.serve(async (req) => {
           {
             id: product?.id || payment.product_id || 'unknown',
             name: product?.name || 'Produto',
+            // planId and planName are required by UTMify
+            planId: product?.id || payment.product_id || 'default_plan',
+            planName: product?.name || 'Plano Padrão',
             quantity: 1,
             priceInCents: payment.amount_cents,
           },
         ],
         trackingParameters: {
+          src: null,
+          sck: null,
           utm_source: payment.utm_source || null,
           utm_medium: payment.utm_medium || null,
           utm_campaign: payment.utm_campaign || null,
@@ -319,14 +331,6 @@ Deno.serve(async (req) => {
           currency: 'BRL',
         },
       };
-
-      // Add timestamps based on status
-      if (utmifyStatus === 'paid' && payment.paid_at) {
-        utmifyPayload.approvedDate = formatDateForUtmify(payment.paid_at);
-      }
-      if (utmifyStatus === 'refunded') {
-        utmifyPayload.refundedAt = formatDateForUtmify(new Date().toISOString());
-      }
 
       console.log('Sending to UTMify API:', JSON.stringify(utmifyPayload).slice(0, 500));
 
