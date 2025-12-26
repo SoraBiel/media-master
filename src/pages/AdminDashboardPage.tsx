@@ -35,6 +35,8 @@ import {
   Mail,
   User,
   MessageSquare,
+  Store,
+  Percent,
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend } from "recharts";
 import { Button } from "@/components/ui/button";
@@ -208,6 +210,20 @@ interface UserRole {
   role: string;
 }
 
+interface VendorSale {
+  id: string;
+  vendor_id: string;
+  buyer_id: string;
+  item_type: string;
+  item_id: string;
+  sale_amount_cents: number;
+  vendor_commission_cents: number;
+  platform_fee_cents: number;
+  status: string;
+  created_at: string;
+  vendor_profile?: { email: string; full_name: string | null } | null;
+}
+
 interface Stats {
   totalUsers: number;
   onlineUsers: number;
@@ -232,6 +248,8 @@ const AdminDashboardPage = () => {
   const [models, setModels] = useState<ModelForSale[]>([]);
   const [adminMedia, setAdminMedia] = useState<AdminMedia[]>([]);
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
+  const [vendorSales, setVendorSales] = useState<VendorSale[]>([]);
+  const [vendorCommissionPercent, setVendorCommissionPercent] = useState(80);
   const [plans, setPlans] = useState<{ id: string; slug: string; name: string }[]>([]);
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("30days");
   const [billingStats, setBillingStats] = useState({
@@ -348,6 +366,7 @@ const AdminDashboardPage = () => {
       .on("postgres_changes", { event: "*", schema: "public", table: "models_for_sale" }, () => fetchModels())
       .on("postgres_changes", { event: "*", schema: "public", table: "admin_media" }, () => fetchAdminMedia())
       .on("postgres_changes", { event: "*", schema: "public", table: "user_roles" }, () => fetchUserRoles())
+      .on("postgres_changes", { event: "*", schema: "public", table: "vendor_sales" }, () => fetchVendorSales())
       .subscribe();
 
     return () => {
@@ -367,6 +386,7 @@ const AdminDashboardPage = () => {
       fetchAdminMedia(),
       fetchPlans(),
       fetchUserRoles(),
+      fetchVendorSales(),
     ]);
   };
 
@@ -382,6 +402,25 @@ const AdminDashboardPage = () => {
   const fetchUserRoles = async () => {
     const { data } = await supabase.from("user_roles").select("*");
     setUserRoles(data || []);
+  };
+
+  const fetchVendorSales = async () => {
+    const { data } = await supabase
+      .from("vendor_sales")
+      .select("*")
+      .order("created_at", { ascending: false });
+    
+    if (data) {
+      const vendorIds = [...new Set(data.map(s => s.vendor_id))];
+      const { data: profilesData } = await supabase
+        .from("profiles")
+        .select("user_id, email, full_name")
+        .in("user_id", vendorIds);
+      
+      const profileMap = new Map(profilesData?.map(p => [p.user_id, p]));
+      const enriched = data.map(s => ({ ...s, vendor_profile: profileMap.get(s.vendor_id) || null }));
+      setVendorSales(enriched);
+    }
   };
 
   const fetchData = async () => {
@@ -1040,6 +1079,10 @@ const AdminDashboardPage = () => {
             <TabsTrigger value="billing">Faturamento</TabsTrigger>
             <TabsTrigger value="media">Mídias</TabsTrigger>
             <TabsTrigger value="accounts">Contas</TabsTrigger>
+            <TabsTrigger value="resellers" className="flex items-center gap-1">
+              <Store className="h-4 w-4" />
+              Revendedores
+            </TabsTrigger>
             <TabsTrigger value="templates" className="flex items-center gap-1">
               <GitBranch className="h-4 w-4" />
               Templates Funis
@@ -2233,6 +2276,118 @@ const AdminDashboardPage = () => {
           {/* Templates Tab */}
           <TabsContent value="templates" className="space-y-4">
             <AdminTemplatesPanel />
+          </TabsContent>
+
+          {/* Resellers Tab */}
+          <TabsContent value="resellers" className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total de Vendas</CardTitle>
+                  <Store className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{vendorSales.length}</div>
+                  <p className="text-xs text-muted-foreground">
+                    {vendorSales.filter(s => s.status === 'paid').length} pagas
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Faturamento Bruto</CardTitle>
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {formatPrice(vendorSales.filter(s => s.status === 'paid').reduce((acc, s) => acc + s.sale_amount_cents, 0))}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Total de vendas pagas</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Comissão Revendedores</CardTitle>
+                  <Percent className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {formatPrice(vendorSales.filter(s => s.status === 'paid').reduce((acc, s) => acc + s.vendor_commission_cents, 0))}
+                  </div>
+                  <p className="text-xs text-muted-foreground">{vendorCommissionPercent}% das vendas</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Taxa Plataforma</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {formatPrice(vendorSales.filter(s => s.status === 'paid').reduce((acc, s) => acc + s.platform_fee_cents, 0))}
+                  </div>
+                  <p className="text-xs text-muted-foreground">{100 - vendorCommissionPercent}% das vendas</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Store className="w-5 h-5" />
+                  Vendas de Revendedores ({vendorSales.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {vendorSales.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Store className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                    <p>Nenhuma venda de revendedor</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Revendedor</TableHead>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead>Valor Venda</TableHead>
+                        <TableHead>Comissão Vendor</TableHead>
+                        <TableHead>Taxa Plataforma</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Data</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {vendorSales.map((sale) => (
+                        <TableRow key={sale.id}>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium">{sale.vendor_profile?.full_name || "—"}</p>
+                              <p className="text-sm text-muted-foreground">{sale.vendor_profile?.email}</p>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="capitalize">{sale.item_type}</Badge>
+                          </TableCell>
+                          <TableCell className="font-medium">{formatPrice(sale.sale_amount_cents)}</TableCell>
+                          <TableCell className="text-success">{formatPrice(sale.vendor_commission_cents)}</TableCell>
+                          <TableCell className="text-muted-foreground">{formatPrice(sale.platform_fee_cents)}</TableCell>
+                          <TableCell>
+                            <Badge variant={sale.status === "paid" ? "default" : "secondary"}>
+                              {sale.status === "paid" ? "Pago" : "Pendente"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">{formatDate(sale.created_at)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Settings Tab - All Feature Toggles */}
