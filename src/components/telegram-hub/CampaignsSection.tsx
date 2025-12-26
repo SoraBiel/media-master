@@ -136,6 +136,11 @@ const CampaignsSection = () => {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
+  // Multi-select states
+  const [isSelectMode, setIsSelectMode] = useState(false);
+  const [selectedMediaIds, setSelectedMediaIds] = useState<Set<string>>(new Set());
+  const [isDeletingMultiple, setIsDeletingMultiple] = useState(false);
+  
   const [newCampaign, setNewCampaign] = useState({
     name: "",
     destination_id: "",
@@ -345,6 +350,59 @@ const CampaignsSection = () => {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
     }
   };
+
+  const handleDeleteMultipleMedia = async () => {
+    if (!user || selectedMediaIds.size === 0) return;
+    setIsDeletingMultiple(true);
+    
+    try {
+      const filesToDelete = userMedia
+        .filter(m => selectedMediaIds.has(m.id))
+        .map(m => `${user.id}/${m.name}`);
+      
+      const { error } = await supabase.storage
+        .from("user-media")
+        .remove(filesToDelete);
+        
+      if (error) throw error;
+      
+      toast({ 
+        title: "Arquivos removidos!", 
+        description: `${filesToDelete.length} arquivo(s) excluído(s).` 
+      });
+      
+      setSelectedMediaIds(new Set());
+      setIsSelectMode(false);
+      fetchUserMedia();
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    } finally {
+      setIsDeletingMultiple(false);
+    }
+  };
+
+  const toggleMediaSelection = (mediaId: string) => {
+    setSelectedMediaIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(mediaId)) {
+        newSet.delete(mediaId);
+      } else {
+        newSet.add(mediaId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedMediaIds.size === userMedia.length) {
+      setSelectedMediaIds(new Set());
+    } else {
+      setSelectedMediaIds(new Set(userMedia.map(m => m.id)));
+    }
+  };
+
+  const usagePercentage = planLimits.maxFiles === Infinity ? 0 : (userMedia.length / planLimits.maxFiles) * 100;
+  const isNearLimit = usagePercentage >= 80 && planLimits.maxFiles !== Infinity;
 
   const handleUseMedia = (mediaId: string, isUserMedia: boolean = false) => {
     setNewCampaign(prev => ({
@@ -611,6 +669,35 @@ const CampaignsSection = () => {
 
             {/* User's Own Media */}
             <TabsContent value="my" className="space-y-4">
+              {/* 80% Limit Alert */}
+              {isNearLimit && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <Card className="border-warning/50 bg-warning/10">
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-warning/20">
+                          <AlertCircle className="w-5 h-5 text-warning" />
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-warning">Limite próximo!</h4>
+                          <p className="text-sm text-muted-foreground">
+                            Você está usando {usagePercentage.toFixed(0)}% do seu limite de mídias. 
+                            {planLimits.maxFiles - userMedia.length} arquivos restantes.
+                          </p>
+                        </div>
+                        <Button variant="outline" size="sm" onClick={() => navigate("/billing")}>
+                          <Crown className="w-4 h-4 mr-2" />
+                          Upgrade
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
+
               {/* Plan Usage Card */}
               <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
                 <CardContent className="p-4">
@@ -631,13 +718,13 @@ const CampaignsSection = () => {
                       <div className="space-y-2">
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-muted-foreground">Mídias utilizadas</span>
-                          <span className="font-medium">
+                          <span className={cn("font-medium", isNearLimit && "text-warning")}>
                             {userMedia.length} / {planLimits.maxFiles === Infinity ? "∞" : planLimits.maxFiles}
                           </span>
                         </div>
                         <Progress 
-                          value={planLimits.maxFiles === Infinity ? 0 : (userMedia.length / planLimits.maxFiles) * 100} 
-                          className="h-2"
+                          value={usagePercentage} 
+                          className={cn("h-2", isNearLimit && "[&>div]:bg-warning")}
                         />
                         <div className="flex items-center justify-between text-xs text-muted-foreground">
                           <span>
@@ -647,8 +734,8 @@ const CampaignsSection = () => {
                             }
                           </span>
                           {planLimits.maxFiles !== Infinity && (
-                            <span>
-                              {((userMedia.length / planLimits.maxFiles) * 100).toFixed(0)}% usado
+                            <span className={cn(isNearLimit && "text-warning font-medium")}>
+                              {usagePercentage.toFixed(0)}% usado
                             </span>
                           )}
                         </div>
@@ -736,38 +823,104 @@ const CampaignsSection = () => {
 
               {filteredUserMedia.length > 0 ? (
                 <>
+                  {/* Multi-select toolbar */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant={isSelectMode ? "secondary" : "outline"}
+                        size="sm"
+                        onClick={() => {
+                          setIsSelectMode(!isSelectMode);
+                          if (isSelectMode) setSelectedMediaIds(new Set());
+                        }}
+                      >
+                        {isSelectMode ? "Cancelar Seleção" : "Selecionar Múltiplos"}
+                      </Button>
+                      
+                      {isSelectMode && (
+                        <>
+                          <Button variant="outline" size="sm" onClick={toggleSelectAll}>
+                            {selectedMediaIds.size === userMedia.length ? "Desmarcar Todos" : "Selecionar Todos"}
+                          </Button>
+                          <Badge variant="secondary">
+                            {selectedMediaIds.size} selecionado(s)
+                          </Badge>
+                        </>
+                      )}
+                    </div>
+                    
+                    {isSelectMode && selectedMediaIds.size > 0 && (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={handleDeleteMultipleMedia}
+                        disabled={isDeletingMultiple}
+                      >
+                        {isDeletingMultiple ? (
+                          <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />Excluindo...</>
+                        ) : (
+                          <><Trash2 className="w-4 h-4 mr-2" />Excluir {selectedMediaIds.size}</>
+                        )}
+                      </Button>
+                    )}
+                  </div>
+
                   <div className={cn(
                     viewMode === "grid" ? "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" : "space-y-2"
                   )}>
-                    {filteredUserMedia.map((media, index) => (
-                      <motion.div
-                        key={media.id}
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: index * 0.03 }}
-                      >
-                        <Card className="overflow-hidden group">
-                          <div className="relative aspect-square bg-muted">
-                            {media.type === "video" ? (
-                              <div className="w-full h-full flex items-center justify-center">
-                                <Video className="w-10 h-10 text-muted-foreground" />
-                              </div>
-                            ) : (
-                              <img src={media.url} alt={media.name} className="w-full h-full object-cover" />
+                    {filteredUserMedia.map((media, index) => {
+                      const isSelected = selectedMediaIds.has(media.id);
+                      return (
+                        <motion.div
+                          key={media.id}
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: index * 0.03 }}
+                        >
+                          <Card 
+                            className={cn(
+                              "overflow-hidden group cursor-pointer transition-all",
+                              isSelectMode && isSelected && "ring-2 ring-primary ring-offset-2",
+                              isSelectMode && !isSelected && "opacity-70 hover:opacity-100"
                             )}
-                            <div className="absolute inset-0 bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                              <Button size="sm" variant="secondary" onClick={() => handleDeleteUserMedia(media.name)}>
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
+                            onClick={isSelectMode ? () => toggleMediaSelection(media.id) : undefined}
+                          >
+                            <div className="relative aspect-square bg-muted">
+                              {media.type === "video" ? (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <Video className="w-10 h-10 text-muted-foreground" />
+                                </div>
+                              ) : (
+                                <img src={media.url} alt={media.name} className="w-full h-full object-cover" />
+                              )}
+                              
+                              {isSelectMode && (
+                                <div className={cn(
+                                  "absolute top-2 left-2 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all",
+                                  isSelected 
+                                    ? "bg-primary border-primary" 
+                                    : "bg-background/80 border-muted-foreground"
+                                )}>
+                                  {isSelected && <CheckCircle2 className="w-4 h-4 text-primary-foreground" />}
+                                </div>
+                              )}
+                              
+                              {!isSelectMode && (
+                                <div className="absolute inset-0 bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                  <Button size="sm" variant="secondary" onClick={() => handleDeleteUserMedia(media.name)}>
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              )}
                             </div>
-                          </div>
-                          <CardContent className="p-2">
-                            <p className="text-xs truncate">{media.name}</p>
-                            <p className="text-xs text-muted-foreground">{formatFileSize(media.size)}</p>
-                          </CardContent>
-                        </Card>
-                      </motion.div>
-                    ))}
+                            <CardContent className="p-2">
+                              <p className="text-xs truncate">{media.name}</p>
+                              <p className="text-xs text-muted-foreground">{formatFileSize(media.size)}</p>
+                            </CardContent>
+                          </Card>
+                        </motion.div>
+                      );
+                    })}
                   </div>
                   
                   {userMedia.length > 0 && (
