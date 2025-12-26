@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Package, Copy, CheckCircle2, ArrowLeft, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { Package, Copy, CheckCircle2, ArrowLeft, Eye, EyeOff, AlertCircle, GitBranch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
@@ -272,6 +272,31 @@ const DeliveryPage = () => {
             <h2 className="text-2xl font-bold">{productInfo.name}</h2>
             <p className="text-muted-foreground">{productInfo.niche}</p>
           </div>
+
+          {data.funnel_imported && data.funnel_id && (
+            <div className="p-4 rounded-lg bg-primary/10 border border-primary/30">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+                    <GitBranch className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-medium">Funil Importado!</p>
+                    <p className="text-sm text-muted-foreground">
+                      Um funil pronto foi adicionado à sua conta
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate(`/funnel-builder/${data.funnel_id}`)}
+                >
+                  Abrir Funil
+                </Button>
+              </div>
+            </div>
+          )}
 
           {data.link && (
             <div className="p-4 rounded-lg bg-secondary">

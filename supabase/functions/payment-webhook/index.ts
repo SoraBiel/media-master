@@ -339,11 +339,97 @@ serve(async (req) => {
         console.log(`Model ${transaction.product_id} marked as sold`);
       }
 
+      // If model has funnel_json, import it to buyer's account
+      let importedFunnelId: string | null = null;
+      if (model?.funnel_json) {
+        console.log("Model has funnel_json, importing to buyer's account");
+        
+        const funnelData = model.funnel_json;
+        const funnelName = funnelData.name || `Funil - ${model.name}`;
+        
+        // Create the funnel
+        const { data: newFunnel, error: funnelError } = await supabaseClient
+          .from("funnels")
+          .insert({
+            user_id: transaction.user_id,
+            name: funnelName,
+            description: funnelData.description || `Funil importado da compra do modelo ${model.name}`,
+            channel: funnelData.channel || "telegram",
+            is_active: false,
+            trigger_keywords: funnelData.trigger_keywords || ["/start"],
+            schema_version: funnelData.schema_version || 1,
+          })
+          .select()
+          .single();
+
+        if (funnelError) {
+          console.error("Error creating funnel:", funnelError);
+        } else if (newFunnel) {
+          importedFunnelId = newFunnel.id;
+          console.log(`Funnel created: ${newFunnel.id}`);
+
+          // Import nodes
+          if (funnelData.nodes && Array.isArray(funnelData.nodes)) {
+            const nodeIdMap: Record<string, string> = {};
+            
+            for (const node of funnelData.nodes) {
+              const { data: newNode, error: nodeError } = await supabaseClient
+                .from("funnel_nodes")
+                .insert({
+                  funnel_id: newFunnel.id,
+                  node_type: node.node_type || node.type || "message",
+                  position_x: node.position_x ?? node.position?.x ?? 0,
+                  position_y: node.position_y ?? node.position?.y ?? 0,
+                  content: node.content || node.data || {},
+                })
+                .select()
+                .single();
+
+              if (nodeError) {
+                console.error("Error creating node:", nodeError);
+              } else if (newNode) {
+                nodeIdMap[node.id] = newNode.id;
+              }
+            }
+
+            // Import edges with updated node IDs
+            if (funnelData.edges && Array.isArray(funnelData.edges)) {
+              for (const edge of funnelData.edges) {
+                const sourceId = nodeIdMap[edge.source_node_id || edge.source];
+                const targetId = nodeIdMap[edge.target_node_id || edge.target];
+
+                if (sourceId && targetId) {
+                  const { error: edgeError } = await supabaseClient
+                    .from("funnel_edges")
+                    .insert({
+                      funnel_id: newFunnel.id,
+                      source_node_id: sourceId,
+                      target_node_id: targetId,
+                      source_handle: edge.source_handle || edge.sourceHandle || "default",
+                    });
+
+                  if (edgeError) {
+                    console.error("Error creating edge:", edgeError);
+                  }
+                }
+              }
+            }
+
+            console.log(`Funnel import complete: ${Object.keys(nodeIdMap).length} nodes imported`);
+          }
+        }
+      }
+
       // Create delivery record with deliverable data
-      const deliveryData = model ? {
-        link: model.deliverable_link,
-        notes: model.deliverable_notes,
-      } : {};
+      const deliveryData: Record<string, any> = {
+        link: model?.deliverable_link,
+        notes: model?.deliverable_notes,
+      };
+
+      if (importedFunnelId) {
+        deliveryData.funnel_id = importedFunnelId;
+        deliveryData.funnel_imported = true;
+      }
 
       const { error: deliveryError } = await supabaseClient
         .from("deliveries")
@@ -359,7 +445,7 @@ serve(async (req) => {
       if (deliveryError) {
         console.error("Error creating delivery:", deliveryError);
       } else {
-        console.log("Delivery record created for model");
+        console.log("Delivery record created for model" + (importedFunnelId ? " with funnel" : ""));
       }
     } else if (transaction.product_type === "telegram_group") {
       console.log(`Processing Telegram group purchase: ${transaction.product_id}`);

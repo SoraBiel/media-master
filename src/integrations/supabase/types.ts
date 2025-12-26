@@ -812,6 +812,7 @@ export type Database = {
           deliverable_info: string | null
           deliverable_link: string | null
           deliverable_notes: string | null
+          funnel_json: Json | null
           id: string
           image_url: string | null
           is_sold: boolean | null
@@ -831,6 +832,7 @@ export type Database = {
           deliverable_info?: string | null
           deliverable_link?: string | null
           deliverable_notes?: string | null
+          funnel_json?: Json | null
           id?: string
           image_url?: string | null
           is_sold?: boolean | null
@@ -850,6 +852,7 @@ export type Database = {
           deliverable_info?: string | null
           deliverable_link?: string | null
           deliverable_notes?: string | null
+          funnel_json?: Json | null
           id?: string
           image_url?: string | null
           is_sold?: boolean | null
