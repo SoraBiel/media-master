@@ -557,45 +557,48 @@ const IntegrationsPage = () => {
                 )}
 
                 {/* Action Buttons */}
-                <div className="flex gap-2 pt-2">
+                <div className="space-y-2 pt-2">
                   <Button 
                     variant="outline"
+                    className="w-full border-purple-500/50 text-purple-500 hover:bg-purple-500/10"
                     onClick={() => testUtmifyMutation.mutate(utmifyToken)}
                     disabled={testUtmifyMutation.isPending || !utmifyToken.trim()}
-                    title="Testar conexão com UTMify"
                   >
                     {testUtmifyMutation.isPending ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <TestTube2 className="w-4 h-4" />
-                    )}
-                  </Button>
-                  <Button 
-                    className="flex-1 bg-purple-500 hover:bg-purple-600"
-                    onClick={() => saveUtmifyMutation.mutate({ token: utmifyToken, trackingEnabled: utmifyTracking })}
-                    disabled={saveUtmifyMutation.isPending || !utmifyToken.trim()}
-                  >
-                    {saveUtmifyMutation.isPending ? (
                       <Loader2 className="w-4 h-4 animate-spin mr-2" />
                     ) : (
-                      <Save className="w-4 h-4 mr-2" />
+                      <TestTube2 className="w-4 h-4 mr-2" />
                     )}
-                    Salvar
+                    Testar Conexão
                   </Button>
-                  {utmifyIntegration && (
+                  <div className="flex gap-2">
                     <Button 
-                      variant="destructive" 
-                      size="icon"
-                      onClick={() => disconnectUtmifyMutation.mutate()}
-                      disabled={disconnectUtmifyMutation.isPending}
+                      className="flex-1 bg-purple-500 hover:bg-purple-600"
+                      onClick={() => saveUtmifyMutation.mutate({ token: utmifyToken, trackingEnabled: utmifyTracking })}
+                      disabled={saveUtmifyMutation.isPending || !utmifyToken.trim()}
                     >
-                      {disconnectUtmifyMutation.isPending ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
+                      {saveUtmifyMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
                       ) : (
-                        <Unlink className="w-4 h-4" />
+                        <Save className="w-4 h-4 mr-2" />
                       )}
+                      Salvar
                     </Button>
-                  )}
+                    {utmifyIntegration && (
+                      <Button 
+                        variant="destructive" 
+                        size="icon"
+                        onClick={() => disconnectUtmifyMutation.mutate()}
+                        disabled={disconnectUtmifyMutation.isPending}
+                      >
+                        {disconnectUtmifyMutation.isPending ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Unlink className="w-4 h-4" />
+                        )}
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Info Box */}
