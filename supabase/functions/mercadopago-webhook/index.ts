@@ -76,6 +76,12 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Handle refund - remove member from group
+      if (mpPayment.status === 'refunded' || mpPayment.status === 'cancelled' || mpPayment.status === 'charged_back') {
+        console.log('Refund detected, attempting to remove member from group');
+        await handleRefund(supabase, payment);
+      }
+
       await supabase
         .from('funnel_payments')
         .update(updateData)
@@ -256,5 +262,87 @@ async function handleGroupDelivery(botToken: string, userChatId: string, product
     }
   } catch (error) {
     console.error('Error handling group delivery:', error);
+  }
+}
+
+async function handleRefund(supabase: any, payment: any) {
+  try {
+    const product = payment.funnel_products;
+    if (!product || product.delivery_type !== 'group' || !product.group_chat_id) {
+      console.log('Not a group product or no group_chat_id, skipping refund removal');
+      return;
+    }
+
+    // Get funnel to find the telegram integration
+    const { data: funnel } = await supabase
+      .from('funnels')
+      .select('*, telegram_integrations(*)')
+      .eq('id', payment.funnel_id)
+      .maybeSingle();
+
+    if (!funnel?.telegram_integrations?.bot_token) {
+      console.log('Cannot process refund: missing bot token');
+      return;
+    }
+
+    const botToken = funnel.telegram_integrations.bot_token;
+    const groupChatId = product.group_chat_id;
+    const telegramUserId = payment.lead_telegram_id || payment.lead_chat_id;
+
+    console.log(`Attempting to remove user ${telegramUserId} from group ${groupChatId}`);
+
+    // Ban the user from the group (this also removes them)
+    const banResponse = await fetch(`${TELEGRAM_API_URL}${botToken}/banChatMember`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: groupChatId,
+        user_id: telegramUserId,
+        revoke_messages: false // Don't delete their messages
+      })
+    });
+
+    const banResult = await banResponse.json();
+    console.log('Ban user result:', JSON.stringify(banResult));
+
+    if (banResult.ok) {
+      // Optionally unban so they can request to join again in the future
+      await fetch(`${TELEGRAM_API_URL}${botToken}/unbanChatMember`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: groupChatId,
+          user_id: telegramUserId,
+          only_if_banned: true
+        })
+      });
+
+      // Notify user
+      await fetch(`${TELEGRAM_API_URL}${botToken}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: payment.lead_chat_id,
+          text: `⚠️ *Reembolso Processado*\n\nSeu reembolso foi confirmado e seu acesso ao grupo *${product.name}* foi removido.\n\nObrigado por usar nossos serviços.`,
+          parse_mode: 'Markdown'
+        })
+      });
+
+      console.log('User removed from group and notified');
+
+      // Update payment status
+      await supabase
+        .from('funnel_payments')
+        .update({ 
+          delivery_status: 'refunded',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', payment.id);
+    } else {
+      console.error('Failed to remove user from group:', banResult);
+    }
+
+  } catch (error) {
+    console.error('Error handling refund:', error);
   }
 }
