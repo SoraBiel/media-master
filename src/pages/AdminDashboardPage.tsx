@@ -294,7 +294,7 @@ const AdminDashboardPage = () => {
     name: "",
     bio: "",
     niche: "",
-    category: "ia",
+    category: "black",
     price: "",
     deliverable_link: "",
     deliverable_notes: "",
@@ -715,7 +715,7 @@ const AdminDashboardPage = () => {
 
       toast({ title: "Modelo adicionado!", description: `${modelForm.name} foi adicionado.` });
       setModelForm({
-        name: "", bio: "", niche: "", category: "ia", price: "",
+        name: "", bio: "", niche: "", category: "black", price: "",
         deliverable_link: "", deliverable_notes: "",
       });
       setModelImageFile(null);
@@ -1033,9 +1033,7 @@ const AdminDashboardPage = () => {
             <TabsTrigger value="checkouts">Checkouts</TabsTrigger>
             <TabsTrigger value="billing">Faturamento</TabsTrigger>
             <TabsTrigger value="media">Mídias</TabsTrigger>
-            <TabsTrigger value="tiktok">Contas TikTok</TabsTrigger>
-            <TabsTrigger value="telegram-groups">Grupos Telegram</TabsTrigger>
-            <TabsTrigger value="models">Modelos</TabsTrigger>
+            <TabsTrigger value="accounts">Contas</TabsTrigger>
             <TabsTrigger value="templates" className="flex items-center gap-1">
               <GitBranch className="h-4 w-4" />
               Templates Funis
@@ -1851,456 +1849,327 @@ const AdminDashboardPage = () => {
               </Table>
             </div>
           </TabsContent>
+          {/* Unified Accounts Tab */}
+          <TabsContent value="accounts" className="space-y-4">
+            <Tabs defaultValue="tiktok" className="space-y-4">
+              <div className="flex items-center justify-between">
+                <TabsList>
+                  <TabsTrigger value="tiktok" className="gap-2">
+                    <Video className="w-4 h-4" />
+                    TikTok ({tiktokAccounts.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="instagram" className="gap-2">
+                    Instagram (0)
+                  </TabsTrigger>
+                  <TabsTrigger value="telegram-groups" className="gap-2">
+                    <Users className="w-4 h-4" />
+                    Grupos Telegram ({telegramGroups.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="models" className="gap-2">
+                    <Sparkles className="w-4 h-4" />
+                    Modelos Black ({models.filter(m => m.category === "black").length})
+                  </TabsTrigger>
+                </TabsList>
+              </div>
 
-          {/* Telegram Groups Tab */}
-          <TabsContent value="telegram-groups" className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Grupos Telegram ({telegramGroups.length})</h3>
-              <Dialog open={telegramGroupDialogOpen} onOpenChange={setTelegramGroupDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button className="telegram-gradient text-white gap-2">
-                    <Plus className="w-4 h-4" />Adicionar Grupo
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>Novo Grupo Telegram</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <Label>Nome do Grupo</Label>
-                      <Input value={telegramGroupForm.group_name} onChange={(e) => setTelegramGroupForm({ ...telegramGroupForm, group_name: e.target.value })} placeholder="Grupo de Vendas" />
-                    </div>
-                    <div>
-                      <Label>Username (sem @)</Label>
-                      <Input value={telegramGroupForm.group_username} onChange={(e) => setTelegramGroupForm({ ...telegramGroupForm, group_username: e.target.value })} placeholder="grupovendas" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label>Membros</Label>
-                        <Input type="number" value={telegramGroupForm.members_count} onChange={(e) => setTelegramGroupForm({ ...telegramGroupForm, members_count: e.target.value })} placeholder="5000" />
-                      </div>
-                      <div>
-                        <Label>Tipo</Label>
-                        <Select value={telegramGroupForm.group_type} onValueChange={(v) => setTelegramGroupForm({ ...telegramGroupForm, group_type: v })}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="group">Grupo</SelectItem>
-                            <SelectItem value="channel">Canal</SelectItem>
-                            <SelectItem value="supergroup">Supergrupo</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div>
-                      <Label>Nicho</Label>
-                      <Input value={telegramGroupForm.niche} onChange={(e) => setTelegramGroupForm({ ...telegramGroupForm, niche: e.target.value })} placeholder="Vendas, Afiliados, etc." />
-                    </div>
-                    <div>
-                      <Label>Descrição</Label>
-                      <Textarea value={telegramGroupForm.description} onChange={(e) => setTelegramGroupForm({ ...telegramGroupForm, description: e.target.value })} placeholder="Descreva o grupo..." />
-                    </div>
-                    <div>
-                      <Label>Preço (R$)</Label>
-                      <Input type="number" step="0.01" value={telegramGroupForm.price} onChange={(e) => setTelegramGroupForm({ ...telegramGroupForm, price: e.target.value })} placeholder="199.90" />
-                    </div>
-                    <div>
-                      <Label>Foto do Grupo</Label>
-                      <input
-                        type="file"
-                        ref={telegramGroupImageInputRef}
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) setTelegramGroupImageFile(file);
-                        }}
-                      />
-                      <div className="mt-2">
-                        {telegramGroupImageFile ? (
-                          <div className="flex items-center gap-2 p-2 bg-secondary/50 rounded-lg">
-                            <Image className="w-4 h-4" />
-                            <span className="text-sm flex-1 truncate">{telegramGroupImageFile.name}</span>
-                            <Button variant="ghost" size="sm" onClick={() => setTelegramGroupImageFile(null)}>
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+              {/* TikTok Sub-Tab */}
+              <TabsContent value="tiktok" className="space-y-4">
+                <div className="flex items-center justify-end">
+                  <Dialog open={tiktokDialogOpen} onOpenChange={setTiktokDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button className="telegram-gradient text-white gap-2">
+                        <Plus className="w-4 h-4" />Adicionar Conta TikTok
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>Nova Conta TikTok</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div>
+                          <Label>Username</Label>
+                          <Input value={tiktokForm.username} onChange={(e) => setTiktokForm({ ...tiktokForm, username: e.target.value })} placeholder="@usuario" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label>Seguidores</Label>
+                            <Input type="number" value={tiktokForm.followers} onChange={(e) => setTiktokForm({ ...tiktokForm, followers: e.target.value })} placeholder="50000" />
                           </div>
-                        ) : (
-                          <Button variant="outline" className="w-full" onClick={() => telegramGroupImageInputRef.current?.click()}>
-                            <Upload className="w-4 h-4 mr-2" />
-                            Selecionar Foto
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div className="border-t pt-4 mt-4">
-                      <h4 className="font-semibold mb-3 flex items-center gap-2">
-                        <Shield className="w-4 h-4" />
-                        Dados para Entrega (após pagamento)
-                      </h4>
-                      <div className="space-y-3">
-                        <div>
-                          <Label>Link de Convite</Label>
-                          <Input value={telegramGroupForm.deliverable_invite_link} onChange={(e) => setTelegramGroupForm({ ...telegramGroupForm, deliverable_invite_link: e.target.value })} placeholder="https://t.me/joinchat/..." />
+                          <div>
+                            <Label>Curtidas</Label>
+                            <Input type="number" value={tiktokForm.likes} onChange={(e) => setTiktokForm({ ...tiktokForm, likes: e.target.value })} placeholder="1000000" />
+                          </div>
                         </div>
                         <div>
-                          <Label>Notas/Instruções</Label>
-                          <Textarea value={telegramGroupForm.deliverable_notes} onChange={(e) => setTelegramGroupForm({ ...telegramGroupForm, deliverable_notes: e.target.value })} placeholder="Instruções para o comprador..." />
+                          <Label>Nicho</Label>
+                          <Input value={tiktokForm.niche} onChange={(e) => setTiktokForm({ ...tiktokForm, niche: e.target.value })} placeholder="Humor, Fitness, etc." />
                         </div>
+                        <div>
+                          <Label>Descrição</Label>
+                          <Textarea value={tiktokForm.description} onChange={(e) => setTiktokForm({ ...tiktokForm, description: e.target.value })} placeholder="Descreva a conta..." />
+                        </div>
+                        <div>
+                          <Label>Preço (R$)</Label>
+                          <Input type="number" step="0.01" value={tiktokForm.price} onChange={(e) => setTiktokForm({ ...tiktokForm, price: e.target.value })} placeholder="499.90" />
+                        </div>
+                        <div>
+                          <Label>Foto da Conta</Label>
+                          <input type="file" ref={tiktokImageInputRef} accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) setTiktokImageFile(file); }} />
+                          <div className="mt-2">
+                            {tiktokImageFile ? (
+                              <div className="flex items-center gap-2 p-2 bg-secondary/50 rounded-lg">
+                                <Image className="w-4 h-4" />
+                                <span className="text-sm flex-1 truncate">{tiktokImageFile.name}</span>
+                                <Button variant="ghost" size="sm" onClick={() => setTiktokImageFile(null)}><Trash2 className="w-4 h-4" /></Button>
+                              </div>
+                            ) : (
+                              <Button variant="outline" className="w-full" onClick={() => tiktokImageInputRef.current?.click()}>
+                                <Upload className="w-4 h-4 mr-2" />Selecionar Foto
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                        <div className="border-t pt-4 mt-4">
+                          <h4 className="font-semibold mb-3 flex items-center gap-2"><Shield className="w-4 h-4" />Dados para Entrega</h4>
+                          <div className="space-y-3">
+                            <div><Label>Login</Label><Input value={tiktokForm.deliverable_login} onChange={(e) => setTiktokForm({ ...tiktokForm, deliverable_login: e.target.value })} placeholder="email@exemplo.com" /></div>
+                            <div><Label>Senha</Label><Input type="password" value={tiktokForm.deliverable_password} onChange={(e) => setTiktokForm({ ...tiktokForm, deliverable_password: e.target.value })} placeholder="senha123" /></div>
+                            <div><Label>Email Vinculado</Label><Input value={tiktokForm.deliverable_email} onChange={(e) => setTiktokForm({ ...tiktokForm, deliverable_email: e.target.value })} placeholder="email@exemplo.com" /></div>
+                            <div><Label>Notas</Label><Textarea value={tiktokForm.deliverable_notes} onChange={(e) => setTiktokForm({ ...tiktokForm, deliverable_notes: e.target.value })} placeholder="Instruções..." /></div>
+                          </div>
+                        </div>
+                        <Button onClick={handleAddTikTokAccount} className="w-full telegram-gradient text-white" disabled={isUploadingTiktok}>
+                          {isUploadingTiktok ? <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />Salvando...</> : "Adicionar Conta"}
+                        </Button>
                       </div>
-                    </div>
-                    
-                    <Button 
-                      onClick={handleAddTelegramGroup} 
-                      className="w-full telegram-gradient text-white"
-                      disabled={isUploadingTelegramGroup}
-                    >
-                      {isUploadingTelegramGroup ? (
-                        <>
-                          <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                          Salvando...
-                        </>
-                      ) : (
-                        "Adicionar Grupo"
+                    </DialogContent>
+                  </Dialog>
+                </div>
+
+                <div className="glass-card overflow-hidden overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Username</TableHead>
+                        <TableHead>Seguidores</TableHead>
+                        <TableHead>Curtidas</TableHead>
+                        <TableHead>Nicho</TableHead>
+                        <TableHead>Preço</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {tiktokAccounts.map((account) => (
+                        <TableRow key={account.id}>
+                          <TableCell className="font-medium">@{account.username}</TableCell>
+                          <TableCell>{formatNumber(account.followers)}</TableCell>
+                          <TableCell>{formatNumber(account.likes)}</TableCell>
+                          <TableCell>{account.niche || "—"}</TableCell>
+                          <TableCell className="font-semibold">{formatPrice(account.price_cents)}</TableCell>
+                          <TableCell><Badge variant={account.is_sold ? "secondary" : "default"}>{account.is_sold ? "Vendido" : "Disponível"}</Badge></TableCell>
+                          <TableCell><Button variant="ghost" size="icon" onClick={() => handleDeleteTikTokAccount(account.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button></TableCell>
+                        </TableRow>
+                      ))}
+                      {tiktokAccounts.length === 0 && (
+                        <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Nenhuma conta TikTok cadastrada</TableCell></TableRow>
                       )}
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </div>
+                    </TableBody>
+                  </Table>
+                </div>
+              </TabsContent>
 
-            <div className="glass-card overflow-hidden overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Username</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Membros</TableHead>
-                    <TableHead>Nicho</TableHead>
-                    <TableHead>Preço</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {telegramGroups.map((group) => (
-                    <TableRow key={group.id}>
-                      <TableCell className="font-medium">{group.group_name}</TableCell>
-                      <TableCell>{group.group_username ? `@${group.group_username}` : "—"}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="capitalize">{group.group_type}</Badge>
-                      </TableCell>
-                      <TableCell>{formatNumber(group.members_count)}</TableCell>
-                      <TableCell>{group.niche || "—"}</TableCell>
-                      <TableCell className="font-semibold">{formatPrice(group.price_cents)}</TableCell>
-                      <TableCell>
-                        <Badge variant={group.is_sold ? "secondary" : "default"}>
-                          {group.is_sold ? "Vendido" : "Disponível"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Button variant="ghost" size="icon" onClick={() => handleDeleteTelegramGroup(group.id)}>
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {telegramGroups.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                        Nenhum grupo cadastrado
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </TabsContent>
+              {/* Instagram Sub-Tab */}
+              <TabsContent value="instagram" className="space-y-4">
+                <Card className="glass-card">
+                  <CardContent className="p-12 text-center">
+                    <Video className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">Em breve</h3>
+                    <p className="text-muted-foreground">Contas Instagram estarão disponíveis em breve.</p>
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-          {/* TikTok Accounts Tab */}
-          <TabsContent value="tiktok" className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Contas TikTok ({tiktokAccounts.length})</h3>
-              <Dialog open={tiktokDialogOpen} onOpenChange={setTiktokDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button className="telegram-gradient text-white gap-2">
-                    <Plus className="w-4 h-4" />Adicionar Conta
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>Nova Conta TikTok</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <Label>Username</Label>
-                      <Input value={tiktokForm.username} onChange={(e) => setTiktokForm({ ...tiktokForm, username: e.target.value })} placeholder="@usuario" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label>Seguidores</Label>
-                        <Input type="number" value={tiktokForm.followers} onChange={(e) => setTiktokForm({ ...tiktokForm, followers: e.target.value })} placeholder="10000" />
-                      </div>
-                      <div>
-                        <Label>Curtidas</Label>
-                        <Input type="number" value={tiktokForm.likes} onChange={(e) => setTiktokForm({ ...tiktokForm, likes: e.target.value })} placeholder="50000" />
-                      </div>
-                    </div>
-                    <div>
-                      <Label>Nicho</Label>
-                      <Input value={tiktokForm.niche} onChange={(e) => setTiktokForm({ ...tiktokForm, niche: e.target.value })} placeholder="Lifestyle, Gaming, etc." />
-                    </div>
-                    <div>
-                      <Label>Descrição</Label>
-                      <Textarea value={tiktokForm.description} onChange={(e) => setTiktokForm({ ...tiktokForm, description: e.target.value })} placeholder="Descreva a conta..." />
-                    </div>
-                    <div>
-                      <Label>Preço (R$)</Label>
-                      <Input type="number" step="0.01" value={tiktokForm.price} onChange={(e) => setTiktokForm({ ...tiktokForm, price: e.target.value })} placeholder="299.90" />
-                    </div>
-                    <div>
-                      <Label>Foto da Conta</Label>
-                      <input
-                        type="file"
-                        ref={tiktokImageInputRef}
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) setTiktokImageFile(file);
-                        }}
-                      />
-                      <div className="mt-2">
-                        {tiktokImageFile ? (
-                          <div className="flex items-center gap-2 p-2 bg-secondary/50 rounded-lg">
-                            <Image className="w-4 h-4" />
-                            <span className="text-sm flex-1 truncate">{tiktokImageFile.name}</span>
-                            <Button variant="ghost" size="sm" onClick={() => setTiktokImageFile(null)}>
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+              {/* Telegram Groups Sub-Tab */}
+              <TabsContent value="telegram-groups" className="space-y-4">
+                <div className="flex items-center justify-end">
+                  <Dialog open={telegramGroupDialogOpen} onOpenChange={setTelegramGroupDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button className="telegram-gradient text-white gap-2">
+                        <Plus className="w-4 h-4" />Adicionar Grupo
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>Novo Grupo Telegram</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div><Label>Nome do Grupo</Label><Input value={telegramGroupForm.group_name} onChange={(e) => setTelegramGroupForm({ ...telegramGroupForm, group_name: e.target.value })} placeholder="Grupo de Vendas" /></div>
+                        <div><Label>Username (sem @)</Label><Input value={telegramGroupForm.group_username} onChange={(e) => setTelegramGroupForm({ ...telegramGroupForm, group_username: e.target.value })} placeholder="grupovendas" /></div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div><Label>Membros</Label><Input type="number" value={telegramGroupForm.members_count} onChange={(e) => setTelegramGroupForm({ ...telegramGroupForm, members_count: e.target.value })} placeholder="5000" /></div>
+                          <div>
+                            <Label>Tipo</Label>
+                            <Select value={telegramGroupForm.group_type} onValueChange={(v) => setTelegramGroupForm({ ...telegramGroupForm, group_type: v })}>
+                              <SelectTrigger><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="group">Grupo</SelectItem>
+                                <SelectItem value="channel">Canal</SelectItem>
+                                <SelectItem value="supergroup">Supergrupo</SelectItem>
+                              </SelectContent>
+                            </Select>
                           </div>
-                        ) : (
-                          <Button variant="outline" className="w-full" onClick={() => tiktokImageInputRef.current?.click()}>
-                            <Upload className="w-4 h-4 mr-2" />
-                            Selecionar Foto
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div className="border-t pt-4 mt-4">
-                      <h4 className="font-semibold mb-3 flex items-center gap-2">
-                        <Shield className="w-4 h-4" />
-                        Dados para Entrega (após pagamento)
-                      </h4>
-                      <div className="space-y-3">
-                        <div>
-                          <Label>Login</Label>
-                          <Input value={tiktokForm.deliverable_login} onChange={(e) => setTiktokForm({ ...tiktokForm, deliverable_login: e.target.value })} placeholder="login@email.com" />
                         </div>
+                        <div><Label>Nicho</Label><Input value={telegramGroupForm.niche} onChange={(e) => setTelegramGroupForm({ ...telegramGroupForm, niche: e.target.value })} placeholder="Vendas, Afiliados, etc." /></div>
+                        <div><Label>Descrição</Label><Textarea value={telegramGroupForm.description} onChange={(e) => setTelegramGroupForm({ ...telegramGroupForm, description: e.target.value })} placeholder="Descreva o grupo..." /></div>
+                        <div><Label>Preço (R$)</Label><Input type="number" step="0.01" value={telegramGroupForm.price} onChange={(e) => setTelegramGroupForm({ ...telegramGroupForm, price: e.target.value })} placeholder="199.90" /></div>
                         <div>
-                          <Label>Senha</Label>
-                          <Input type="password" value={tiktokForm.deliverable_password} onChange={(e) => setTiktokForm({ ...tiktokForm, deliverable_password: e.target.value })} placeholder="••••••••" />
-                        </div>
-                        <div>
-                          <Label>Email vinculado</Label>
-                          <Input value={tiktokForm.deliverable_email} onChange={(e) => setTiktokForm({ ...tiktokForm, deliverable_email: e.target.value })} placeholder="email@vinculado.com" />
-                        </div>
-                        <div>
-                          <Label>Notas adicionais</Label>
-                          <Textarea value={tiktokForm.deliverable_notes} onChange={(e) => setTiktokForm({ ...tiktokForm, deliverable_notes: e.target.value })} placeholder="Instruções para o comprador..." />
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <Button onClick={handleAddTikTokAccount} className="w-full telegram-gradient text-white">Adicionar Conta</Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </div>
-
-            <div className="glass-card overflow-hidden overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Username</TableHead>
-                    <TableHead>Seguidores</TableHead>
-                    <TableHead>Curtidas</TableHead>
-                    <TableHead>Nicho</TableHead>
-                    <TableHead>Preço</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {tiktokAccounts.map((account) => (
-                    <TableRow key={account.id}>
-                      <TableCell className="font-medium">@{account.username}</TableCell>
-                      <TableCell>{formatNumber(account.followers)}</TableCell>
-                      <TableCell>{formatNumber(account.likes)}</TableCell>
-                      <TableCell>{account.niche || "—"}</TableCell>
-                      <TableCell className="font-semibold">{formatPrice(account.price_cents)}</TableCell>
-                      <TableCell>
-                        <Badge variant={account.is_sold ? "secondary" : "default"}>
-                          {account.is_sold ? "Vendida" : "Disponível"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Button variant="ghost" size="icon" onClick={() => handleDeleteTikTokAccount(account.id)}>
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {tiktokAccounts.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                        Nenhuma conta cadastrada
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </TabsContent>
-
-          {/* Models Tab */}
-          <TabsContent value="models" className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Modelos ({models.length})</h3>
-              <Dialog open={modelDialogOpen} onOpenChange={setModelDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button className="telegram-gradient text-white gap-2">
-                    <Plus className="w-4 h-4" />Adicionar Modelo
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>Novo Modelo</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <Label>Nome</Label>
-                      <Input value={modelForm.name} onChange={(e) => setModelForm({ ...modelForm, name: e.target.value })} placeholder="Nome do modelo" />
-                    </div>
-                    <div>
-                      <Label>Bio</Label>
-                      <Textarea value={modelForm.bio} onChange={(e) => setModelForm({ ...modelForm, bio: e.target.value })} placeholder="Descrição do modelo..." />
-                    </div>
-                    <div>
-                      <Label>Nicho</Label>
-                      <Input value={modelForm.niche} onChange={(e) => setModelForm({ ...modelForm, niche: e.target.value })} placeholder="Lifestyle, Fitness, etc." />
-                    </div>
-                    <div>
-                      <Label>Categoria</Label>
-                      <Select value={modelForm.category} onValueChange={(v) => setModelForm({ ...modelForm, category: v })}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="ia">Modelo IA</SelectItem>
-                          <SelectItem value="black">Modelo Black</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label>Preço (R$)</Label>
-                      <Input type="number" step="0.01" value={modelForm.price} onChange={(e) => setModelForm({ ...modelForm, price: e.target.value })} placeholder="499.90" />
-                    </div>
-                    <div>
-                      <Label>Foto do Modelo</Label>
-                      <input
-                        type="file"
-                        ref={modelImageInputRef}
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) setModelImageFile(file);
-                        }}
-                      />
-                      <div className="mt-2">
-                        {modelImageFile ? (
-                          <div className="flex items-center gap-2 p-2 bg-secondary/50 rounded-lg">
-                            <Image className="w-4 h-4" />
-                            <span className="text-sm flex-1 truncate">{modelImageFile.name}</span>
-                            <Button variant="ghost" size="sm" onClick={() => setModelImageFile(null)}>
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                          <Label>Foto do Grupo</Label>
+                          <input type="file" ref={telegramGroupImageInputRef} accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) setTelegramGroupImageFile(file); }} />
+                          <div className="mt-2">
+                            {telegramGroupImageFile ? (
+                              <div className="flex items-center gap-2 p-2 bg-secondary/50 rounded-lg">
+                                <Image className="w-4 h-4" />
+                                <span className="text-sm flex-1 truncate">{telegramGroupImageFile.name}</span>
+                                <Button variant="ghost" size="sm" onClick={() => setTelegramGroupImageFile(null)}><Trash2 className="w-4 h-4" /></Button>
+                              </div>
+                            ) : (
+                              <Button variant="outline" className="w-full" onClick={() => telegramGroupImageInputRef.current?.click()}>
+                                <Upload className="w-4 h-4 mr-2" />Selecionar Foto
+                              </Button>
+                            )}
                           </div>
-                        ) : (
-                          <Button variant="outline" className="w-full" onClick={() => modelImageInputRef.current?.click()}>
-                            <Upload className="w-4 h-4 mr-2" />
-                            Selecionar Foto
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div className="border-t pt-4 mt-4">
-                      <h4 className="font-semibold mb-3 flex items-center gap-2">
-                        <Shield className="w-4 h-4" />
-                        Dados para Entrega (após pagamento)
-                      </h4>
-                      <div className="space-y-3">
-                        <div>
-                          <Label>Link de Acesso</Label>
-                          <Input value={modelForm.deliverable_link} onChange={(e) => setModelForm({ ...modelForm, deliverable_link: e.target.value })} placeholder="https://drive.google.com/..." />
                         </div>
-                        <div>
-                          <Label>Notas/Instruções</Label>
-                          <Textarea value={modelForm.deliverable_notes} onChange={(e) => setModelForm({ ...modelForm, deliverable_notes: e.target.value })} placeholder="Instruções para o comprador..." />
+                        <div className="border-t pt-4 mt-4">
+                          <h4 className="font-semibold mb-3 flex items-center gap-2"><Shield className="w-4 h-4" />Dados para Entrega</h4>
+                          <div className="space-y-3">
+                            <div><Label>Link de Convite</Label><Input value={telegramGroupForm.deliverable_invite_link} onChange={(e) => setTelegramGroupForm({ ...telegramGroupForm, deliverable_invite_link: e.target.value })} placeholder="https://t.me/joinchat/..." /></div>
+                            <div><Label>Notas/Instruções</Label><Textarea value={telegramGroupForm.deliverable_notes} onChange={(e) => setTelegramGroupForm({ ...telegramGroupForm, deliverable_notes: e.target.value })} placeholder="Instruções para o comprador..." /></div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                    
-                    <Button onClick={handleAddModel} className="w-full telegram-gradient text-white">Adicionar Modelo</Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </div>
-
-            <div className="glass-card overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Categoria</TableHead>
-                    <TableHead>Nicho</TableHead>
-                    <TableHead>Preço</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {models.map((model) => (
-                    <TableRow key={model.id}>
-                      <TableCell className="font-medium">{model.name}</TableCell>
-                      <TableCell><Badge variant="outline" className="capitalize">{model.category}</Badge></TableCell>
-                      <TableCell>{model.niche || "—"}</TableCell>
-                      <TableCell className="font-semibold">{formatPrice(model.price_cents)}</TableCell>
-                      <TableCell>
-                        <Badge variant={model.is_sold ? "secondary" : "default"}>
-                          {model.is_sold ? "Vendido" : "Disponível"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Button variant="ghost" size="icon" onClick={() => handleDeleteModel(model.id)}>
-                          <Trash2 className="w-4 h-4 text-destructive" />
+                        <Button onClick={handleAddTelegramGroup} className="w-full telegram-gradient text-white" disabled={isUploadingTelegramGroup}>
+                          {isUploadingTelegramGroup ? <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />Salvando...</> : "Adicionar Grupo"}
                         </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {models.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                        Nenhum modelo cadastrado
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+
+                <div className="glass-card overflow-hidden overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Nome</TableHead>
+                        <TableHead>Username</TableHead>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead>Membros</TableHead>
+                        <TableHead>Nicho</TableHead>
+                        <TableHead>Preço</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {telegramGroups.map((group) => (
+                        <TableRow key={group.id}>
+                          <TableCell className="font-medium">{group.group_name}</TableCell>
+                          <TableCell>{group.group_username ? `@${group.group_username}` : "—"}</TableCell>
+                          <TableCell><Badge variant="outline" className="capitalize">{group.group_type}</Badge></TableCell>
+                          <TableCell>{formatNumber(group.members_count)}</TableCell>
+                          <TableCell>{group.niche || "—"}</TableCell>
+                          <TableCell className="font-semibold">{formatPrice(group.price_cents)}</TableCell>
+                          <TableCell><Badge variant={group.is_sold ? "secondary" : "default"}>{group.is_sold ? "Vendido" : "Disponível"}</Badge></TableCell>
+                          <TableCell><Button variant="ghost" size="icon" onClick={() => handleDeleteTelegramGroup(group.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button></TableCell>
+                        </TableRow>
+                      ))}
+                      {telegramGroups.length === 0 && (
+                        <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Nenhum grupo cadastrado</TableCell></TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </TabsContent>
+
+              {/* Models Black Sub-Tab */}
+              <TabsContent value="models" className="space-y-4">
+                <div className="flex items-center justify-end">
+                  <Dialog open={modelDialogOpen} onOpenChange={setModelDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button className="telegram-gradient text-white gap-2">
+                        <Plus className="w-4 h-4" />Adicionar Modelo
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>Novo Modelo Black</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div><Label>Nome</Label><Input value={modelForm.name} onChange={(e) => setModelForm({ ...modelForm, name: e.target.value })} placeholder="Nome do modelo" /></div>
+                        <div><Label>Bio</Label><Textarea value={modelForm.bio} onChange={(e) => setModelForm({ ...modelForm, bio: e.target.value })} placeholder="Descrição..." /></div>
+                        <div><Label>Nicho</Label><Input value={modelForm.niche} onChange={(e) => setModelForm({ ...modelForm, niche: e.target.value })} placeholder="Estratégia, Vendas, etc." /></div>
+                        <input type="hidden" value="black" />
+                        <div><Label>Preço (R$)</Label><Input type="number" step="0.01" value={modelForm.price} onChange={(e) => setModelForm({ ...modelForm, price: e.target.value })} placeholder="499.90" /></div>
+                        <div>
+                          <Label>Foto do Modelo</Label>
+                          <input type="file" ref={modelImageInputRef} accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) setModelImageFile(file); }} />
+                          <div className="mt-2">
+                            {modelImageFile ? (
+                              <div className="flex items-center gap-2 p-2 bg-secondary/50 rounded-lg">
+                                <Image className="w-4 h-4" />
+                                <span className="text-sm flex-1 truncate">{modelImageFile.name}</span>
+                                <Button variant="ghost" size="sm" onClick={() => setModelImageFile(null)}><Trash2 className="w-4 h-4" /></Button>
+                              </div>
+                            ) : (
+                              <Button variant="outline" className="w-full" onClick={() => modelImageInputRef.current?.click()}>
+                                <Upload className="w-4 h-4 mr-2" />Selecionar Foto
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                        <div className="border-t pt-4 mt-4">
+                          <h4 className="font-semibold mb-3 flex items-center gap-2"><Shield className="w-4 h-4" />Dados para Entrega</h4>
+                          <div className="space-y-3">
+                            <div><Label>Link de Acesso</Label><Input value={modelForm.deliverable_link} onChange={(e) => setModelForm({ ...modelForm, deliverable_link: e.target.value })} placeholder="https://drive.google.com/..." /></div>
+                            <div><Label>Notas/Instruções</Label><Textarea value={modelForm.deliverable_notes} onChange={(e) => setModelForm({ ...modelForm, deliverable_notes: e.target.value })} placeholder="Instruções para o comprador..." /></div>
+                          </div>
+                        </div>
+                        <Button onClick={handleAddModel} className="w-full telegram-gradient text-white" disabled={isUploadingModel}>
+                          {isUploadingModel ? <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />Salvando...</> : "Adicionar Modelo"}
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+
+                <div className="glass-card overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Nome</TableHead>
+                        <TableHead>Nicho</TableHead>
+                        <TableHead>Preço</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {models.filter(m => m.category === "black").map((model) => (
+                        <TableRow key={model.id}>
+                          <TableCell className="font-medium">{model.name}</TableCell>
+                          <TableCell>{model.niche || "—"}</TableCell>
+                          <TableCell className="font-semibold">{formatPrice(model.price_cents)}</TableCell>
+                          <TableCell><Badge variant={model.is_sold ? "secondary" : "default"}>{model.is_sold ? "Vendido" : "Disponível"}</Badge></TableCell>
+                          <TableCell><Button variant="ghost" size="icon" onClick={() => handleDeleteModel(model.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button></TableCell>
+                        </TableRow>
+                      ))}
+                      {models.filter(m => m.category === "black").length === 0 && (
+                        <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Nenhum modelo Black cadastrado</TableCell></TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </TabsContent>
+            </Tabs>
           </TabsContent>
 
           {/* Templates Tab */}
@@ -2365,46 +2234,27 @@ const AdminDashboardPage = () => {
                 </CardContent>
               </Card>
 
-              {/* Model Hub Toggle */}
+              {/* Contas Toggle (TikTok + Models) */}
               <Card className="border-dashed">
                 <CardContent className="flex items-center justify-between py-4">
                   <div className="space-y-0.5">
                     <div className="font-medium flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-muted-foreground" />
-                      Model Hub
-                      <Badge variant={adminSettings.models_enabled ? "default" : "secondary"}>
-                        {adminSettings.models_enabled ? "Ativo" : "Desativado"}
+                      <Users className="w-4 h-4 text-muted-foreground" />
+                      Contas
+                      <Badge variant={(adminSettings.tiktok_enabled || adminSettings.models_enabled) ? "default" : "secondary"}>
+                        {(adminSettings.tiktok_enabled || adminSettings.models_enabled) ? "Ativo" : "Desativado"}
                       </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Catálogo de modelos IA e Black
+                      Catálogo de contas TikTok, Instagram e Modelos Black
                     </p>
                   </div>
                   <Switch
-                    checked={adminSettings.models_enabled}
-                    onCheckedChange={(checked) => updateSetting("models_enabled", checked)}
-                  />
-                </CardContent>
-              </Card>
-
-              {/* TikTok Accounts Toggle */}
-              <Card className="border-dashed">
-                <CardContent className="flex items-center justify-between py-4">
-                  <div className="space-y-0.5">
-                    <div className="font-medium flex items-center gap-2">
-                      <Video className="w-4 h-4 text-muted-foreground" />
-                      TikTok Accounts
-                      <Badge variant={adminSettings.tiktok_enabled ? "default" : "secondary"}>
-                        {adminSettings.tiktok_enabled ? "Ativo" : "Desativado"}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Catálogo de contas TikTok à venda
-                    </p>
-                  </div>
-                  <Switch
-                    checked={adminSettings.tiktok_enabled}
-                    onCheckedChange={(checked) => updateSetting("tiktok_enabled", checked)}
+                    checked={adminSettings.tiktok_enabled || adminSettings.models_enabled}
+                    onCheckedChange={(checked) => {
+                      updateSetting("tiktok_enabled", checked);
+                      updateSetting("models_enabled", checked);
+                    }}
                   />
                 </CardContent>
               </Card>
