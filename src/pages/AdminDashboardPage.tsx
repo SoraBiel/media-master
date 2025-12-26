@@ -1852,6 +1852,173 @@ const AdminDashboardPage = () => {
             </div>
           </TabsContent>
 
+          {/* Telegram Groups Tab */}
+          <TabsContent value="telegram-groups" className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Grupos Telegram ({telegramGroups.length})</h3>
+              <Dialog open={telegramGroupDialogOpen} onOpenChange={setTelegramGroupDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="telegram-gradient text-white gap-2">
+                    <Plus className="w-4 h-4" />Adicionar Grupo
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Novo Grupo Telegram</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label>Nome do Grupo</Label>
+                      <Input value={telegramGroupForm.group_name} onChange={(e) => setTelegramGroupForm({ ...telegramGroupForm, group_name: e.target.value })} placeholder="Grupo de Vendas" />
+                    </div>
+                    <div>
+                      <Label>Username (sem @)</Label>
+                      <Input value={telegramGroupForm.group_username} onChange={(e) => setTelegramGroupForm({ ...telegramGroupForm, group_username: e.target.value })} placeholder="grupovendas" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Membros</Label>
+                        <Input type="number" value={telegramGroupForm.members_count} onChange={(e) => setTelegramGroupForm({ ...telegramGroupForm, members_count: e.target.value })} placeholder="5000" />
+                      </div>
+                      <div>
+                        <Label>Tipo</Label>
+                        <Select value={telegramGroupForm.group_type} onValueChange={(v) => setTelegramGroupForm({ ...telegramGroupForm, group_type: v })}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="group">Grupo</SelectItem>
+                            <SelectItem value="channel">Canal</SelectItem>
+                            <SelectItem value="supergroup">Supergrupo</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div>
+                      <Label>Nicho</Label>
+                      <Input value={telegramGroupForm.niche} onChange={(e) => setTelegramGroupForm({ ...telegramGroupForm, niche: e.target.value })} placeholder="Vendas, Afiliados, etc." />
+                    </div>
+                    <div>
+                      <Label>Descrição</Label>
+                      <Textarea value={telegramGroupForm.description} onChange={(e) => setTelegramGroupForm({ ...telegramGroupForm, description: e.target.value })} placeholder="Descreva o grupo..." />
+                    </div>
+                    <div>
+                      <Label>Preço (R$)</Label>
+                      <Input type="number" step="0.01" value={telegramGroupForm.price} onChange={(e) => setTelegramGroupForm({ ...telegramGroupForm, price: e.target.value })} placeholder="199.90" />
+                    </div>
+                    <div>
+                      <Label>Foto do Grupo</Label>
+                      <input
+                        type="file"
+                        ref={telegramGroupImageInputRef}
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) setTelegramGroupImageFile(file);
+                        }}
+                      />
+                      <div className="mt-2">
+                        {telegramGroupImageFile ? (
+                          <div className="flex items-center gap-2 p-2 bg-secondary/50 rounded-lg">
+                            <Image className="w-4 h-4" />
+                            <span className="text-sm flex-1 truncate">{telegramGroupImageFile.name}</span>
+                            <Button variant="ghost" size="sm" onClick={() => setTelegramGroupImageFile(null)}>
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button variant="outline" className="w-full" onClick={() => telegramGroupImageInputRef.current?.click()}>
+                            <Upload className="w-4 h-4 mr-2" />
+                            Selecionar Foto
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="border-t pt-4 mt-4">
+                      <h4 className="font-semibold mb-3 flex items-center gap-2">
+                        <Shield className="w-4 h-4" />
+                        Dados para Entrega (após pagamento)
+                      </h4>
+                      <div className="space-y-3">
+                        <div>
+                          <Label>Link de Convite</Label>
+                          <Input value={telegramGroupForm.deliverable_invite_link} onChange={(e) => setTelegramGroupForm({ ...telegramGroupForm, deliverable_invite_link: e.target.value })} placeholder="https://t.me/joinchat/..." />
+                        </div>
+                        <div>
+                          <Label>Notas/Instruções</Label>
+                          <Textarea value={telegramGroupForm.deliverable_notes} onChange={(e) => setTelegramGroupForm({ ...telegramGroupForm, deliverable_notes: e.target.value })} placeholder="Instruções para o comprador..." />
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <Button 
+                      onClick={handleAddTelegramGroup} 
+                      className="w-full telegram-gradient text-white"
+                      disabled={isUploadingTelegramGroup}
+                    >
+                      {isUploadingTelegramGroup ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                          Salvando...
+                        </>
+                      ) : (
+                        "Adicionar Grupo"
+                      )}
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            <div className="glass-card overflow-hidden overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Username</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Membros</TableHead>
+                    <TableHead>Nicho</TableHead>
+                    <TableHead>Preço</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {telegramGroups.map((group) => (
+                    <TableRow key={group.id}>
+                      <TableCell className="font-medium">{group.group_name}</TableCell>
+                      <TableCell>{group.group_username ? `@${group.group_username}` : "—"}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="capitalize">{group.group_type}</Badge>
+                      </TableCell>
+                      <TableCell>{formatNumber(group.members_count)}</TableCell>
+                      <TableCell>{group.niche || "—"}</TableCell>
+                      <TableCell className="font-semibold">{formatPrice(group.price_cents)}</TableCell>
+                      <TableCell>
+                        <Badge variant={group.is_sold ? "secondary" : "default"}>
+                          {group.is_sold ? "Vendido" : "Disponível"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Button variant="ghost" size="icon" onClick={() => handleDeleteTelegramGroup(group.id)}>
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {telegramGroups.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                        Nenhum grupo cadastrado
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </TabsContent>
+
           {/* TikTok Accounts Tab */}
           <TabsContent value="tiktok" className="space-y-4">
             <div className="flex items-center justify-between">
@@ -2304,6 +2471,28 @@ const AdminDashboardPage = () => {
                   <Switch
                     checked={adminSettings.media_library_enabled}
                     onCheckedChange={(checked) => updateSetting("media_library_enabled", checked)}
+                  />
+                </CardContent>
+              </Card>
+
+              {/* Telegram Groups Toggle */}
+              <Card className="border-dashed">
+                <CardContent className="flex items-center justify-between py-4">
+                  <div className="space-y-0.5">
+                    <div className="font-medium flex items-center gap-2">
+                      <Users className="w-4 h-4 text-muted-foreground" />
+                      Grupos Telegram
+                      <Badge variant={adminSettings.telegram_groups_enabled ? "default" : "secondary"}>
+                        {adminSettings.telegram_groups_enabled ? "Ativo" : "Desativado"}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Catálogo de grupos/canais Telegram à venda
+                    </p>
+                  </div>
+                  <Switch
+                    checked={adminSettings.telegram_groups_enabled}
+                    onCheckedChange={(checked) => updateSetting("telegram_groups_enabled", checked)}
                   />
                 </CardContent>
               </Card>
