@@ -67,10 +67,26 @@ Deno.serve(async (req) => {
       case 'get_auth_url': {
         // Generate OAuth authorization URL
         const state = btoa(JSON.stringify({ user_id: user.id, environment }));
-        const authUrl = `${MERCADOPAGO_AUTH_URL}?client_id=${clientId}&response_type=code&platform_id=mp&state=${state}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+        
+        // Log the configuration for debugging
+        console.log('Generating auth URL with:', {
+          clientId: clientId ? `${clientId.substring(0, 10)}...` : 'NOT SET',
+          redirectUri,
+          environment
+        });
+        
+        // Mercado Pago OAuth URL format
+        const authUrl = new URL(MERCADOPAGO_AUTH_URL);
+        authUrl.searchParams.set('client_id', clientId);
+        authUrl.searchParams.set('response_type', 'code');
+        authUrl.searchParams.set('platform_id', 'mp');
+        authUrl.searchParams.set('state', state);
+        authUrl.searchParams.set('redirect_uri', redirectUri);
+        
+        console.log('Generated auth URL:', authUrl.toString());
         
         return new Response(
-          JSON.stringify({ auth_url: authUrl }),
+          JSON.stringify({ auth_url: authUrl.toString() }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
