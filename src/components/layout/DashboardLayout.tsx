@@ -68,6 +68,15 @@ const DashboardLayout = ({
       path: "/telegram"
     });
     
+    // Only show Funis if enabled by admin
+    if (adminSettings.funnels_enabled) {
+      items.push({
+        icon: GitBranch,
+        label: "Funis",
+        path: "/funnels"
+      });
+    }
+    
     // Only show WhatsApp if enabled by admin
     if (adminSettings.whatsapp_enabled) {
       items.push({
