@@ -74,6 +74,84 @@ Deno.serve(async (req) => {
           continue;
         }
 
+        // Reconcile status with Mercado Pago before sending reminders
+        if (payment.provider === 'mercadopago' && payment.provider_payment_id) {
+          const { data: integration } = await supabase
+            .from('integrations')
+            .select('*')
+            .eq('user_id', funnel.user_id)
+            .eq('provider', 'mercadopago')
+            .eq('status', 'active')
+            .maybeSingle();
+
+          if (integration) {
+            try {
+              const mpRes = await fetch(`${'https://api.mercadopago.com'}/v1/payments/${payment.provider_payment_id}`, {
+                headers: {
+                  Authorization: `Bearer ${integration.access_token}`,
+                  'Content-Type': 'application/json',
+                },
+              });
+
+              const mpPayment = await mpRes.json();
+
+              if (mpRes.ok && mpPayment?.status && mpPayment.status !== payment.status) {
+                await supabase
+                  .from('funnel_payments')
+                  .update({ status: mpPayment.status, paid_at: mpPayment.status === 'approved' ? new Date().toISOString() : payment.paid_at })
+                  .eq('id', payment.id);
+              }
+
+              // If approved, deliver and skip reminder
+              if (mpRes.ok && mpPayment?.status === 'approved') {
+                if (payment.delivery_status !== 'delivered') {
+                  let deliveryText = `✅ <b>Pagamento Confirmado!</b>\n\nObrigado pela compra de <b>${product?.name || 'seu produto'}</b>!\n\n`;
+
+                  if (product?.delivery_type === 'group') {
+                    deliveryText = product?.group_invite_link
+                      ? `✅ <b>Pagamento confirmado!</b>\n\n🎉 Seu acesso ao grupo <b>${product.name}</b> foi liberado.\n\n🔗 Entre por aqui: ${product.group_invite_link}\n\nDepois de pedir para entrar, eu aprovo automaticamente.`
+                      : `✅ <b>Pagamento confirmado!</b>\n\n🎉 Seu acesso ao grupo <b>${product?.name || 'exclusivo'}</b> foi liberado.\n\nAgora peça para entrar no grupo que eu aprovo automaticamente.`;
+                  } else {
+                    if ((product?.delivery_type === 'link' || product?.delivery_type === 'both') && product?.delivery_content) {
+                      deliveryText += `🔗 Seu acesso: ${product.delivery_content}\n\n`;
+                    }
+                    if ((product?.delivery_type === 'message' || product?.delivery_type === 'both') && product?.delivery_message) {
+                      deliveryText += product.delivery_message;
+                    }
+                  }
+
+                  const sendRes = await fetch(`${TELEGRAM_API_BASE}${botToken}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      chat_id: chatId,
+                      text: deliveryText,
+                      parse_mode: 'HTML',
+                    }),
+                  });
+
+                  const sendResult = await sendRes.json();
+
+                  if (sendResult.ok) {
+                    await supabase
+                      .from('funnel_payments')
+                      .update({ delivery_status: 'delivered', delivered_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+                      .eq('id', payment.id);
+
+                    console.log(`Auto-delivered approved payment ${payment.id} (skipping reminder)`);
+                    continue;
+                  }
+                } else {
+                  // already delivered
+                  continue;
+                }
+              }
+            } catch (e) {
+              console.error(`Mercado Pago reconcile failed for payment ${payment.id}:`, e);
+            }
+          }
+        }
+
         // Format amount
         const amount = new Intl.NumberFormat('pt-BR', {
           style: 'currency',
