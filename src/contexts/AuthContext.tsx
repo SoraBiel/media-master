@@ -19,12 +19,15 @@ export interface Profile {
   last_seen_at: string | null;
 }
 
+type VendorType = "vendor" | "vendor_instagram" | "vendor_tiktok" | "vendor_model";
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   profile: Profile | null;
   isAdmin: boolean;
   isVendor: boolean;
+  vendorRoles: VendorType[];
   isLoading: boolean;
   signUp: (email: string, password: string, fullName: string, phone: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
@@ -40,6 +43,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isVendor, setIsVendor] = useState(false);
+  const [vendorRoles, setVendorRoles] = useState<VendorType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchProfile = async (userId: string) => {
@@ -65,7 +69,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           .eq("user_id", userId);
       }
 
-      // Check if user is admin
+      // Check if user is admin and vendor roles
       const { data: roleData } = await supabase
         .from("user_roles")
         .select("role")
@@ -73,7 +77,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       const roles = roleData?.map(r => r.role) || [];
       setIsAdmin(roles.includes("admin"));
-      setIsVendor(roles.includes("vendor"));
+      
+      // Check for any vendor role
+      const vendorTypeRoles = roles.filter(r => 
+        r === "vendor" || r === "vendor_instagram" || r === "vendor_tiktok" || r === "vendor_model"
+      ) as VendorType[];
+      setVendorRoles(vendorTypeRoles);
+      setIsVendor(vendorTypeRoles.length > 0);
     } catch (error) {
       console.error("Error in fetchProfile:", error);
     }
@@ -101,12 +111,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setProfile(null);
           setIsAdmin(false);
           setIsVendor(false);
+          setVendorRoles([]);
         }
 
         if (event === "SIGNED_OUT") {
           setProfile(null);
           setIsAdmin(false);
           setIsVendor(false);
+          setVendorRoles([]);
         }
 
         setIsLoading(false);
@@ -186,6 +198,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         profile,
         isAdmin,
         isVendor,
+        vendorRoles,
         isLoading,
         signUp,
         signIn,

@@ -270,6 +270,7 @@ const AdminDashboardPage = () => {
   const [adminMedia, setAdminMedia] = useState<AdminMedia[]>([]);
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
   const [vendorSales, setVendorSales] = useState<VendorSale[]>([]);
+  const [vendorSalesFilter, setVendorSalesFilter] = useState<string>("all");
   const [vendorCommissionPercent, setVendorCommissionPercent] = useState(80);
   const [plans, setPlans] = useState<{ id: string; slug: string; name: string }[]>([]);
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("30days");
@@ -2556,10 +2557,25 @@ const AdminDashboardPage = () => {
 
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Store className="w-5 h-5" />
-                  Vendas de Revendedores ({vendorSales.length})
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Store className="w-5 h-5" />
+                    Vendas de Revendedores ({vendorSales.filter(s => vendorSalesFilter === "all" || s.item_type === vendorSalesFilter).length})
+                  </CardTitle>
+                  <Select value={vendorSalesFilter} onValueChange={setVendorSalesFilter}>
+                    <SelectTrigger className="w-[180px]">
+                      <Filter className="w-4 h-4 mr-2" />
+                      <SelectValue placeholder="Filtrar por tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos</SelectItem>
+                      <SelectItem value="instagram_account">Instagram</SelectItem>
+                      <SelectItem value="tiktok_account">TikTok</SelectItem>
+                      <SelectItem value="telegram_group">Telegram</SelectItem>
+                      <SelectItem value="model">Modelos</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </CardHeader>
               <CardContent>
                 {vendorSales.length === 0 ? (
@@ -2581,7 +2597,9 @@ const AdminDashboardPage = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {vendorSales.map((sale) => (
+                      {vendorSales
+                        .filter(s => vendorSalesFilter === "all" || s.item_type === vendorSalesFilter)
+                        .map((sale) => (
                         <TableRow key={sale.id}>
                           <TableCell>
                             <div>
@@ -2590,7 +2608,12 @@ const AdminDashboardPage = () => {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Badge variant="outline" className="capitalize">{sale.item_type}</Badge>
+                            <Badge variant="outline" className="capitalize">
+                              {sale.item_type === "instagram_account" ? "Instagram" : 
+                               sale.item_type === "tiktok_account" ? "TikTok" : 
+                               sale.item_type === "telegram_group" ? "Telegram" : 
+                               sale.item_type === "model" ? "Modelo" : sale.item_type}
+                            </Badge>
                           </TableCell>
                           <TableCell className="font-medium">{formatPrice(sale.sale_amount_cents)}</TableCell>
                           <TableCell className="text-success">{formatPrice(sale.vendor_commission_cents)}</TableCell>
@@ -2895,7 +2918,10 @@ const AdminDashboardPage = () => {
                   <SelectTrigger className="mt-1"><SelectValue placeholder="Selecione um cargo" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="user">Usuário</SelectItem>
-                    <SelectItem value="vendor">Vendedor</SelectItem>
+                    <SelectItem value="vendor">Vendedor Geral</SelectItem>
+                    <SelectItem value="vendor_instagram">Vendedor Instagram</SelectItem>
+                    <SelectItem value="vendor_tiktok">Vendedor TikTok</SelectItem>
+                    <SelectItem value="vendor_model">Vendedor Modelos</SelectItem>
                     <SelectItem value="admin">Administrador</SelectItem>
                   </SelectContent>
                 </Select>
