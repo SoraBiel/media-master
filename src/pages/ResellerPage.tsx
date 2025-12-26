@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Instagram, Music2, Trash2, Edit2, DollarSign, Link2, Loader2, CheckCircle, XCircle, AlertCircle, MessageSquare, Sparkles, Users } from "lucide-react";
+import { Plus, Instagram, Music2, Trash2, Edit2, DollarSign, Link2, Loader2, CheckCircle, XCircle, AlertCircle, MessageSquare, Sparkles, Users, Upload, Image, GitBranch, Shield } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -90,6 +90,7 @@ interface ModelForSale {
   image_url: string | null;
   deliverable_link: string | null;
   deliverable_notes: string | null;
+  funnel_json: any;
   created_at: string;
   created_by: string | null;
 }
@@ -110,6 +111,21 @@ const ResellerPage = () => {
   const navigate = useNavigate();
   const { integration: mpIntegration, isConnected: isMpConnected, isLoading: mpLoading, refetch: refetchMp } = useMercadoPagoIntegration();
 
+  // File upload refs
+  const instagramImageInputRef = useRef<HTMLInputElement>(null);
+  const tiktokImageInputRef = useRef<HTMLInputElement>(null);
+  const telegramImageInputRef = useRef<HTMLInputElement>(null);
+  const modelImageInputRef = useRef<HTMLInputElement>(null);
+  const modelFunnelInputRef = useRef<HTMLInputElement>(null);
+
+  // File states
+  const [instagramImageFile, setInstagramImageFile] = useState<File | null>(null);
+  const [tiktokImageFile, setTiktokImageFile] = useState<File | null>(null);
+  const [telegramImageFile, setTelegramImageFile] = useState<File | null>(null);
+  const [modelImageFile, setModelImageFile] = useState<File | null>(null);
+  const [modelFunnelFile, setModelFunnelFile] = useState<File | null>(null);
+  const [modelFunnelJson, setModelFunnelJson] = useState<any>(null);
+
   // Instagram accounts
   const [instagramAccounts, setInstagramAccounts] = useState<InstagramAccount[]>([]);
   const [loadingInstagram, setLoadingInstagram] = useState(true);
@@ -124,7 +140,6 @@ const ResellerPage = () => {
     engagement_rate: 0,
     niche: "",
     description: "",
-    image_url: "",
     price_cents: 0,
     deliverable_info: "",
     deliverable_login: "",
@@ -145,7 +160,6 @@ const ResellerPage = () => {
     likes: 0,
     niche: "",
     description: "",
-    image_url: "",
     price_cents: 0,
     deliverable_info: "",
     deliverable_login: "",
@@ -168,7 +182,6 @@ const ResellerPage = () => {
     niche: "",
     price_cents: 0,
     group_type: "group",
-    image_url: "",
     deliverable_invite_link: "",
     deliverable_notes: ""
   });
@@ -185,7 +198,6 @@ const ResellerPage = () => {
     niche: "",
     category: "ia",
     price_cents: 0,
-    image_url: "",
     deliverable_link: "",
     deliverable_notes: ""
   });
@@ -289,6 +301,26 @@ const ResellerPage = () => {
     }
   };
 
+  // Helper function to upload image
+  const handleUploadImage = async (file: File, bucket: string): Promise<string | null> => {
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user?.id}/${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from(bucket)
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(fileName);
+      return urlData.publicUrl;
+    } catch (error: any) {
+      toast({ title: "Erro no upload", description: error.message, variant: "destructive" });
+      return null;
+    }
+  };
+
   // Instagram handlers
   const handleAddInstagram = async () => {
     if (!instagramForm.username || instagramForm.price_cents <= 0) {
@@ -298,10 +330,16 @@ const ResellerPage = () => {
 
     setIsAddingInstagram(true);
     try {
+      let imageUrl: string | null = null;
+      if (instagramImageFile) {
+        imageUrl = await handleUploadImage(instagramImageFile, "product-images");
+      }
+
       const { error } = await supabase
         .from("instagram_accounts")
         .insert({
           ...instagramForm,
+          image_url: imageUrl,
           created_by: user?.id
         });
 
@@ -309,6 +347,7 @@ const ResellerPage = () => {
 
       toast({ title: "Sucesso", description: "Conta Instagram adicionada!" });
       setInstagramDialogOpen(false);
+      setInstagramImageFile(null);
       resetInstagramForm();
       fetchInstagramAccounts();
     } catch (error: any) {
@@ -367,7 +406,6 @@ const ResellerPage = () => {
       engagement_rate: 0,
       niche: "",
       description: "",
-      image_url: "",
       price_cents: 0,
       deliverable_info: "",
       deliverable_login: "",
@@ -375,6 +413,7 @@ const ResellerPage = () => {
       deliverable_email: "",
       deliverable_notes: ""
     });
+    setInstagramImageFile(null);
   };
 
   const openEditInstagram = (account: InstagramAccount) => {
@@ -387,7 +426,6 @@ const ResellerPage = () => {
       engagement_rate: account.engagement_rate,
       niche: account.niche || "",
       description: account.description || "",
-      image_url: account.image_url || "",
       price_cents: account.price_cents,
       deliverable_info: account.deliverable_info || "",
       deliverable_login: account.deliverable_login || "",
@@ -395,6 +433,7 @@ const ResellerPage = () => {
       deliverable_email: account.deliverable_email || "",
       deliverable_notes: account.deliverable_notes || ""
     });
+    setInstagramImageFile(null);
     setInstagramDialogOpen(true);
   };
 
@@ -407,10 +446,16 @@ const ResellerPage = () => {
 
     setIsAddingTiktok(true);
     try {
+      let imageUrl: string | null = null;
+      if (tiktokImageFile) {
+        imageUrl = await handleUploadImage(tiktokImageFile, "product-images");
+      }
+
       const { error } = await supabase
         .from("tiktok_accounts")
         .insert({
           ...tiktokForm,
+          image_url: imageUrl,
           created_by: user?.id
         });
 
@@ -418,6 +463,7 @@ const ResellerPage = () => {
 
       toast({ title: "Sucesso", description: "Conta TikTok adicionada!" });
       setTiktokDialogOpen(false);
+      setTiktokImageFile(null);
       resetTiktokForm();
       fetchTiktokAccounts();
     } catch (error: any) {
@@ -432,9 +478,17 @@ const ResellerPage = () => {
 
     setIsAddingTiktok(true);
     try {
+      let imageUrl = editingTiktok.image_url;
+      if (tiktokImageFile) {
+        imageUrl = await handleUploadImage(tiktokImageFile, "product-images");
+      }
+
       const { error } = await supabase
         .from("tiktok_accounts")
-        .update(tiktokForm)
+        .update({
+          ...tiktokForm,
+          image_url: imageUrl
+        })
         .eq("id", editingTiktok.id);
 
       if (error) throw error;
@@ -442,6 +496,7 @@ const ResellerPage = () => {
       toast({ title: "Sucesso", description: "Conta atualizada!" });
       setTiktokDialogOpen(false);
       setEditingTiktok(null);
+      setTiktokImageFile(null);
       resetTiktokForm();
       fetchTiktokAccounts();
     } catch (error: any) {
@@ -474,7 +529,6 @@ const ResellerPage = () => {
       likes: 0,
       niche: "",
       description: "",
-      image_url: "",
       price_cents: 0,
       deliverable_info: "",
       deliverable_login: "",
@@ -482,6 +536,7 @@ const ResellerPage = () => {
       deliverable_email: "",
       deliverable_notes: ""
     });
+    setTiktokImageFile(null);
   };
 
   const openEditTiktok = (account: TikTokAccount) => {
@@ -492,7 +547,6 @@ const ResellerPage = () => {
       likes: account.likes,
       niche: account.niche || "",
       description: account.description || "",
-      image_url: account.image_url || "",
       price_cents: account.price_cents,
       deliverable_info: account.deliverable_info || "",
       deliverable_login: account.deliverable_login || "",
@@ -500,6 +554,7 @@ const ResellerPage = () => {
       deliverable_email: account.deliverable_email || "",
       deliverable_notes: account.deliverable_notes || ""
     });
+    setTiktokImageFile(null);
     setTiktokDialogOpen(true);
   };
 
@@ -512,10 +567,16 @@ const ResellerPage = () => {
 
     setIsAddingTelegram(true);
     try {
+      let imageUrl: string | null = null;
+      if (telegramImageFile) {
+        imageUrl = await handleUploadImage(telegramImageFile, "product-images");
+      }
+
       const { error } = await supabase
         .from("telegram_groups")
         .insert({
           ...telegramForm,
+          image_url: imageUrl,
           created_by: user?.id
         });
 
@@ -523,6 +584,7 @@ const ResellerPage = () => {
 
       toast({ title: "Sucesso", description: "Grupo Telegram adicionado!" });
       setTelegramDialogOpen(false);
+      setTelegramImageFile(null);
       resetTelegramForm();
       fetchTelegramGroups();
     } catch (error: any) {
@@ -537,9 +599,17 @@ const ResellerPage = () => {
 
     setIsAddingTelegram(true);
     try {
+      let imageUrl = editingTelegram.image_url;
+      if (telegramImageFile) {
+        imageUrl = await handleUploadImage(telegramImageFile, "product-images");
+      }
+
       const { error } = await supabase
         .from("telegram_groups")
-        .update(telegramForm)
+        .update({
+          ...telegramForm,
+          image_url: imageUrl
+        })
         .eq("id", editingTelegram.id);
 
       if (error) throw error;
@@ -547,6 +617,7 @@ const ResellerPage = () => {
       toast({ title: "Sucesso", description: "Grupo atualizado!" });
       setTelegramDialogOpen(false);
       setEditingTelegram(null);
+      setTelegramImageFile(null);
       resetTelegramForm();
       fetchTelegramGroups();
     } catch (error: any) {
@@ -581,10 +652,10 @@ const ResellerPage = () => {
       niche: "",
       price_cents: 0,
       group_type: "group",
-      image_url: "",
       deliverable_invite_link: "",
       deliverable_notes: ""
     });
+    setTelegramImageFile(null);
   };
 
   const openEditTelegram = (group: TelegramGroup) => {
@@ -597,10 +668,10 @@ const ResellerPage = () => {
       niche: group.niche || "",
       price_cents: group.price_cents,
       group_type: group.group_type,
-      image_url: group.image_url || "",
       deliverable_invite_link: group.deliverable_invite_link || "",
       deliverable_notes: group.deliverable_notes || ""
     });
+    setTelegramImageFile(null);
     setTelegramDialogOpen(true);
   };
 
@@ -613,17 +684,27 @@ const ResellerPage = () => {
 
     setIsAddingModel(true);
     try {
+      let imageUrl: string | null = null;
+      if (modelImageFile) {
+        imageUrl = await handleUploadImage(modelImageFile, "product-images");
+      }
+
       const { error } = await supabase
         .from("models_for_sale")
         .insert({
           ...modelForm,
+          image_url: imageUrl,
+          funnel_json: modelFunnelJson || null,
           created_by: user?.id
         });
 
       if (error) throw error;
 
-      toast({ title: "Sucesso", description: "Modelo adicionado!" });
+      toast({ title: "Sucesso", description: `Modelo adicionado${modelFunnelJson ? " com funil incluso" : ""}!` });
       setModelDialogOpen(false);
+      setModelImageFile(null);
+      setModelFunnelFile(null);
+      setModelFunnelJson(null);
       resetModelForm();
       fetchModels();
     } catch (error: any) {
@@ -638,9 +719,18 @@ const ResellerPage = () => {
 
     setIsAddingModel(true);
     try {
+      let imageUrl = editingModel.image_url;
+      if (modelImageFile) {
+        imageUrl = await handleUploadImage(modelImageFile, "product-images");
+      }
+
       const { error } = await supabase
         .from("models_for_sale")
-        .update(modelForm)
+        .update({
+          ...modelForm,
+          image_url: imageUrl,
+          funnel_json: modelFunnelJson || editingModel.funnel_json
+        })
         .eq("id", editingModel.id);
 
       if (error) throw error;
@@ -648,6 +738,9 @@ const ResellerPage = () => {
       toast({ title: "Sucesso", description: "Modelo atualizado!" });
       setModelDialogOpen(false);
       setEditingModel(null);
+      setModelImageFile(null);
+      setModelFunnelFile(null);
+      setModelFunnelJson(null);
       resetModelForm();
       fetchModels();
     } catch (error: any) {
@@ -680,10 +773,12 @@ const ResellerPage = () => {
       niche: "",
       category: "ia",
       price_cents: 0,
-      image_url: "",
       deliverable_link: "",
       deliverable_notes: ""
     });
+    setModelImageFile(null);
+    setModelFunnelFile(null);
+    setModelFunnelJson(null);
   };
 
   const openEditModel = (model: ModelForSale) => {
@@ -694,10 +789,12 @@ const ResellerPage = () => {
       niche: model.niche || "",
       category: model.category || "ia",
       price_cents: model.price_cents,
-      image_url: model.image_url || "",
       deliverable_link: model.deliverable_link || "",
       deliverable_notes: model.deliverable_notes || ""
     });
+    setModelImageFile(null);
+    setModelFunnelFile(null);
+    setModelFunnelJson(model.funnel_json || null);
     setModelDialogOpen(true);
   };
 
@@ -981,13 +1078,22 @@ const ResellerPage = () => {
                             onChange={(e) => setInstagramForm(prev => ({ ...prev, niche: e.target.value }))}
                           />
                         </div>
-                        <div className="space-y-2">
-                          <Label>URL da Imagem</Label>
-                          <Input
-                            placeholder="https://..."
-                            value={instagramForm.image_url}
-                            onChange={(e) => setInstagramForm(prev => ({ ...prev, image_url: e.target.value }))}
-                          />
+                        <div className="space-y-2 col-span-2">
+                          <Label>Foto da Conta</Label>
+                          <input type="file" ref={instagramImageInputRef} accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) setInstagramImageFile(file); }} />
+                          <div className="mt-2">
+                            {instagramImageFile ? (
+                              <div className="flex items-center gap-2 p-2 bg-secondary/50 rounded-lg">
+                                <Image className="w-4 h-4" />
+                                <span className="text-sm flex-1 truncate">{instagramImageFile.name}</span>
+                                <Button variant="ghost" size="sm" onClick={() => setInstagramImageFile(null)}><Trash2 className="w-4 h-4" /></Button>
+                              </div>
+                            ) : (
+                              <Button variant="outline" className="w-full" onClick={() => instagramImageInputRef.current?.click()}>
+                                <Upload className="w-4 h-4 mr-2" />Selecionar Foto
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       </div>
                       <div className="space-y-2">
@@ -1188,22 +1294,29 @@ const ResellerPage = () => {
                           />
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>Nicho</Label>
-                          <Input
-                            placeholder="Ex: Fitness, Humor..."
-                            value={tiktokForm.niche}
-                            onChange={(e) => setTiktokForm(prev => ({ ...prev, niche: e.target.value }))}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>URL da Imagem</Label>
-                          <Input
-                            placeholder="https://..."
-                            value={tiktokForm.image_url}
-                            onChange={(e) => setTiktokForm(prev => ({ ...prev, image_url: e.target.value }))}
-                          />
+                      <div className="space-y-2">
+                        <Label>Nicho</Label>
+                        <Input
+                          placeholder="Ex: Fitness, Humor..."
+                          value={tiktokForm.niche}
+                          onChange={(e) => setTiktokForm(prev => ({ ...prev, niche: e.target.value }))}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Foto da Conta</Label>
+                        <input type="file" ref={tiktokImageInputRef} accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) setTiktokImageFile(file); }} />
+                        <div className="mt-2">
+                          {tiktokImageFile ? (
+                            <div className="flex items-center gap-2 p-2 bg-secondary/50 rounded-lg">
+                              <Image className="w-4 h-4" />
+                              <span className="text-sm flex-1 truncate">{tiktokImageFile.name}</span>
+                              <Button variant="ghost" size="sm" onClick={() => setTiktokImageFile(null)}><Trash2 className="w-4 h-4" /></Button>
+                            </div>
+                          ) : (
+                            <Button variant="outline" className="w-full" onClick={() => tiktokImageInputRef.current?.click()}>
+                              <Upload className="w-4 h-4 mr-2" />Selecionar Foto
+                            </Button>
+                          )}
                         </div>
                       </div>
                       <div className="space-y-2">
@@ -1427,13 +1540,22 @@ const ResellerPage = () => {
                             onChange={(e) => setTelegramForm(prev => ({ ...prev, niche: e.target.value }))}
                           />
                         </div>
-                        <div className="space-y-2">
-                          <Label>URL da Imagem</Label>
-                          <Input
-                            placeholder="https://..."
-                            value={telegramForm.image_url}
-                            onChange={(e) => setTelegramForm(prev => ({ ...prev, image_url: e.target.value }))}
-                          />
+                        <div className="space-y-2 col-span-2">
+                          <Label>Foto do Grupo</Label>
+                          <input type="file" ref={telegramImageInputRef} accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) setTelegramImageFile(file); }} />
+                          <div className="mt-2">
+                            {telegramImageFile ? (
+                              <div className="flex items-center gap-2 p-2 bg-secondary/50 rounded-lg">
+                                <Image className="w-4 h-4" />
+                                <span className="text-sm flex-1 truncate">{telegramImageFile.name}</span>
+                                <Button variant="ghost" size="sm" onClick={() => setTelegramImageFile(null)}><Trash2 className="w-4 h-4" /></Button>
+                              </div>
+                            ) : (
+                              <Button variant="outline" className="w-full" onClick={() => telegramImageInputRef.current?.click()}>
+                                <Upload className="w-4 h-4 mr-2" />Selecionar Foto
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       </div>
                       <div className="space-y-2">
@@ -1621,12 +1743,21 @@ const ResellerPage = () => {
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <Label>URL da Imagem</Label>
-                        <Input
-                          placeholder="https://..."
-                          value={modelForm.image_url}
-                          onChange={(e) => setModelForm(prev => ({ ...prev, image_url: e.target.value }))}
-                        />
+                        <Label>Foto do Modelo</Label>
+                        <input type="file" ref={modelImageInputRef} accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) setModelImageFile(file); }} />
+                        <div className="mt-2">
+                          {modelImageFile ? (
+                            <div className="flex items-center gap-2 p-2 bg-secondary/50 rounded-lg">
+                              <Image className="w-4 h-4" />
+                              <span className="text-sm flex-1 truncate">{modelImageFile.name}</span>
+                              <Button variant="ghost" size="sm" onClick={() => setModelImageFile(null)}><Trash2 className="w-4 h-4" /></Button>
+                            </div>
+                          ) : (
+                            <Button variant="outline" className="w-full" onClick={() => modelImageInputRef.current?.click()}>
+                              <Upload className="w-4 h-4 mr-2" />Selecionar Foto
+                            </Button>
+                          )}
+                        </div>
                       </div>
                       <div className="space-y-2">
                         <Label>Bio</Label>
@@ -1647,11 +1778,64 @@ const ResellerPage = () => {
                           />
                         </div>
                         <div className="space-y-2 mt-4">
-                          <Label>Notas</Label>
+                          <Label>Notas/Instruções</Label>
                           <Textarea
                             value={modelForm.deliverable_notes}
                             onChange={(e) => setModelForm(prev => ({ ...prev, deliverable_notes: e.target.value }))}
+                            placeholder="Instruções para o comprador..."
                           />
+                        </div>
+                        <div className="space-y-2 mt-4">
+                          <Label className="flex items-center gap-2">
+                            <GitBranch className="w-4 h-4" />
+                            Funil JSON (opcional)
+                          </Label>
+                          <p className="text-xs text-muted-foreground mb-2">
+                            O funil será importado automaticamente para a conta do comprador
+                          </p>
+                          <input 
+                            type="file" 
+                            ref={modelFunnelInputRef} 
+                            accept=".json,application/json" 
+                            className="hidden" 
+                            onChange={(e) => { 
+                              const file = e.target.files?.[0]; 
+                              if (file) {
+                                setModelFunnelFile(file);
+                                const reader = new FileReader();
+                                reader.onload = (event) => {
+                                  try {
+                                    const json = JSON.parse(event.target?.result as string);
+                                    setModelFunnelJson(json);
+                                    toast({ title: "Funil carregado!", description: `${json.name || "Funil"} será incluído na entrega.` });
+                                  } catch (err) {
+                                    toast({ title: "Erro", description: "Arquivo JSON inválido", variant: "destructive" });
+                                    setModelFunnelFile(null);
+                                    setModelFunnelJson(null);
+                                  }
+                                };
+                                reader.readAsText(file);
+                              }
+                            }} 
+                          />
+                          <div className="mt-2">
+                            {modelFunnelFile ? (
+                              <div className="flex items-center gap-2 p-2 bg-success/10 border border-success/30 rounded-lg">
+                                <GitBranch className="w-4 h-4 text-success" />
+                                <span className="text-sm flex-1 truncate">{modelFunnelFile.name}</span>
+                                <Badge variant="outline" className="text-success border-success">
+                                  {modelFunnelJson?.nodes?.length || 0} blocos
+                                </Badge>
+                                <Button variant="ghost" size="sm" onClick={() => { setModelFunnelFile(null); setModelFunnelJson(null); }}>
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <Button variant="outline" className="w-full" onClick={() => modelFunnelInputRef.current?.click()}>
+                                <Upload className="w-4 h-4 mr-2" />Selecionar Funil .json
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
