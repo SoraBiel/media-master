@@ -777,6 +777,10 @@ serve(async (req) => {
             break;
           }
 
+          // Webhook URL for payment notifications
+          const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+          const notificationUrl = `${supabaseUrl}/functions/v1/mercadopago-webhook`;
+          
           // Create PIX payment via Mercado Pago
           const paymentData = {
             transaction_amount: product.price_cents / 100,
@@ -786,7 +790,10 @@ serve(async (req) => {
               email: "customer@email.com",
               first_name: variables.nome || "Cliente",
             },
+            notification_url: notificationUrl,
           };
+          
+          console.log("Creating funnel payment with notification_url:", notificationUrl);
 
           const mpResponse = await fetch("https://api.mercadopago.com/v1/payments", {
             method: "POST",

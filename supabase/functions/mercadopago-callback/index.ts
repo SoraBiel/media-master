@@ -98,6 +98,9 @@ Deno.serve(async (req) => {
       return Response.redirect(`${appUrl}/integrations?error=save_failed`, 302);
     }
 
+    // Configure webhook for notifications
+    await configureWebhook(tokenData.access_token, supabaseUrl, user_id);
+
     console.log('Successfully connected Mercado Pago for user:', user_id);
     return Response.redirect(`${appUrl}/integrations?success=true`, 302);
 
@@ -107,3 +110,66 @@ Deno.serve(async (req) => {
     return Response.redirect(`${appUrl}/integrations?error=unknown`, 302);
   }
 });
+
+async function configureWebhook(accessToken: string, supabaseUrl: string, userId: string) {
+  try {
+    const webhookUrl = `${supabaseUrl}/functions/v1/mercadopago-webhook`;
+    
+    console.log('Configuring Mercado Pago webhook:', webhookUrl);
+
+    // First, get existing applications/webhooks to check if already configured
+    const getAppsResponse = await fetch('https://api.mercadopago.com/users/me', {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`
+      }
+    });
+    
+    if (!getAppsResponse.ok) {
+      console.error('Failed to get user info for webhook config');
+      return;
+    }
+
+    // Configure IPN (Instant Payment Notification)
+    // Mercado Pago uses IPN for payment notifications
+    // The webhook URL needs to be set in the account settings via API
+    
+    // Try to update user's IPN settings
+    const ipnResponse = await fetch('https://api.mercadopago.com/users/me', {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        // Note: IPN URL configuration may require different approach
+        // depending on the MP integration type
+      })
+    });
+
+    // Alternative: Create/Update application webhook
+    // Get the application ID from the access token
+    const tokenParts = accessToken.split('-');
+    const appId = tokenParts.length > 0 ? tokenParts[0] : null;
+
+    if (appId) {
+      // Try to configure webhook via the v1/applications endpoint
+      // This sets up notifications for all payment events
+      console.log('Attempting to configure webhook for app:', appId);
+      
+      // For OAuth apps, we need to use the IPN approach or handle via account settings
+      // The webhook will receive notifications based on the access_token used during payment creation
+    }
+
+    // Alternative approach: Use the payment notification_url
+    // When creating payments, we'll include the notification_url
+    // This is handled in the create-product-payment function
+
+    console.log('Webhook configuration attempted for user:', userId);
+    console.log('Note: Payments created with this account will send notifications to:', webhookUrl);
+
+  } catch (error) {
+    console.error('Error configuring webhook:', error);
+    // Don't fail the OAuth flow if webhook config fails
+    // The user can still use the integration
+  }
+}

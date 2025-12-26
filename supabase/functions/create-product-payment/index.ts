@@ -210,6 +210,10 @@ serve(async (req) => {
 
     // Generate unique external_id
     const externalId = `product_${product_type}_${product_id}_${Date.now()}`;
+    
+    // Webhook URL for payment notifications
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const notificationUrl = `${supabaseUrl}/functions/v1/mercadopago-webhook`;
 
     // Create PIX payment via Mercado Pago
     const mpResponse = await fetch("https://api.mercadopago.com/v1/payments", {
@@ -229,8 +233,11 @@ serve(async (req) => {
           last_name: buyer.name.split(" ").slice(1).join(" ") || buyer.name.split(" ")[0],
         },
         external_reference: externalId,
+        notification_url: notificationUrl,
       }),
     });
+    
+    console.log("Payment created with notification_url:", notificationUrl);
 
     if (!mpResponse.ok) {
       const errorText = await mpResponse.text();
