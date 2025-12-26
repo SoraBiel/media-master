@@ -1,7 +1,7 @@
 import { ReactNode, useState, useEffect, useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Send, LayoutDashboard, CreditCard, MessageCircle, Megaphone, Settings, LogOut, ChevronLeft, ChevronRight, Bell, User, Shield, Menu, Crown, Headphones, GitBranch, MessageSquare, Plug, Wallet, Users, ShoppingBag, Store } from "lucide-react";
+import { Send, LayoutDashboard, CreditCard, MessageCircle, Megaphone, Settings, LogOut, ChevronLeft, ChevronRight, Bell, User, Shield, Menu, Crown, Headphones, GitBranch, MessageSquare, Plug, Wallet, Users, ShoppingBag, Store, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/AuthContext";
@@ -105,11 +105,11 @@ const DashboardLayout = ({
       });
     }
     
-    // Minhas Compras
+    // Minhas Entregas (produtos comprados)
     items.push({
-      icon: ShoppingBag,
-      label: "Minhas Compras",
-      path: "/my-purchases"
+      icon: Package,
+      label: "Minhas Entregas",
+      path: "/delivery"
     });
     
     // Integrações - before Admin
