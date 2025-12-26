@@ -456,6 +456,155 @@ export type Database = {
           },
         ]
       }
+      funnel_payments: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          currency: string
+          delivered_at: string | null
+          delivery_status: string | null
+          funnel_id: string
+          id: string
+          lead_chat_id: string | null
+          lead_name: string | null
+          paid_at: string | null
+          pix_code: string | null
+          pix_expiration: string | null
+          pix_qrcode: string | null
+          product_id: string | null
+          provider: string
+          provider_payment_id: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          currency?: string
+          delivered_at?: string | null
+          delivery_status?: string | null
+          funnel_id: string
+          id?: string
+          lead_chat_id?: string | null
+          lead_name?: string | null
+          paid_at?: string | null
+          pix_code?: string | null
+          pix_expiration?: string | null
+          pix_qrcode?: string | null
+          product_id?: string | null
+          provider?: string
+          provider_payment_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          currency?: string
+          delivered_at?: string | null
+          delivery_status?: string | null
+          funnel_id?: string
+          id?: string
+          lead_chat_id?: string | null
+          lead_name?: string | null
+          paid_at?: string | null
+          pix_code?: string | null
+          pix_expiration?: string | null
+          pix_qrcode?: string | null
+          product_id?: string | null
+          provider?: string
+          provider_payment_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "funnel_payments_funnel_id_fkey"
+            columns: ["funnel_id"]
+            isOneToOne: false
+            referencedRelation: "funnels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "funnel_payments_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "funnel_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      funnel_products: {
+        Row: {
+          created_at: string
+          currency: string
+          delivery_content: string | null
+          delivery_message: string | null
+          delivery_type: string
+          description: string | null
+          funnel_id: string
+          id: string
+          is_active: boolean | null
+          name: string
+          payment_method: string
+          price_cents: number
+          product_type: string
+          provider: string
+          provider_product_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          delivery_content?: string | null
+          delivery_message?: string | null
+          delivery_type?: string
+          description?: string | null
+          funnel_id: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          payment_method?: string
+          price_cents: number
+          product_type?: string
+          provider?: string
+          provider_product_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          delivery_content?: string | null
+          delivery_message?: string | null
+          delivery_type?: string
+          description?: string | null
+          funnel_id?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          payment_method?: string
+          price_cents?: number
+          product_type?: string
+          provider?: string
+          provider_product_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "funnel_products_funnel_id_fkey"
+            columns: ["funnel_id"]
+            isOneToOne: false
+            referencedRelation: "funnels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       funnel_templates: {
         Row: {
           category: string
@@ -562,6 +711,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      integrations: {
+        Row: {
+          access_token: string
+          created_at: string
+          environment: string
+          id: string
+          last_sync_at: string | null
+          provider: string
+          provider_email: string | null
+          provider_name: string | null
+          provider_user_id: string | null
+          refresh_token: string | null
+          status: string
+          token_expires_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          created_at?: string
+          environment?: string
+          id?: string
+          last_sync_at?: string | null
+          provider?: string
+          provider_email?: string | null
+          provider_name?: string | null
+          provider_user_id?: string | null
+          refresh_token?: string | null
+          status?: string
+          token_expires_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          created_at?: string
+          environment?: string
+          id?: string
+          last_sync_at?: string | null
+          provider?: string
+          provider_email?: string | null
+          provider_name?: string | null
+          provider_user_id?: string | null
+          refresh_token?: string | null
+          status?: string
+          token_expires_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       models_for_sale: {
         Row: {
