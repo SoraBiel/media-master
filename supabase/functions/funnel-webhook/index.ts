@@ -643,28 +643,52 @@ serve(async (req) => {
           variables.amount = amount;
           variables.product_name = product.name;
 
-          // Send PIX message
-          let paymentMessage = currentNode.data.paymentMessage || "💰 PIX para pagamento:\n\n{pix_code}\n\nValor: {amount}";
-          paymentMessage = paymentMessage
-            .replace("{pix_code}", pixCode)
-            .replace("{amount}", amount)
-            .replace("{product_name}", product.name);
-          paymentMessage = replaceVariables(paymentMessage, variables);
-
           // Send QR code image if available
           if (pixQrcode) {
             try {
-              // Convert base64 to buffer and send as photo
-              const photoBuffer = Uint8Array.from(atob(pixQrcode), c => c.charCodeAt(0));
-              // For now, just send the text with code (sending photo from base64 requires more setup)
+              // Send QR code as photo using base64
+              await callTelegramAPI(botToken, "sendPhoto", {
+                chat_id: chatId,
+                photo: `data:image/png;base64,${pixQrcode}`,
+                caption: `🛒 *${product.name}*\n\n💰 Valor: *${amount}*\n\n📱 Escaneie o QR Code acima ou copie o código PIX abaixo`,
+                parse_mode: "Markdown",
+              });
             } catch (e) {
-              console.log("Could not send QR image");
+              console.log("Could not send QR image via data URL, trying alternative method");
+              // Alternative: Create an InputFile from base64
+              try {
+                const formData = new FormData();
+                formData.append('chat_id', String(chatId));
+                
+                // Convert base64 to Blob
+                const binaryString = atob(pixQrcode);
+                const bytes = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) {
+                  bytes[i] = binaryString.charCodeAt(i);
+                }
+                const blob = new Blob([bytes], { type: 'image/png' });
+                formData.append('photo', blob, 'qrcode.png');
+                formData.append('caption', `🛒 *${product.name}*\n\n💰 Valor: *${amount}*\n\n📱 Escaneie o QR Code acima ou copie o código PIX abaixo`);
+                formData.append('parse_mode', 'Markdown');
+                
+                const photoResponse = await fetch(`${TELEGRAM_API_BASE}${botToken}/sendPhoto`, {
+                  method: 'POST',
+                  body: formData,
+                });
+                const photoResult = await photoResponse.json();
+                console.log("QR photo sent via FormData:", JSON.stringify(photoResult).slice(0, 200));
+              } catch (e2) {
+                console.error("Failed to send QR code image:", e2);
+              }
             }
           }
 
+          // Send PIX code with copy button
+          const pixMessage = `💳 <b>Código PIX (Copia e Cola):</b>\n\n<code>${pixCode}</code>\n\n⏰ O pagamento será confirmado automaticamente.`;
+          
           await callTelegramAPI(botToken, "sendMessage", {
             chat_id: chatId,
-            text: paymentMessage,
+            text: pixMessage,
             parse_mode: "HTML",
           });
 
