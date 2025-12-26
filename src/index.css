@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap");
 
 @layer base {
   :root {
@@ -56,11 +56,11 @@
     --gradient-hero: linear-gradient(180deg, hsl(222 47% 8%) 0%, hsl(222 47% 4%) 100%);
     --gradient-card: linear-gradient(145deg, hsl(222 47% 10% / 0.8) 0%, hsl(222 47% 6% / 0.6) 100%);
     --gradient-glow: radial-gradient(ellipse at center, hsl(199 89% 48% / 0.15) 0%, transparent 70%);
-    
+
     --shadow-glow: 0 0 60px hsl(199 89% 48% / 0.2);
     --shadow-card: 0 4px 24px hsl(222 47% 4% / 0.4);
     --shadow-elevated: 0 8px 32px hsl(222 47% 4% / 0.6);
-    
+
     --telegram-blue: 199 89% 48%;
     --telegram-dark: 200 35% 24%;
   }
@@ -78,10 +78,15 @@
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: "Inter", system-ui, sans-serif;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-semibold tracking-tight;
   }
 }
@@ -97,7 +102,7 @@
   }
 
   .glow-effect::before {
-    content: '';
+    content: "";
     position: absolute;
     inset: -1px;
     background: var(--gradient-primary);
@@ -120,7 +125,7 @@
   }
 
   .telegram-gradient {
-    background: linear-gradient(135deg, #229ED9 0%, #1E88E5 50%, #1976D2 100%);
+    background: linear-gradient(135deg, #229ed9 0%, #1e88e5 50%, #1976d2 100%);
   }
 
   .animate-float {
@@ -141,23 +146,43 @@
 }
 
 @keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-20px); }
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
 }
 
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 20px hsl(199 89% 48% / 0.3); }
-  50% { box-shadow: 0 0 40px hsl(199 89% 48% / 0.5); }
+  0%,
+  100% {
+    box-shadow: 0 0 20px hsl(199 89% 48% / 0.3);
+  }
+  50% {
+    box-shadow: 0 0 40px hsl(199 89% 48% / 0.5);
+  }
 }
 
 @keyframes slide-up {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /* Scrollbar styling */
@@ -177,4 +202,20 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground));
+}
+a[href*="lovable.dev"],
+iframe[src*="lovable.dev"],
+div[style*="Edit with Lovable"],
+.lovable-badge {
+  display: none !important;
+
+  opacity: 0 !important;
+
+  visibility: hidden !important;
+
+  pointer-events: none !important;
+
+  position: absolute !important;
+
+  z-index: -9999 !important;
 }
