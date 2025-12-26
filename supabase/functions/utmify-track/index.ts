@@ -5,42 +5,66 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// UTMify webhook payload format
-interface UTMifyWebhookPayload {
+// UTMify API endpoint
+const UTMIFY_API_URL = 'https://api.utmify.com.br/api-credentials/orders';
+
+// UTMify API payload format
+interface UTMifyOrderPayload {
   orderId: string;
   platform: string;
-  paymentMethod: string;
-  status: 'pending' | 'approved' | 'refused' | 'refunded' | 'chargeback';
-  createdAt: string;
-  approvedAt?: string;
-  refundedAt?: string;
+  paymentMethod: 'credit_card' | 'boleto' | 'pix' | 'paypal' | 'free_price';
+  status: 'waiting_payment' | 'paid' | 'refused' | 'refunded' | 'chargedback';
+  createdAt: string; // YYYY-MM-DD HH:MM:SS UTC
+  approvedDate?: string | null; // YYYY-MM-DD HH:MM:SS UTC
+  refundedAt?: string | null; // YYYY-MM-DD HH:MM:SS UTC
   customer: {
     name: string;
-    email?: string;
-    phone?: string;
-    document?: string;
+    email: string;
+    phone?: string | null;
+    document?: string | null;
+    country?: string;
+    ip?: string;
   };
   products: Array<{
     id: string;
     name: string;
-    planId?: string;
-    planName?: string;
+    planId?: string | null;
+    planName?: string | null;
     quantity: number;
     priceInCents: number;
   }>;
   trackingParameters?: {
-    src?: string;
-    sck?: string;
-    utm_source?: string;
-    utm_medium?: string;
-    utm_campaign?: string;
-    utm_content?: string;
-    utm_term?: string;
+    src?: string | null;
+    sck?: string | null;
+    utm_source?: string | null;
+    utm_campaign?: string | null;
+    utm_medium?: string | null;
+    utm_content?: string | null;
+    utm_term?: string | null;
   };
+  commission?: {
+    totalPriceInCents: number;
+    gatewayFeeInCents: number;
+    userCommissionInCents: number;
+    currency?: 'BRL' | 'USD' | 'EUR' | 'GBP' | 'ARS' | 'CAD';
+  };
+  isTest?: boolean;
 }
 
 // Store sent events to prevent duplicates (in-memory, per instance)
 const sentEvents = new Map<string, string>();
+
+// Helper to format date to YYYY-MM-DD HH:MM:SS format
+function formatDateForUtmify(dateString: string): string {
+  const date = new Date(dateString);
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  const hours = String(date.getUTCHours()).padStart(2, '0');
+  const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+  const seconds = String(date.getUTCSeconds()).padStart(2, '0');
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
 
 Deno.serve(async (req) => {
   // Handle CORS preflight
@@ -53,38 +77,27 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { action, payment_id, user_id, event_type, webhook_url } = await req.json();
+    const { action, payment_id, user_id, event_type, api_token } = await req.json();
     console.log(`UTMify track called: action=${action}, payment_id=${payment_id}, event_type=${event_type}`);
 
-    // Test webhook URL action - validates if the webhook URL works
-    if (action === 'test_webhook') {
-      if (!webhook_url) {
-        return new Response(JSON.stringify({ ok: false, error: 'URL do Webhook não informada' }), {
+    // Test API Token action - validates if the token works
+    if (action === 'test_token') {
+      if (!api_token) {
+        return new Response(JSON.stringify({ ok: false, error: 'API Token não informado' }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
-      // Validate URL format
-      if (!webhook_url.includes('utmify.com.br')) {
-        return new Response(JSON.stringify({ 
-          ok: false, 
-          valid: false, 
-          error: 'URL inválida. A URL deve ser do domínio utmify.com.br' 
-        }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
+      console.log('Testing UTMify API Token...');
 
-      console.log('Testing UTMify webhook URL:', webhook_url);
-
-      // Send a test request to validate the webhook URL
-      const testPayload: UTMifyWebhookPayload = {
+      // Send a test request to validate the token
+      const testPayload: UTMifyOrderPayload = {
         orderId: `test_${Date.now()}`,
         platform: 'nexo_funnels',
         paymentMethod: 'pix',
-        status: 'pending',
-        createdAt: new Date().toISOString(),
+        status: 'waiting_payment',
+        createdAt: formatDateForUtmify(new Date().toISOString()),
         customer: {
           name: 'Teste Conexão Nexo',
           email: 'teste@nexo.app',
@@ -99,51 +112,53 @@ Deno.serve(async (req) => {
         ],
         trackingParameters: {
           utm_source: 'nexo_test',
-          utm_medium: 'webhook_test',
+          utm_medium: 'api_test',
         },
+        isTest: true,
       };
 
       try {
-        const testResponse = await fetch(webhook_url, {
+        const testResponse = await fetch(UTMIFY_API_URL, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'x-api-token': api_token,
           },
           body: JSON.stringify(testPayload),
         });
 
         const testResult = await testResponse.text();
-        console.log('UTMify webhook test response:', testResponse.status, testResult);
+        console.log('UTMify API test response:', testResponse.status, testResult);
 
         // Status 200, 201, 202, 204 means success
         if (testResponse.ok || testResponse.status === 204) {
           return new Response(JSON.stringify({ 
             ok: true, 
             valid: true, 
-            message: 'Webhook válido! Conexão testada com sucesso.' 
+            message: 'Token válido! Conexão testada com sucesso.' 
           }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
 
-        // Status 401 or 403 means invalid/expired webhook
+        // Status 401 or 403 means invalid/expired token
         if (testResponse.status === 401 || testResponse.status === 403) {
           return new Response(JSON.stringify({ 
             ok: false, 
             valid: false, 
-            error: 'Webhook inválido ou expirado. Gere uma nova URL na UTMify.',
+            error: 'Token inválido ou expirado. Verifique a credencial na UTMify.',
             details: testResult 
           }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
 
-        // Status 404 means wrong URL
+        // Status 404 means wrong endpoint
         if (testResponse.status === 404) {
           return new Response(JSON.stringify({ 
             ok: false, 
             valid: false, 
-            error: 'URL não encontrada. Verifique se copiou a URL correta.',
+            error: 'Endpoint não encontrado. Verifique se o token é válido.',
             details: testResult 
           }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -161,11 +176,11 @@ Deno.serve(async (req) => {
         });
 
       } catch (fetchError) {
-        console.error('UTMify webhook test fetch error:', fetchError);
+        console.error('UTMify API test fetch error:', fetchError);
         return new Response(JSON.stringify({ 
           ok: false, 
           valid: false, 
-          error: 'Erro de conexão com UTMify. Verifique a URL.',
+          error: 'Erro de conexão com UTMify. Tente novamente.',
           details: String(fetchError) 
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -191,10 +206,10 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Check for webhook URL (stored in api_token field)
-      const webhookUrl = utmifyIntegration?.api_token;
-      if (!utmifyIntegration || !webhookUrl) {
-        console.log('UTMify tracking not enabled or no webhook URL for user:', user_id);
+      // Check for API token
+      const apiToken = utmifyIntegration?.api_token;
+      if (!utmifyIntegration || !apiToken) {
+        console.log('UTMify tracking not enabled or no API token for user:', user_id);
         return new Response(JSON.stringify({ ok: true, skipped: true, reason: 'tracking_disabled' }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -225,13 +240,14 @@ Deno.serve(async (req) => {
       }
 
       // Map our status to UTMify status
-      let utmifyStatus: UTMifyWebhookPayload['status'];
+      let utmifyStatus: UTMifyOrderPayload['status'];
       switch (event_type) {
         case 'pending':
-          utmifyStatus = 'pending';
+          utmifyStatus = 'waiting_payment';
           break;
         case 'approved':
-          utmifyStatus = 'approved';
+        case 'paid':
+          utmifyStatus = 'paid';
           break;
         case 'refused':
         case 'expired':
@@ -243,26 +259,26 @@ Deno.serve(async (req) => {
           break;
         case 'chargeback':
         case 'charged_back':
-          utmifyStatus = 'chargeback';
+          utmifyStatus = 'chargedback';
           break;
         default:
-          utmifyStatus = 'pending';
+          utmifyStatus = 'waiting_payment';
       }
 
       const product = payment.funnel_products;
 
-      // Build UTMify webhook payload
-      const utmifyPayload: UTMifyWebhookPayload = {
+      // Build UTMify API payload
+      const utmifyPayload: UTMifyOrderPayload = {
         orderId: String(payment.provider_payment_id || payment.id),
         platform: 'nexo_funnels',
         paymentMethod: 'pix',
         status: utmifyStatus,
-        createdAt: payment.created_at,
+        createdAt: formatDateForUtmify(payment.created_at),
         customer: {
           name: payment.lead_name || 'Cliente',
           email: `lead_${payment.lead_chat_id}@telegram.user`,
-          phone: undefined,
-          document: undefined,
+          phone: null,
+          document: null,
         },
         products: [
           {
@@ -273,42 +289,49 @@ Deno.serve(async (req) => {
           },
         ],
         trackingParameters: {
-          utm_source: payment.utm_source || undefined,
-          utm_medium: payment.utm_medium || undefined,
-          utm_campaign: payment.utm_campaign || undefined,
-          utm_content: payment.utm_content || undefined,
-          utm_term: payment.utm_term || undefined,
+          utm_source: payment.utm_source || null,
+          utm_medium: payment.utm_medium || null,
+          utm_campaign: payment.utm_campaign || null,
+          utm_content: payment.utm_content || null,
+          utm_term: payment.utm_term || null,
+        },
+        commission: {
+          totalPriceInCents: payment.amount_cents,
+          gatewayFeeInCents: 0,
+          userCommissionInCents: payment.amount_cents,
+          currency: 'BRL',
         },
       };
 
       // Add timestamps based on status
-      if (utmifyStatus === 'approved' && payment.paid_at) {
-        utmifyPayload.approvedAt = payment.paid_at;
+      if (utmifyStatus === 'paid' && payment.paid_at) {
+        utmifyPayload.approvedDate = formatDateForUtmify(payment.paid_at);
       }
       if (utmifyStatus === 'refunded') {
-        utmifyPayload.refundedAt = new Date().toISOString();
+        utmifyPayload.refundedAt = formatDateForUtmify(new Date().toISOString());
       }
 
-      console.log('Sending to UTMify webhook:', webhookUrl, JSON.stringify(utmifyPayload).slice(0, 500));
+      console.log('Sending to UTMify API:', JSON.stringify(utmifyPayload).slice(0, 500));
 
-      // Send to UTMify Webhook
-      const utmifyResponse = await fetch(webhookUrl, {
+      // Send to UTMify API
+      const utmifyResponse = await fetch(UTMIFY_API_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-api-token': apiToken,
         },
         body: JSON.stringify(utmifyPayload),
       });
 
       const utmifyResult = await utmifyResponse.text();
-      console.log('UTMify webhook response:', utmifyResponse.status, utmifyResult);
+      console.log('UTMify API response:', utmifyResponse.status, utmifyResult);
 
       if (!utmifyResponse.ok && utmifyResponse.status !== 204) {
-        console.error('UTMify webhook error:', utmifyResponse.status, utmifyResult);
+        console.error('UTMify API error:', utmifyResponse.status, utmifyResult);
         // Don't fail the whole request, just log the error
         return new Response(JSON.stringify({ 
           ok: false, 
-          error: 'UTMify webhook error', 
+          error: 'UTMify API error', 
           status: utmifyResponse.status,
           details: utmifyResult 
         }), {
