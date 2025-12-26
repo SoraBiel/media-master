@@ -31,6 +31,7 @@ import DeliveryPage from "./pages/DeliveryPage";
 import UserDetailsPage from "./pages/UserDetailsPage";
 import IntegrationsPage from "./pages/IntegrationsPage";
 import PaymentsPage from "./pages/PaymentsPage";
+import MyPurchasesPage from "./pages/MyPurchasesPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -110,6 +111,7 @@ const App = () => (
             <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
             <Route path="/integrations" element={<ProtectedRoute><IntegrationsPage /></ProtectedRoute>} />
             <Route path="/payments" element={<ProtectedRoute><PaymentsPage /></ProtectedRoute>} />
+            <Route path="/my-purchases" element={<ProtectedRoute><MyPurchasesPage /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
