@@ -533,6 +533,171 @@ serve(async (req) => {
           break;
         }
 
+        case 'payment': {
+          // Get product ID (fixed or from variable)
+          let productId = currentNode.data.productId;
+          if (currentNode.data.productSelectionType === 'variable' && currentNode.data.productVariable) {
+            productId = variables[currentNode.data.productVariable];
+          }
+
+          if (!productId) {
+            console.error("No product ID for payment block");
+            currentNode = findNextNode(currentNode.id, edges, nodes);
+            break;
+          }
+
+          // Get product details
+          const { data: product } = await supabase
+            .from("funnel_products")
+            .select("*")
+            .eq("id", productId)
+            .single();
+
+          if (!product) {
+            console.error("Product not found:", productId);
+            currentNode = findNextNode(currentNode.id, edges, nodes);
+            break;
+          }
+
+          // Get user's Mercado Pago integration
+          const { data: integration } = await supabase
+            .from("integrations")
+            .select("*")
+            .eq("user_id", funnel.user_id)
+            .eq("provider", "mercadopago")
+            .eq("status", "active")
+            .maybeSingle();
+
+          if (!integration) {
+            console.error("Mercado Pago not connected for user:", funnel.user_id);
+            await callTelegramAPI(botToken, "sendMessage", {
+              chat_id: chatId,
+              text: "⚠️ Pagamento indisponível no momento. Por favor, entre em contato.",
+            });
+            currentNode = findNextNode(currentNode.id, edges, nodes);
+            break;
+          }
+
+          // Create PIX payment via Mercado Pago
+          const paymentData = {
+            transaction_amount: product.price_cents / 100,
+            description: product.name,
+            payment_method_id: "pix",
+            payer: {
+              email: "customer@email.com",
+              first_name: variables.nome || "Cliente",
+            },
+          };
+
+          const mpResponse = await fetch("https://api.mercadopago.com/v1/payments", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${integration.access_token}`,
+              "Content-Type": "application/json",
+              "X-Idempotency-Key": crypto.randomUUID(),
+            },
+            body: JSON.stringify(paymentData),
+          });
+
+          const mpPayment = await mpResponse.json();
+
+          if (!mpResponse.ok) {
+            console.error("Mercado Pago payment error:", mpPayment);
+            await callTelegramAPI(botToken, "sendMessage", {
+              chat_id: chatId,
+              text: "⚠️ Erro ao gerar pagamento. Tente novamente.",
+            });
+            currentNode = findNextNode(currentNode.id, edges, nodes);
+            break;
+          }
+
+          const pixData = mpPayment.point_of_interaction?.transaction_data;
+          const pixCode = pixData?.qr_code || "";
+          const pixQrcode = pixData?.qr_code_base64 || "";
+          const amount = (product.price_cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+          // Save payment to database
+          const { data: savedPayment } = await supabase
+            .from("funnel_payments")
+            .insert({
+              funnel_id: funnel.id,
+              product_id: product.id,
+              user_id: funnel.user_id,
+              lead_chat_id: String(chatId),
+              lead_name: variables.nome || null,
+              provider: "mercadopago",
+              provider_payment_id: String(mpPayment.id),
+              amount_cents: product.price_cents,
+              currency: product.currency,
+              status: mpPayment.status,
+              pix_qrcode: pixQrcode,
+              pix_code: pixCode,
+              pix_expiration: mpPayment.date_of_expiration,
+            })
+            .select()
+            .single();
+
+          // Store payment info in variables for next blocks
+          variables.payment_id = savedPayment?.id || mpPayment.id;
+          variables.pix_code = pixCode;
+          variables.amount = amount;
+          variables.product_name = product.name;
+
+          // Send PIX message
+          let paymentMessage = currentNode.data.paymentMessage || "💰 PIX para pagamento:\n\n{pix_code}\n\nValor: {amount}";
+          paymentMessage = paymentMessage
+            .replace("{pix_code}", pixCode)
+            .replace("{amount}", amount)
+            .replace("{product_name}", product.name);
+          paymentMessage = replaceVariables(paymentMessage, variables);
+
+          // Send QR code image if available
+          if (pixQrcode) {
+            try {
+              // Convert base64 to buffer and send as photo
+              const photoBuffer = Uint8Array.from(atob(pixQrcode), c => c.charCodeAt(0));
+              // For now, just send the text with code (sending photo from base64 requires more setup)
+            } catch (e) {
+              console.log("Could not send QR image");
+            }
+          }
+
+          await callTelegramAPI(botToken, "sendMessage", {
+            chat_id: chatId,
+            text: paymentMessage,
+            parse_mode: "HTML",
+          });
+
+          // Log payment created
+          await supabase.from("telegram_logs").insert({
+            session_id: session.id,
+            funnel_id: funnel.id,
+            event_type: "payment_created",
+            node_id: currentNode.id,
+            payload: { 
+              payment_id: savedPayment?.id,
+              provider_payment_id: mpPayment.id,
+              amount: product.price_cents,
+              pix_code: pixCode.slice(0, 50) + "...",
+            },
+          });
+
+          // Update session and wait for payment confirmation
+          await supabase
+            .from("telegram_sessions")
+            .update({ 
+              current_node_id: currentNode.id, 
+              variables,
+              last_message_at: new Date().toISOString(),
+            })
+            .eq("id", session.id);
+
+          // Note: Payment confirmation comes via webhook, session continues after payment
+          return new Response(JSON.stringify({ ok: true, waiting: "payment" }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
         case 'end': {
           // Mark session as finished
           await supabase

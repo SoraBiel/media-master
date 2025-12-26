@@ -12,6 +12,7 @@ export type BlockType =
   | 'action_notify'
   | 'action_webhook'
   | 'remarketing'
+  | 'payment'
   | 'end';
 
 export interface BlockData {
@@ -72,6 +73,14 @@ export interface BlockData {
   remarketingMessage?: string;
   remarketingMaxAttempts?: number;
   
+  // Payment block
+  productId?: string;
+  productSelectionType?: 'fixed' | 'variable';
+  productVariable?: string;
+  paymentMessage?: string;
+  successMessage?: string;
+  timeoutMinutes?: number;
+  
   // General
   label?: string;
 }
@@ -119,6 +128,7 @@ export const BLOCK_CATEGORIES = {
   logic: ['condition', 'delay', 'variable'],
   actions: ['action_message', 'action_notify', 'action_webhook'],
   automation: ['remarketing'],
+  payments: ['payment'],
 } as const;
 
 export const BLOCK_INFO: Record<BlockType, { 
@@ -204,6 +214,12 @@ export const BLOCK_INFO: Record<BlockType, {
     description: 'Reengaja leads inativos automaticamente',
     color: 'bg-rose-500',
     category: 'automation',
+  },
+  payment: {
+    label: 'Pagamento',
+    description: 'Gera PIX e aguarda pagamento',
+    color: 'bg-green-500',
+    category: 'payments',
   },
 };
 

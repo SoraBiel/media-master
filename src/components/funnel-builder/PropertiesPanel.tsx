@@ -714,7 +714,156 @@ export const PropertiesPanel = ({
             </div>
           </>
         )}
+
+        {/* Payment block */}
+        {blockType === 'payment' && (
+          <PaymentBlockProperties
+            localData={localData}
+            handleChange={handleChange}
+            selectedNode={selectedNode}
+          />
+        )}
       </div>
     </div>
+  );
+};
+
+// Separate component for payment block to keep code clean
+const PaymentBlockProperties = ({ 
+  localData, 
+  handleChange,
+  selectedNode 
+}: { 
+  localData: BlockData; 
+  handleChange: (field: keyof BlockData, value: any) => void;
+  selectedNode: Node | null;
+}) => {
+  const [products, setProducts] = useState<Array<{ id: string; name: string; price_cents: number }>>([]);
+  const [loadingProducts, setLoadingProducts] = useState(true);
+
+  // Get funnel_id from URL
+  const funnelId = window.location.pathname.split('/funnels/')[1];
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      if (!funnelId) return;
+      
+      const { data, error } = await supabase
+        .from('funnel_products')
+        .select('id, name, price_cents')
+        .eq('funnel_id', funnelId)
+        .eq('is_active', true);
+      
+      if (!error && data) {
+        setProducts(data);
+      }
+      setLoadingProducts(false);
+    };
+    fetchProducts();
+  }, [funnelId]);
+
+  const formatPrice = (cents: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(cents / 100);
+  };
+
+  return (
+    <>
+      <div className="space-y-2">
+        <Label>Seleção do Produto</Label>
+        <Select
+          value={localData.productSelectionType || 'fixed'}
+          onValueChange={(v) => handleChange('productSelectionType', v)}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="fixed">Produto Fixo</SelectItem>
+            <SelectItem value="variable">Baseado em Variável</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {localData.productSelectionType === 'fixed' ? (
+        <div className="space-y-2">
+          <Label>Produto</Label>
+          {loadingProducts ? (
+            <div className="text-sm text-muted-foreground">Carregando produtos...</div>
+          ) : products.length === 0 ? (
+            <div className="text-sm text-warning">
+              Nenhum produto criado. Vá na aba "Produto" para criar.
+            </div>
+          ) : (
+            <Select
+              value={localData.productId || ''}
+              onValueChange={(v) => handleChange('productId', v)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione um produto" />
+              </SelectTrigger>
+              <SelectContent>
+                {products.map((product) => (
+                  <SelectItem key={product.id} value={product.id}>
+                    {product.name} - {formatPrice(product.price_cents)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <Label>Variável com ID do Produto</Label>
+          <Input
+            value={localData.productVariable || ''}
+            onChange={(e) => handleChange('productVariable', e.target.value)}
+            placeholder="produto_selecionado"
+          />
+          <p className="text-xs text-muted-foreground">
+            Nome da variável que contém o ID do produto
+          </p>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        <Label>Mensagem com PIX</Label>
+        <Textarea
+          value={localData.paymentMessage || ''}
+          onChange={(e) => handleChange('paymentMessage', e.target.value)}
+          placeholder="💰 Segue o PIX para pagamento..."
+          className="min-h-[100px]"
+        />
+        <p className="text-xs text-muted-foreground">
+          Use {"{pix_code}"}, {"{amount}"}, {"{product_name}"}
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Mensagem de Sucesso</Label>
+        <Textarea
+          value={localData.successMessage || ''}
+          onChange={(e) => handleChange('successMessage', e.target.value)}
+          placeholder="✅ Pagamento confirmado!"
+          className="min-h-[80px]"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label>Timeout (minutos)</Label>
+        <Input
+          type="number"
+          min={5}
+          max={1440}
+          value={localData.timeoutMinutes || 30}
+          onChange={(e) => handleChange('timeoutMinutes', Number(e.target.value) || 30)}
+        />
+        <p className="text-xs text-muted-foreground">
+          Tempo máximo para pagamento
+        </p>
+      </div>
+    </>
   );
 };

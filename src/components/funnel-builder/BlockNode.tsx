@@ -16,7 +16,8 @@ import {
   GripVertical,
   RefreshCcw,
   Image,
-  Video
+  Video,
+  CreditCard
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { BlockType, BLOCK_INFO } from './types';
@@ -34,6 +35,7 @@ const ICONS: Record<BlockType, typeof Play> = {
   action_notify: Bell,
   action_webhook: Webhook,
   remarketing: RefreshCcw,
+  payment: CreditCard,
   end: Flag,
 };
 
