@@ -14,8 +14,7 @@ import ResetPasswordPage from "./pages/ResetPasswordPage";
 import DashboardPage from "./pages/DashboardPage";
 import BillingPage from "./pages/BillingPage";
 import TelegramPage from "./pages/TelegramPage";
-import DestinationsPage from "./pages/DestinationsPage";
-import CampaignsPage from "./pages/CampaignsPage";
+import TelegramHubPage from "./pages/TelegramHubPage";
 import ModelHubPage from "./pages/ModelHubPage";
 import OnboardingPage from "./pages/OnboardingPage";
 import CheckoutPage from "./pages/CheckoutPage";
@@ -52,22 +51,7 @@ const App = () => (
             <Route path="/onboarding" element={<ProtectedRoute><OnboardingPage /></ProtectedRoute>} />
             <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
             <Route path="/billing" element={<ProtectedRoute><BillingPage /></ProtectedRoute>} />
-            <Route path="/telegram" element={<ProtectedRoute><TelegramPage /></ProtectedRoute>} />
-            <Route path="/whatsapp" element={<ProtectedRoute><WhatsAppPage /></ProtectedRoute>} />
-            <Route path="/destinations" element={
-              <ProtectedRoute>
-                <FeatureProtectedRoute featureKey="destinations_enabled">
-                  <DestinationsPage />
-                </FeatureProtectedRoute>
-              </ProtectedRoute>
-            } />
-            <Route path="/campaigns" element={
-              <ProtectedRoute>
-                <FeatureProtectedRoute featureKey="campaigns_enabled">
-                  <CampaignsPage />
-                </FeatureProtectedRoute>
-              </ProtectedRoute>
-            } />
+            <Route path="/telegram" element={<ProtectedRoute><TelegramHubPage /></ProtectedRoute>} />
             <Route path="/model-hub" element={
               <ProtectedRoute>
                 <FeatureProtectedRoute featureKey="models_enabled">

@@ -68,33 +68,6 @@ const DashboardLayout = ({
       path: "/telegram"
     });
     
-    // Only show Destinations if enabled by admin
-    if (adminSettings.destinations_enabled) {
-      items.push({
-        icon: Target,
-        label: "Destinos",
-        path: "/destinations"
-      });
-    }
-    
-    // Only show Campaigns if enabled by admin
-    if (adminSettings.campaigns_enabled) {
-      items.push({
-        icon: Megaphone,
-        label: "Campanhas",
-        path: "/campaigns"
-      });
-    }
-    
-    // Only show Funnels if enabled by admin
-    if (adminSettings.funnels_enabled) {
-      items.push({
-        icon: GitBranch,
-        label: "Funis",
-        path: "/funnels"
-      });
-    }
-    
     // Only show WhatsApp if enabled by admin
     if (adminSettings.whatsapp_enabled) {
       items.push({
