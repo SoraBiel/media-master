@@ -549,6 +549,8 @@ export type Database = {
           delivery_type: string
           description: string | null
           funnel_id: string
+          group_chat_id: string | null
+          group_invite_link: string | null
           id: string
           is_active: boolean | null
           name: string
@@ -568,6 +570,8 @@ export type Database = {
           delivery_type?: string
           description?: string | null
           funnel_id: string
+          group_chat_id?: string | null
+          group_invite_link?: string | null
           id?: string
           is_active?: boolean | null
           name: string
@@ -587,6 +591,8 @@ export type Database = {
           delivery_type?: string
           description?: string | null
           funnel_id?: string
+          group_chat_id?: string | null
+          group_invite_link?: string | null
           id?: string
           is_active?: boolean | null
           name?: string

@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMercadoPagoIntegration } from "@/hooks/useMercadoPagoIntegration";
-import { Loader2, Plus, Trash2, Package, Link2, AlertCircle, ExternalLink, QrCode, Copy, Check } from "lucide-react";
+import { Loader2, Plus, Trash2, Package, Link2, AlertCircle, ExternalLink, QrCode, Copy, Check, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
@@ -28,6 +28,8 @@ interface FunnelProduct {
   delivery_type: string;
   delivery_content: string | null;
   delivery_message: string | null;
+  group_chat_id: string | null;
+  group_invite_link: string | null;
   is_active: boolean;
   created_at: string;
 }
@@ -50,7 +52,9 @@ const FunnelProductsTab = ({ funnelId }: FunnelProductsTabProps) => {
     product_type: 'digital',
     delivery_type: 'link',
     delivery_content: '',
-    delivery_message: ''
+    delivery_message: '',
+    group_chat_id: '',
+    group_invite_link: ''
   });
 
   // Fetch products for this funnel
@@ -91,7 +95,9 @@ const FunnelProductsTab = ({ funnelId }: FunnelProductsTabProps) => {
           product_type: formData.product_type,
           delivery_type: formData.delivery_type,
           delivery_content: formData.delivery_content || null,
-          delivery_message: formData.delivery_message || null
+          delivery_message: formData.delivery_message || null,
+          group_chat_id: formData.delivery_type === 'group' ? formData.group_chat_id || null : null,
+          group_invite_link: formData.delivery_type === 'group' ? formData.group_invite_link || null : null
         })
         .select()
         .single();
@@ -109,7 +115,9 @@ const FunnelProductsTab = ({ funnelId }: FunnelProductsTabProps) => {
         product_type: 'digital',
         delivery_type: 'link',
         delivery_content: '',
-        delivery_message: ''
+        delivery_message: '',
+        group_chat_id: '',
+        group_invite_link: ''
       });
       toast({
         title: "Produto criado",
@@ -286,6 +294,7 @@ const FunnelProductsTab = ({ funnelId }: FunnelProductsTabProps) => {
                     <SelectItem value="link">Enviar Link</SelectItem>
                     <SelectItem value="message">Mensagem Personalizada</SelectItem>
                     <SelectItem value="both">Link + Mensagem</SelectItem>
+                    <SelectItem value="group">Acesso a Grupo (Telegram)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -310,6 +319,37 @@ const FunnelProductsTab = ({ funnelId }: FunnelProductsTabProps) => {
                     onChange={(e) => setFormData(prev => ({ ...prev, delivery_message: e.target.value }))}
                     rows={3}
                   />
+                </div>
+              )}
+
+              {formData.delivery_type === 'group' && (
+                <div className="space-y-4 p-3 bg-muted/50 rounded-lg">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Users className="w-4 h-4" />
+                    <span>Configuração do Grupo</span>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>ID do Grupo/Canal</Label>
+                    <Input 
+                      placeholder="-1001234567890"
+                      value={formData.group_chat_id}
+                      onChange={(e) => setFormData(prev => ({ ...prev, group_chat_id: e.target.value }))}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      O ID do grupo deve começar com -100. O bot precisa ser admin do grupo.
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Link de Convite (opcional)</Label>
+                    <Input 
+                      placeholder="https://t.me/+AbCdEfGhIjK"
+                      value={formData.group_invite_link}
+                      onChange={(e) => setFormData(prev => ({ ...prev, group_invite_link: e.target.value }))}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Se fornecido, o link será enviado ao cliente após aprovação.
+                    </p>
+                  </div>
                 </div>
               )}
 
@@ -358,7 +398,8 @@ const FunnelProductsTab = ({ funnelId }: FunnelProductsTabProps) => {
                         </Badge>
                         <Badge variant="outline">
                           {product.delivery_type === 'link' ? 'Link' : 
-                           product.delivery_type === 'message' ? 'Mensagem' : 'Link + Mensagem'}
+                           product.delivery_type === 'message' ? 'Mensagem' : 
+                           product.delivery_type === 'group' ? 'Grupo' : 'Link + Mensagem'}
                         </Badge>
                       </div>
                     </div>
