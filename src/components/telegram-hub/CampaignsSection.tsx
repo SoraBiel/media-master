@@ -109,10 +109,10 @@ interface UserMedia {
 
 const PLAN_ORDER = ["free", "basic", "pro", "agency"];
 const PLAN_LIMITS = {
-  free: { maxFiles: 5, maxSizeMB: 10 },
-  basic: { maxFiles: 20, maxSizeMB: 50 },
-  pro: { maxFiles: 100, maxSizeMB: 200 },
-  agency: { maxFiles: 500, maxSizeMB: 1000 },
+  free: { maxFiles: 100, maxSizeMB: 50 },
+  basic: { maxFiles: 500, maxSizeMB: 200 },
+  pro: { maxFiles: 2000, maxSizeMB: 500 },
+  agency: { maxFiles: Infinity, maxSizeMB: 2048 },
 };
 
 const CampaignsSection = () => {
