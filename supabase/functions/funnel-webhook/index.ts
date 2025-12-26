@@ -145,6 +145,94 @@ serve(async (req) => {
 
     const botToken = integration.bot_token;
 
+    // Handle PIX callback actions (copied, paid, cancel)
+    if (callbackData && callbackData.startsWith('pix_')) {
+      const [action, paymentId] = callbackData.split(':');
+      console.log(`PIX callback: ${action} for payment ${paymentId}`);
+
+      // Answer callback query first
+      if (update.callback_query) {
+        await callTelegramAPI(botToken, "answerCallbackQuery", {
+          callback_query_id: update.callback_query.id,
+        });
+      }
+
+      if (action === 'pix_copied') {
+        await callTelegramAPI(botToken, "sendMessage", {
+          chat_id: chatId,
+          text: "✅ Ótimo! Agora finalize o pagamento no seu app de banco.\n\n⏰ O pagamento será confirmado automaticamente assim que for processado.",
+          parse_mode: "HTML",
+        });
+        return new Response(JSON.stringify({ ok: true, action: 'pix_copied' }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (action === 'pix_paid') {
+        // Check payment status in Mercado Pago
+        const { data: payment } = await supabase
+          .from('funnel_payments')
+          .select('*, funnel_products(*)')
+          .eq('id', paymentId)
+          .single();
+
+        if (payment) {
+          if (payment.status === 'approved' || payment.status === 'paid') {
+            await callTelegramAPI(botToken, "sendMessage", {
+              chat_id: chatId,
+              text: "✅ <b>Pagamento confirmado!</b>\n\nSeu acesso está sendo liberado...",
+              parse_mode: "HTML",
+            });
+          } else if (payment.status === 'pending') {
+            await callTelegramAPI(botToken, "sendMessage", {
+              chat_id: chatId,
+              text: "⏳ <b>Pagamento ainda não identificado.</b>\n\nAguarde alguns instantes e tente novamente. O PIX pode levar até 1 minuto para ser processado.",
+              parse_mode: "HTML",
+              reply_markup: {
+                inline_keyboard: [
+                  [{ text: "🔄 Verificar Novamente", callback_data: `pix_paid:${paymentId}` }],
+                ],
+              },
+            });
+          } else {
+            await callTelegramAPI(botToken, "sendMessage", {
+              chat_id: chatId,
+              text: `⚠️ Status do pagamento: ${payment.status}.\n\nSe você já pagou, aguarde alguns instantes.`,
+              parse_mode: "HTML",
+            });
+          }
+        } else {
+          await callTelegramAPI(botToken, "sendMessage", {
+            chat_id: chatId,
+            text: "❌ Pagamento não encontrado. Entre em contato com o suporte.",
+            parse_mode: "HTML",
+          });
+        }
+
+        return new Response(JSON.stringify({ ok: true, action: 'pix_paid', status: payment?.status }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (action === 'pix_cancel') {
+        // Mark payment as cancelled
+        await supabase
+          .from('funnel_payments')
+          .update({ status: 'cancelled' })
+          .eq('id', paymentId);
+
+        await callTelegramAPI(botToken, "sendMessage", {
+          chat_id: chatId,
+          text: "❌ Pagamento cancelado.\n\nSe mudar de ideia, digite /start para começar novamente.",
+          parse_mode: "HTML",
+        });
+
+        return new Response(JSON.stringify({ ok: true, action: 'pix_cancel' }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
     // Find active funnel for this integration
     const { data: funnel, error: funnelError } = await supabase
       .from("funnels")
@@ -683,13 +771,26 @@ serve(async (req) => {
             }
           }
 
-          // Send PIX code with copy button
-          const pixMessage = `💳 <b>Código PIX (Copia e Cola):</b>\n\n<code>${pixCode}</code>\n\n⏰ O pagamento será confirmado automaticamente.`;
+          // Send PIX code with inline buttons
+          const pixMessage = `💳 <b>Código PIX (Copia e Cola):</b>\n\n<code>${pixCode}</code>\n\n⏰ Após efetuar o pagamento, clique no botão abaixo para confirmar.`;
+          
+          // Get the payment ID for the callback
+          const paymentId = savedPayment?.id || mpPayment.id;
           
           await callTelegramAPI(botToken, "sendMessage", {
             chat_id: chatId,
             text: pixMessage,
             parse_mode: "HTML",
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  { text: "✅ Copiei o PIX", callback_data: `pix_copied:${paymentId}` },
+                ],
+                [
+                  { text: "🔄 Já Paguei - Verificar", callback_data: `pix_paid:${paymentId}` },
+                ],
+              ],
+            },
           });
 
           // Log payment created
