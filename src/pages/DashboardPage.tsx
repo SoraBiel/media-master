@@ -98,16 +98,10 @@ const DashboardPage = () => {
 
   const getActivityIcon = (type: string) => {
     switch (type) {
-      case "lead_started":
-        return <Users className="w-4 h-4 text-telegram" />;
-      case "message_sent":
-        return <MessageSquare className="w-4 h-4 text-success" />;
-      case "lead_responded":
-        return <MessageCircle className="w-4 h-4 text-purple-400" />;
-      case "funnel_finished":
+      case "pix_generated":
+        return <CreditCard className="w-4 h-4 text-warning" />;
+      case "pix_paid":
         return <CheckCircle2 className="w-4 h-4 text-success" />;
-      case "webhook_error":
-        return <AlertTriangle className="w-4 h-4 text-destructive" />;
       default:
         return <Activity className="w-4 h-4 text-muted-foreground" />;
     }
@@ -115,22 +109,16 @@ const DashboardPage = () => {
 
   const getActivityColor = (type: string) => {
     switch (type) {
-      case "lead_started":
-        return "bg-telegram/20";
-      case "message_sent":
+      case "pix_generated":
+        return "bg-warning/20";
+      case "pix_paid":
         return "bg-success/20";
-      case "lead_responded":
-        return "bg-purple-400/20";
-      case "funnel_finished":
-        return "bg-success/20";
-      case "webhook_error":
-        return "bg-destructive/20";
       default:
         return "bg-muted/20";
     }
   };
 
-  // Stats cards data
+  // Stats cards data (removed "Status do Bot")
   const statsCards = [
     {
       title: "Leads Hoje",
@@ -171,14 +159,6 @@ const DashboardPage = () => {
       color: "text-pink-400",
       bgColor: "bg-pink-400/10",
       description: "Média de conclusão",
-    },
-    {
-      title: "Status do Bot",
-      value: metrics.webhookStatus === "ok" ? "OK" : metrics.webhookStatus === "error" ? "Erro" : "—",
-      icon: metrics.webhookStatus === "ok" ? Wifi : WifiOff,
-      color: metrics.webhookStatus === "ok" ? "text-success" : metrics.webhookStatus === "error" ? "text-destructive" : "text-muted-foreground",
-      bgColor: metrics.webhookStatus === "ok" ? "bg-success/10" : metrics.webhookStatus === "error" ? "bg-destructive/10" : "bg-muted/10",
-      description: metrics.webhookStatus === "error" ? "Verificar webhook" : "Webhook Telegram",
     },
   ];
 
@@ -227,8 +207,8 @@ const DashboardPage = () => {
           </div>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        {/* Stats Grid - 5 cards */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {statsCards.map((stat, index) => (
             <motion.div
               key={index}
