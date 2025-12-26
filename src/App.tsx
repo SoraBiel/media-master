@@ -13,13 +13,11 @@ import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import DashboardPage from "./pages/DashboardPage";
 import BillingPage from "./pages/BillingPage";
-import TelegramPage from "./pages/TelegramPage";
 import TelegramHubPage from "./pages/TelegramHubPage";
-import ModelHubPage from "./pages/ModelHubPage";
+import AccountsPage from "./pages/AccountsPage";
 import OnboardingPage from "./pages/OnboardingPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import ThankYouPage from "./pages/ThankYouPage";
-import TikTokAccountsPage from "./pages/TikTokAccountsPage";
 import TelegramGroupsPage from "./pages/TelegramGroupsPage";
 import FunnelsPage from "./pages/FunnelsPage";
 import FunnelBuilderPage from "./pages/FunnelBuilderPage";
@@ -52,20 +50,7 @@ const App = () => (
             <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
             <Route path="/billing" element={<ProtectedRoute><BillingPage /></ProtectedRoute>} />
             <Route path="/telegram" element={<ProtectedRoute><TelegramHubPage /></ProtectedRoute>} />
-            <Route path="/model-hub" element={
-              <ProtectedRoute>
-                <FeatureProtectedRoute featureKey="models_enabled">
-                  <ModelHubPage />
-                </FeatureProtectedRoute>
-              </ProtectedRoute>
-            } />
-            <Route path="/tiktok-accounts" element={
-              <ProtectedRoute>
-                <FeatureProtectedRoute featureKey="tiktok_enabled">
-                  <TikTokAccountsPage />
-                </FeatureProtectedRoute>
-              </ProtectedRoute>
-            } />
+            <Route path="/accounts" element={<ProtectedRoute><AccountsPage /></ProtectedRoute>} />
             <Route path="/telegram-groups" element={
               <ProtectedRoute>
                 <FeatureProtectedRoute featureKey="telegram_groups_enabled">

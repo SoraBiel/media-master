@@ -1,7 +1,7 @@
 import { ReactNode, useState, useEffect, useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Send, LayoutDashboard, CreditCard, MessageCircle, Target, Megaphone, Sparkles, Settings, LogOut, ChevronLeft, ChevronRight, Bell, User, Shield, Menu, Video, Crown, Headphones, GitBranch, MessageSquare, Plug, Wallet, Users, ShoppingBag } from "lucide-react";
+import { Send, LayoutDashboard, CreditCard, MessageCircle, Megaphone, Settings, LogOut, ChevronLeft, ChevronRight, Bell, User, Shield, Menu, Crown, Headphones, GitBranch, MessageSquare, Plug, Wallet, Users, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/AuthContext";
@@ -77,28 +77,19 @@ const DashboardLayout = ({
       });
     }
     
-    // Only show Model Hub if enabled by admin
-    if (adminSettings.models_enabled) {
+    // Only show Accounts if any account type is enabled
+    if (adminSettings.tiktok_enabled || adminSettings.models_enabled) {
       items.push({
-        icon: Sparkles,
-        label: "Model Hub",
-        path: "/model-hub"
-      });
-    }
-    
-    // Only show TikTok Accounts if enabled by admin
-    if (adminSettings.tiktok_enabled) {
-      items.push({
-        icon: Video,
-        label: "Contas TikTok",
-        path: "/tiktok-accounts"
+        icon: Users,
+        label: "Contas",
+        path: "/accounts"
       });
     }
     
     // Only show Telegram Groups if enabled by admin
     if (adminSettings.telegram_groups_enabled) {
       items.push({
-        icon: Users,
+        icon: MessageCircle,
         label: "Grupos Telegram",
         path: "/telegram-groups"
       });
