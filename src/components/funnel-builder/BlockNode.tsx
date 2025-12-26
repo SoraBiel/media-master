@@ -14,7 +14,9 @@ import {
   Webhook,
   Flag,
   GripVertical,
-  RefreshCcw
+  RefreshCcw,
+  Image,
+  Video
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { BlockType, BLOCK_INFO } from './types';
@@ -83,6 +85,39 @@ const BlockNode = ({ data, selected }: BlockNodeProps) => {
       
       {/* Content */}
       <div className="p-3 min-h-[40px]">
+        {/* Media Preview */}
+        {(data.imageUrl || data.videoUrl) && (
+          <div className="mb-2 space-y-2">
+            {data.imageUrl && (
+              <div className="relative rounded-md overflow-hidden border border-border/50">
+                <img 
+                  src={data.imageUrl} 
+                  alt="Preview" 
+                  className="w-full h-16 object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+                <div className="absolute top-1 left-1 bg-background/80 rounded px-1 py-0.5 flex items-center gap-1">
+                  <Image className="w-3 h-3 text-primary" />
+                  <span className="text-[10px] text-muted-foreground">Imagem</span>
+                </div>
+              </div>
+            )}
+            {data.videoUrl && (
+              <div className="relative rounded-md overflow-hidden border border-border/50 bg-muted/50">
+                <div className="w-full h-12 flex items-center justify-center">
+                  <Video className="w-6 h-6 text-primary" />
+                </div>
+                <div className="absolute top-1 left-1 bg-background/80 rounded px-1 py-0.5 flex items-center gap-1">
+                  <Video className="w-3 h-3 text-primary" />
+                  <span className="text-[10px] text-muted-foreground">Vídeo</span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+        
         <p className="text-sm text-muted-foreground line-clamp-2">
           {getPreviewText()}
         </p>
