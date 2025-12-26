@@ -315,6 +315,16 @@ const AdminDashboardPage = () => {
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
   const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);
   
+  // Edit reseller products dialogs
+  const [editResellerInstagramDialogOpen, setEditResellerInstagramDialogOpen] = useState(false);
+  const [editResellerTiktokDialogOpen, setEditResellerTiktokDialogOpen] = useState(false);
+  const [editResellerTelegramDialogOpen, setEditResellerTelegramDialogOpen] = useState(false);
+  const [editResellerModelDialogOpen, setEditResellerModelDialogOpen] = useState(false);
+  const [selectedResellerInstagram, setSelectedResellerInstagram] = useState<InstagramAccount | null>(null);
+  const [selectedResellerTiktok, setSelectedResellerTiktok] = useState<TikTokAccount | null>(null);
+  const [selectedResellerTelegram, setSelectedResellerTelegram] = useState<TelegramGroup | null>(null);
+  const [selectedResellerModel, setSelectedResellerModel] = useState<ModelForSale | null>(null);
+  
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
   const [selectedPlan, setSelectedPlan] = useState("");
   const [selectedRole, setSelectedRole] = useState("");
@@ -925,6 +935,91 @@ const AdminDashboardPage = () => {
   const handleDeleteModel = async (id: string) => {
     const { error } = await supabase.from("models_for_sale").delete().eq("id", id);
     if (!error) toast({ title: "Modelo removido!" });
+  };
+
+  // Reseller product edit handlers
+  const handleUpdateResellerInstagram = async () => {
+    if (!selectedResellerInstagram) return;
+    const { error } = await supabase.from("instagram_accounts").update({
+      price_cents: Math.round(parseFloat(instagramForm.price) * 100),
+      deliverable_login: instagramForm.deliverable_login,
+      deliverable_password: instagramForm.deliverable_password,
+      deliverable_email: instagramForm.deliverable_email,
+      deliverable_notes: instagramForm.deliverable_notes,
+    }).eq("id", selectedResellerInstagram.id);
+    if (!error) {
+      toast({ title: "Conta Instagram atualizada!" });
+      setEditResellerInstagramDialogOpen(false);
+      fetchResellerProducts();
+    }
+  };
+
+  const handleUpdateResellerTiktok = async () => {
+    if (!selectedResellerTiktok) return;
+    const { error } = await supabase.from("tiktok_accounts").update({
+      price_cents: Math.round(parseFloat(tiktokForm.price) * 100),
+      deliverable_login: tiktokForm.deliverable_login,
+      deliverable_password: tiktokForm.deliverable_password,
+      deliverable_email: tiktokForm.deliverable_email,
+      deliverable_notes: tiktokForm.deliverable_notes,
+    }).eq("id", selectedResellerTiktok.id);
+    if (!error) {
+      toast({ title: "Conta TikTok atualizada!" });
+      setEditResellerTiktokDialogOpen(false);
+      fetchResellerProducts();
+    }
+  };
+
+  const handleUpdateResellerTelegram = async () => {
+    if (!selectedResellerTelegram) return;
+    const { error } = await supabase.from("telegram_groups").update({
+      price_cents: Math.round(parseFloat(telegramGroupForm.price) * 100),
+      deliverable_invite_link: telegramGroupForm.deliverable_invite_link,
+      deliverable_notes: telegramGroupForm.deliverable_notes,
+    }).eq("id", selectedResellerTelegram.id);
+    if (!error) {
+      toast({ title: "Grupo Telegram atualizado!" });
+      setEditResellerTelegramDialogOpen(false);
+      fetchResellerProducts();
+    }
+  };
+
+  const handleUpdateResellerModel = async () => {
+    if (!selectedResellerModel) return;
+    const { error } = await supabase.from("models_for_sale").update({
+      price_cents: Math.round(parseFloat(modelForm.price) * 100),
+      deliverable_link: modelForm.deliverable_link,
+      deliverable_notes: modelForm.deliverable_notes,
+    }).eq("id", selectedResellerModel.id);
+    if (!error) {
+      toast({ title: "Modelo atualizado!" });
+      setEditResellerModelDialogOpen(false);
+      fetchResellerProducts();
+    }
+  };
+
+  const openEditResellerInstagram = (acc: InstagramAccount) => {
+    setSelectedResellerInstagram(acc);
+    setInstagramForm({ ...instagramForm, price: String(acc.price_cents / 100), deliverable_login: acc.deliverable_login || "", deliverable_password: acc.deliverable_password || "", deliverable_email: acc.deliverable_email || "", deliverable_notes: acc.deliverable_notes || "" });
+    setEditResellerInstagramDialogOpen(true);
+  };
+
+  const openEditResellerTiktok = (acc: TikTokAccount) => {
+    setSelectedResellerTiktok(acc);
+    setTiktokForm({ ...tiktokForm, price: String(acc.price_cents / 100), deliverable_login: acc.deliverable_login || "", deliverable_password: acc.deliverable_password || "", deliverable_email: acc.deliverable_email || "", deliverable_notes: acc.deliverable_notes || "" });
+    setEditResellerTiktokDialogOpen(true);
+  };
+
+  const openEditResellerTelegram = (grp: TelegramGroup) => {
+    setSelectedResellerTelegram(grp);
+    setTelegramGroupForm({ ...telegramGroupForm, price: String(grp.price_cents / 100), deliverable_invite_link: grp.deliverable_invite_link || "", deliverable_notes: grp.deliverable_notes || "" });
+    setEditResellerTelegramDialogOpen(true);
+  };
+
+  const openEditResellerModel = (model: ModelForSale) => {
+    setSelectedResellerModel(model);
+    setModelForm({ ...modelForm, price: String(model.price_cents / 100), deliverable_link: model.deliverable_link || "", deliverable_notes: model.deliverable_notes || "" });
+    setEditResellerModelDialogOpen(true);
   };
 
   const handleAddMedia = async () => {
@@ -2741,6 +2836,7 @@ const AdminDashboardPage = () => {
                           <TableHead>Seguidores</TableHead>
                           <TableHead>Preço</TableHead>
                           <TableHead>Status</TableHead>
+                          <TableHead className="w-[60px]">Ações</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -2759,6 +2855,11 @@ const AdminDashboardPage = () => {
                             <TableCell>{formatNumber(acc.followers)}</TableCell>
                             <TableCell>{formatPrice(acc.price_cents)}</TableCell>
                             <TableCell><Badge variant={acc.is_sold ? "secondary" : "default"}>{acc.is_sold ? "Vendida" : "Disponível"}</Badge></TableCell>
+                            <TableCell>
+                              <Button variant="ghost" size="icon" onClick={() => openEditResellerInstagram(acc)}>
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -3219,6 +3320,70 @@ const AdminDashboardPage = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Edit Reseller Instagram Dialog */}
+        <Dialog open={editResellerInstagramDialogOpen} onOpenChange={setEditResellerInstagramDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Editar Conta Instagram</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div><Label>Preço (R$)</Label><Input type="number" value={instagramForm.price} onChange={(e) => setInstagramForm({ ...instagramForm, price: e.target.value })} /></div>
+              <div><Label>Login</Label><Input value={instagramForm.deliverable_login} onChange={(e) => setInstagramForm({ ...instagramForm, deliverable_login: e.target.value })} /></div>
+              <div><Label>Senha</Label><Input value={instagramForm.deliverable_password} onChange={(e) => setInstagramForm({ ...instagramForm, deliverable_password: e.target.value })} /></div>
+              <div><Label>Email</Label><Input value={instagramForm.deliverable_email} onChange={(e) => setInstagramForm({ ...instagramForm, deliverable_email: e.target.value })} /></div>
+              <div><Label>Notas</Label><Textarea value={instagramForm.deliverable_notes} onChange={(e) => setInstagramForm({ ...instagramForm, deliverable_notes: e.target.value })} /></div>
+            </div>
+            <DialogFooter><Button onClick={handleUpdateResellerInstagram}>Salvar</Button></DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Reseller TikTok Dialog */}
+        <Dialog open={editResellerTiktokDialogOpen} onOpenChange={setEditResellerTiktokDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Editar Conta TikTok</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div><Label>Preço (R$)</Label><Input type="number" value={tiktokForm.price} onChange={(e) => setTiktokForm({ ...tiktokForm, price: e.target.value })} /></div>
+              <div><Label>Login</Label><Input value={tiktokForm.deliverable_login} onChange={(e) => setTiktokForm({ ...tiktokForm, deliverable_login: e.target.value })} /></div>
+              <div><Label>Senha</Label><Input value={tiktokForm.deliverable_password} onChange={(e) => setTiktokForm({ ...tiktokForm, deliverable_password: e.target.value })} /></div>
+              <div><Label>Email</Label><Input value={tiktokForm.deliverable_email} onChange={(e) => setTiktokForm({ ...tiktokForm, deliverable_email: e.target.value })} /></div>
+              <div><Label>Notas</Label><Textarea value={tiktokForm.deliverable_notes} onChange={(e) => setTiktokForm({ ...tiktokForm, deliverable_notes: e.target.value })} /></div>
+            </div>
+            <DialogFooter><Button onClick={handleUpdateResellerTiktok}>Salvar</Button></DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Reseller Telegram Dialog */}
+        <Dialog open={editResellerTelegramDialogOpen} onOpenChange={setEditResellerTelegramDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Editar Grupo Telegram</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div><Label>Preço (R$)</Label><Input type="number" value={telegramGroupForm.price} onChange={(e) => setTelegramGroupForm({ ...telegramGroupForm, price: e.target.value })} /></div>
+              <div><Label>Link de Convite</Label><Input value={telegramGroupForm.deliverable_invite_link} onChange={(e) => setTelegramGroupForm({ ...telegramGroupForm, deliverable_invite_link: e.target.value })} /></div>
+              <div><Label>Notas</Label><Textarea value={telegramGroupForm.deliverable_notes} onChange={(e) => setTelegramGroupForm({ ...telegramGroupForm, deliverable_notes: e.target.value })} /></div>
+            </div>
+            <DialogFooter><Button onClick={handleUpdateResellerTelegram}>Salvar</Button></DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Reseller Model Dialog */}
+        <Dialog open={editResellerModelDialogOpen} onOpenChange={setEditResellerModelDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Editar Modelo</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div><Label>Preço (R$)</Label><Input type="number" value={modelForm.price} onChange={(e) => setModelForm({ ...modelForm, price: e.target.value })} /></div>
+              <div><Label>Link</Label><Input value={modelForm.deliverable_link} onChange={(e) => setModelForm({ ...modelForm, deliverable_link: e.target.value })} /></div>
+              <div><Label>Notas</Label><Textarea value={modelForm.deliverable_notes} onChange={(e) => setModelForm({ ...modelForm, deliverable_notes: e.target.value })} /></div>
+            </div>
+            <DialogFooter><Button onClick={handleUpdateResellerModel}>Salvar</Button></DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );

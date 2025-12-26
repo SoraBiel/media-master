@@ -289,29 +289,40 @@ serve(async (req) => {
         console.log(`TikTok account ${transaction.product_id} marked as sold`);
       }
 
-      // Create delivery record with deliverable data
-      const deliveryData = account ? {
-        login: account.deliverable_login,
-        password: account.deliverable_password,
-        email: account.deliverable_email,
-        notes: account.deliverable_notes,
-      } : {};
-
-      const { error: deliveryError } = await supabaseClient
+      // Check if delivery already exists to avoid duplicates
+      const { data: existingDelivery } = await supabaseClient
         .from("deliveries")
-        .insert({
-          user_id: transaction.user_id,
-          product_type: "tiktok_account",
-          product_id: transaction.product_id,
-          transaction_id: transaction.id,
-          delivered_at: new Date().toISOString(),
-          delivery_data: deliveryData,
-        });
+        .select("id")
+        .eq("transaction_id", transaction.id)
+        .maybeSingle();
 
-      if (deliveryError) {
-        console.error("Error creating delivery:", deliveryError);
+      if (existingDelivery) {
+        console.log("Delivery already exists for this transaction, skipping");
       } else {
-        console.log("Delivery record created for TikTok account");
+        // Create delivery record with deliverable data
+        const deliveryData = account ? {
+          login: account.deliverable_login,
+          password: account.deliverable_password,
+          email: account.deliverable_email,
+          notes: account.deliverable_notes,
+        } : {};
+
+        const { error: deliveryError } = await supabaseClient
+          .from("deliveries")
+          .insert({
+            user_id: transaction.user_id,
+            product_type: "tiktok_account",
+            product_id: transaction.product_id,
+            transaction_id: transaction.id,
+            delivered_at: new Date().toISOString(),
+            delivery_data: deliveryData,
+          });
+
+        if (deliveryError) {
+          console.error("Error creating delivery:", deliveryError);
+        } else {
+          console.log("Delivery record created for TikTok account");
+        }
       }
     } else if (transaction.product_type === "model") {
       console.log(`Processing model purchase: ${transaction.product_id}`);
@@ -420,32 +431,43 @@ serve(async (req) => {
         }
       }
 
-      // Create delivery record with deliverable data
-      const deliveryData: Record<string, any> = {
-        link: model?.deliverable_link,
-        notes: model?.deliverable_notes,
-      };
-
-      if (importedFunnelId) {
-        deliveryData.funnel_id = importedFunnelId;
-        deliveryData.funnel_imported = true;
-      }
-
-      const { error: deliveryError } = await supabaseClient
+      // Check if delivery already exists to avoid duplicates
+      const { data: existingModelDelivery } = await supabaseClient
         .from("deliveries")
-        .insert({
-          user_id: transaction.user_id,
-          product_type: "model",
-          product_id: transaction.product_id,
-          transaction_id: transaction.id,
-          delivered_at: new Date().toISOString(),
-          delivery_data: deliveryData,
-        });
+        .select("id")
+        .eq("transaction_id", transaction.id)
+        .maybeSingle();
 
-      if (deliveryError) {
-        console.error("Error creating delivery:", deliveryError);
+      if (existingModelDelivery) {
+        console.log("Delivery already exists for this transaction, skipping");
       } else {
-        console.log("Delivery record created for model" + (importedFunnelId ? " with funnel" : ""));
+        // Create delivery record with deliverable data
+        const deliveryData: Record<string, any> = {
+          link: model?.deliverable_link,
+          notes: model?.deliverable_notes,
+        };
+
+        if (importedFunnelId) {
+          deliveryData.funnel_id = importedFunnelId;
+          deliveryData.funnel_imported = true;
+        }
+
+        const { error: deliveryError } = await supabaseClient
+          .from("deliveries")
+          .insert({
+            user_id: transaction.user_id,
+            product_type: "model",
+            product_id: transaction.product_id,
+            transaction_id: transaction.id,
+            delivered_at: new Date().toISOString(),
+            delivery_data: deliveryData,
+          });
+
+        if (deliveryError) {
+          console.error("Error creating delivery:", deliveryError);
+        } else {
+          console.log("Delivery record created for model" + (importedFunnelId ? " with funnel" : ""));
+        }
       }
     } else if (transaction.product_type === "telegram_group") {
       console.log(`Processing Telegram group purchase: ${transaction.product_id}`);
@@ -473,28 +495,39 @@ serve(async (req) => {
         console.log(`Telegram group ${transaction.product_id} marked as sold`);
       }
 
-      // Create delivery record with deliverable data
-      const deliveryData = group ? {
-        invite_link: group.deliverable_invite_link,
-        info: group.deliverable_info,
-        notes: group.deliverable_notes,
-      } : {};
-
-      const { error: deliveryError } = await supabaseClient
+      // Check if delivery already exists to avoid duplicates
+      const { data: existingGroupDelivery } = await supabaseClient
         .from("deliveries")
-        .insert({
-          user_id: transaction.user_id,
-          product_type: "telegram_group",
-          product_id: transaction.product_id,
-          transaction_id: transaction.id,
-          delivered_at: new Date().toISOString(),
-          delivery_data: deliveryData,
-        });
+        .select("id")
+        .eq("transaction_id", transaction.id)
+        .maybeSingle();
 
-      if (deliveryError) {
-        console.error("Error creating delivery:", deliveryError);
+      if (existingGroupDelivery) {
+        console.log("Delivery already exists for this transaction, skipping");
       } else {
-        console.log("Delivery record created for Telegram group");
+        // Create delivery record with deliverable data
+        const deliveryData = group ? {
+          invite_link: group.deliverable_invite_link,
+          info: group.deliverable_info,
+          notes: group.deliverable_notes,
+        } : {};
+
+        const { error: deliveryError } = await supabaseClient
+          .from("deliveries")
+          .insert({
+            user_id: transaction.user_id,
+            product_type: "telegram_group",
+            product_id: transaction.product_id,
+            transaction_id: transaction.id,
+            delivered_at: new Date().toISOString(),
+            delivery_data: deliveryData,
+          });
+
+        if (deliveryError) {
+          console.error("Error creating delivery:", deliveryError);
+        } else {
+          console.log("Delivery record created for Telegram group");
+        }
       }
     }
 
