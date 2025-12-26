@@ -18,22 +18,20 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const body = await req.json().catch(() => ({}));
-    const reminderMinutes = body.reminder_minutes || 5; // Default 5 minutes
+    const defaultReminderMinutes = body.reminder_minutes || 5;
 
-    console.log(`Checking for pending payments older than ${reminderMinutes} minutes...`);
+    console.log(`Checking for pending payments...`);
 
     // Find pending payments that haven't been reminded yet
-    const reminderThreshold = new Date(Date.now() - reminderMinutes * 60 * 1000).toISOString();
-    
+    // Join with funnels to get the reminder_minutes setting for each funnel
     const { data: pendingPayments, error: paymentsError } = await supabase
       .from('funnel_payments')
       .select(`
         *,
         funnel_products(*),
-        funnels!inner(*, telegram_integrations(*))
+        funnels!inner(*, telegram_integrations(*), payment_reminder_minutes)
       `)
       .eq('status', 'pending')
-      .lt('created_at', reminderThreshold)
       .is('reminded_at', null);
 
     if (paymentsError) {
@@ -44,12 +42,27 @@ Deno.serve(async (req) => {
       });
     }
 
-    console.log(`Found ${pendingPayments?.length || 0} pending payments to remind`);
+    // Filter payments based on their funnel's reminder_minutes setting
+    const now = Date.now();
+    const paymentsToRemind = (pendingPayments || []).filter(payment => {
+      const funnel = payment.funnels;
+      const reminderMinutes = funnel?.payment_reminder_minutes ?? defaultReminderMinutes;
+      
+      // Skip if reminder is disabled (0)
+      if (reminderMinutes === 0) return false;
+      
+      const createdAt = new Date(payment.created_at).getTime();
+      const reminderThreshold = reminderMinutes * 60 * 1000;
+      
+      return (now - createdAt) >= reminderThreshold;
+    });
+
+    console.log(`Found ${paymentsToRemind.length} pending payments to remind (out of ${pendingPayments?.length || 0} total pending)`);
 
     let remindedCount = 0;
     let errorCount = 0;
 
-    for (const payment of pendingPayments || []) {
+    for (const payment of paymentsToRemind) {
       try {
         const funnel = payment.funnels;
         const botToken = funnel?.telegram_integrations?.bot_token;
@@ -129,7 +142,7 @@ Deno.serve(async (req) => {
       ok: true, 
       reminded: remindedCount,
       errors: errorCount,
-      total: pendingPayments?.length || 0,
+      total: paymentsToRemind.length,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

@@ -667,6 +667,7 @@ export type Database = {
           id: string
           is_active: boolean | null
           name: string
+          payment_reminder_minutes: number | null
           schema_version: number | null
           telegram_integration_id: string | null
           trigger_keywords: string[] | null
@@ -682,6 +683,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           name: string
+          payment_reminder_minutes?: number | null
           schema_version?: number | null
           telegram_integration_id?: string | null
           trigger_keywords?: string[] | null
@@ -697,6 +699,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           name?: string
+          payment_reminder_minutes?: number | null
           schema_version?: number | null
           telegram_integration_id?: string | null
           trigger_keywords?: string[] | null
