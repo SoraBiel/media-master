@@ -64,8 +64,115 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { action, payment_id, user_id, event_type } = await req.json();
+    const { action, payment_id, user_id, event_type, api_token } = await req.json();
     console.log(`UTMify track called: action=${action}, payment_id=${payment_id}, event_type=${event_type}`);
+
+    // Test token action - validates if the token works with UTMify
+    if (action === 'test_token') {
+      if (!api_token) {
+        return new Response(JSON.stringify({ ok: false, error: 'Token não informado' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      console.log('Testing UTMify token...');
+
+      // Send a test request to UTMify to validate the token
+      // We'll use a minimal payload that UTMify should reject as invalid but confirm the token is valid
+      const testPayload = {
+        api_token: api_token,
+        orderId: `test_${Date.now()}`,
+        platform: 'nexo_funnels_test',
+        paymentMethod: 'pix',
+        status: 'pending',
+        createdAt: new Date().toISOString(),
+        customer: {
+          name: 'Teste Token',
+          email: 'test@nexo.test',
+        },
+        products: [
+          {
+            id: 'test_product',
+            name: 'Teste de Conexão',
+            quantity: 1,
+            priceInCents: 100, // R$ 1,00 test value
+          },
+        ],
+      };
+
+      try {
+        const testResponse = await fetch(UTMIFY_API_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-token': api_token,
+          },
+          body: JSON.stringify(testPayload),
+        });
+
+        const testResult = await testResponse.text();
+        console.log('UTMify test response:', testResponse.status, testResult);
+
+        // Status 401 or 403 means invalid token
+        if (testResponse.status === 401 || testResponse.status === 403) {
+          return new Response(JSON.stringify({ 
+            ok: false, 
+            valid: false, 
+            error: 'Token inválido ou sem permissão',
+            details: testResult 
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        // Status 200 or 201 means token is valid and test event was created
+        if (testResponse.ok) {
+          return new Response(JSON.stringify({ 
+            ok: true, 
+            valid: true, 
+            message: 'Token válido! Conexão testada com sucesso.' 
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        // Other status codes - check if it's a validation error (which means token is valid)
+        // UTMify may return 400 for invalid payload but that means the token worked
+        if (testResponse.status === 400 || testResponse.status === 422) {
+          // Token is valid, just the test payload wasn't accepted
+          return new Response(JSON.stringify({ 
+            ok: true, 
+            valid: true, 
+            message: 'Token válido! Conexão testada com sucesso.',
+            note: 'Autenticação OK, resposta de validação recebida.'
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        // Unknown response
+        return new Response(JSON.stringify({ 
+          ok: false, 
+          valid: false, 
+          error: `Resposta inesperada: ${testResponse.status}`,
+          details: testResult 
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+
+      } catch (fetchError) {
+        console.error('UTMify test fetch error:', fetchError);
+        return new Response(JSON.stringify({ 
+          ok: false, 
+          valid: false, 
+          error: 'Erro de conexão com UTMify',
+          details: String(fetchError) 
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
 
     if (action === 'track_event') {
       // Get UTMify integration for user

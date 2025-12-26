@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Link2, Unlink, RefreshCw, ExternalLink, CreditCard, CheckCircle2, ArrowLeft, BarChart3, Save, Eye, EyeOff } from "lucide-react";
+import { Loader2, Link2, Unlink, RefreshCw, ExternalLink, CreditCard, CheckCircle2, ArrowLeft, BarChart3, Save, Eye, EyeOff, TestTube2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -272,6 +272,39 @@ const IntegrationsPage = () => {
     }
   });
 
+  // UTMify test token mutation
+  const testUtmifyMutation = useMutation({
+    mutationFn: async (token: string) => {
+      const { data, error } = await supabase.functions.invoke('utmify-track', {
+        body: { action: 'test_token', api_token: token }
+      });
+      
+      if (error) throw error;
+      return data as { ok: boolean; valid: boolean; message?: string; error?: string };
+    },
+    onSuccess: (data) => {
+      if (data.valid) {
+        toast({
+          title: "Token válido!",
+          description: data.message || "Conexão com UTMify testada com sucesso.",
+        });
+      } else {
+        toast({
+          title: "Token inválido",
+          description: data.error || "O token não foi aceito pela UTMify.",
+          variant: "destructive",
+        });
+      }
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao testar token",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -525,6 +558,18 @@ const IntegrationsPage = () => {
 
                 {/* Action Buttons */}
                 <div className="flex gap-2 pt-2">
+                  <Button 
+                    variant="outline"
+                    onClick={() => testUtmifyMutation.mutate(utmifyToken)}
+                    disabled={testUtmifyMutation.isPending || !utmifyToken.trim()}
+                    title="Testar conexão com UTMify"
+                  >
+                    {testUtmifyMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <TestTube2 className="w-4 h-4" />
+                    )}
+                  </Button>
                   <Button 
                     className="flex-1 bg-purple-500 hover:bg-purple-600"
                     onClick={() => saveUtmifyMutation.mutate({ token: utmifyToken, trackingEnabled: utmifyTracking })}
