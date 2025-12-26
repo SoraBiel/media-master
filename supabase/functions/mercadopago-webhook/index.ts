@@ -54,82 +54,98 @@ Deno.serve(async (req) => {
         return new Response('OK', { status: 200 });
       }
 
-      // Find the payment in our database
-      const { data: payment, error: paymentError } = await supabase
+      // First, try to find in funnel_payments (for funnel products)
+      let payment = null;
+      let paymentType = 'funnel';
+
+      const { data: funnelPayment } = await supabase
         .from('funnel_payments')
         .select('*, funnel_products(*)')
         .eq('provider_payment_id', String(paymentId))
         .maybeSingle();
 
-      if (paymentError || !payment) {
+      if (funnelPayment) {
+        payment = funnelPayment;
+        paymentType = 'funnel';
+      } else {
+        // Try to find in transactions (for catalog products - tiktok, instagram, telegram, models)
+        const { data: transaction } = await supabase
+          .from('transactions')
+          .select('*')
+          .eq('buckpay_id', String(paymentId))
+          .maybeSingle();
+
+        if (transaction) {
+          payment = transaction;
+          paymentType = 'catalog';
+        }
+      }
+
+      if (!payment) {
         console.log('Payment not found in database:', paymentId);
         return new Response('OK', { status: 200 });
       }
 
-      // Get user's Mercado Pago integration to verify payment
-      const { data: integration } = await supabase
+      console.log(`Found ${paymentType} payment:`, payment.id);
+
+      // Get Mercado Pago access token to verify payment
+      // First try the user's integration, then admin's
+      let accessToken = null;
+      
+      const { data: userIntegration } = await supabase
         .from('integrations')
         .select('*')
         .eq('user_id', payment.user_id)
         .eq('provider', 'mercadopago')
+        .eq('status', 'active')
         .maybeSingle();
 
-      if (!integration) {
-        console.log('Integration not found for user:', payment.user_id);
+      if (userIntegration?.access_token) {
+        accessToken = userIntegration.access_token;
+      } else {
+        // Try admin's integration
+        const { data: adminRole } = await supabase
+          .from('user_roles')
+          .select('user_id')
+          .eq('role', 'admin')
+          .limit(1)
+          .single();
+
+        if (adminRole?.user_id) {
+          const { data: adminIntegration } = await supabase
+            .from('integrations')
+            .select('*')
+            .eq('user_id', adminRole.user_id)
+            .eq('provider', 'mercadopago')
+            .eq('status', 'active')
+            .maybeSingle();
+
+          if (adminIntegration?.access_token) {
+            accessToken = adminIntegration.access_token;
+          }
+        }
+      }
+
+      if (!accessToken) {
+        console.log('No valid Mercado Pago integration found');
         return new Response('OK', { status: 200 });
       }
 
       // Get payment details from Mercado Pago
       const mpResponse = await fetch(`${MERCADOPAGO_API_URL}/v1/payments/${paymentId}`, {
         headers: {
-          'Authorization': `Bearer ${integration.access_token}`
+          'Authorization': `Bearer ${accessToken}`
         }
       });
 
       const mpPayment = await mpResponse.json();
       console.log('Mercado Pago payment status:', mpPayment.status);
 
-      // Update payment status
-      const updateData: Record<string, unknown> = {
-        status: mpPayment.status,
-        updated_at: new Date().toISOString()
-      };
-
-      if (mpPayment.status === 'approved') {
-        updateData.paid_at = new Date().toISOString();
-
-        // Trigger delivery if not already delivered
-        if (payment.delivery_status !== 'delivered') {
-          await handleDelivery(supabase, payment);
-          updateData.delivery_status = 'delivered';
-          updateData.delivered_at = new Date().toISOString();
-        }
-        
-        // Track UTMify approved event
-        await trackUTMifyEvent(supabase, payment.user_id, payment.id, 'approved');
+      if (paymentType === 'funnel') {
+        await handleFunnelPayment(supabase, payment, mpPayment);
+      } else {
+        await handleCatalogPayment(supabase, payment, mpPayment);
       }
-
-      // Handle refund - remove member from group
-      if (mpPayment.status === 'refunded' || mpPayment.status === 'cancelled' || mpPayment.status === 'charged_back') {
-        console.log('Refund detected, attempting to remove member from group');
-        await handleRefund(supabase, payment);
-        
-        // Track UTMify refund event
-        const utmifyEventType = mpPayment.status === 'charged_back' ? 'chargeback' : 'refunded';
-        await trackUTMifyEvent(supabase, payment.user_id, payment.id, utmifyEventType);
-      }
-      
-      // Handle expired/rejected payments
-      if (mpPayment.status === 'rejected' || mpPayment.status === 'expired') {
-        await trackUTMifyEvent(supabase, payment.user_id, payment.id, 'refused');
-      }
-
-      await supabase
-        .from('funnel_payments')
-        .update(updateData)
-        .eq('id', payment.id);
-
-      console.log('Payment updated:', payment.id, mpPayment.status);
     }
 
     return new Response('OK', { status: 200 });
@@ -140,6 +156,363 @@ Deno.serve(async (req) => {
     return new Response('OK', { status: 200 });
   }
 });
+
+async function handleFunnelPayment(supabase: any, payment: any, mpPayment: any) {
+  // Update payment status
+  const updateData: Record<string, unknown> = {
+    status: mpPayment.status,
+    updated_at: new Date().toISOString()
+  };
+
+  if (mpPayment.status === 'approved') {
+    updateData.paid_at = new Date().toISOString();
+
+    // Trigger delivery if not already delivered
+    if (payment.delivery_status !== 'delivered') {
+      await handleDelivery(supabase, payment);
+      updateData.delivery_status = 'delivered';
+      updateData.delivered_at = new Date().toISOString();
+    }
+    
+    // Track UTMify approved event
+    await trackUTMifyEvent(supabase, payment.user_id, payment.id, 'approved');
+  }
+
+  // Handle refund - remove member from group
+  if (mpPayment.status === 'refunded' || mpPayment.status === 'cancelled' || mpPayment.status === 'charged_back') {
+    console.log('Refund detected, attempting to remove member from group');
+    await handleRefund(supabase, payment);
+    
+    // Track UTMify refund event
+    const utmifyEventType = mpPayment.status === 'charged_back' ? 'chargeback' : 'refunded';
+    await trackUTMifyEvent(supabase, payment.user_id, payment.id, utmifyEventType);
+  }
+  
+  // Handle expired/rejected payments
+  if (mpPayment.status === 'rejected' || mpPayment.status === 'expired') {
+    await trackUTMifyEvent(supabase, payment.user_id, payment.id, 'refused');
+  }
+
+  await supabase
+    .from('funnel_payments')
+    .update(updateData)
+    .eq('id', payment.id);
+
+  console.log('Funnel payment updated:', payment.id, mpPayment.status);
+}
+
+async function handleCatalogPayment(supabase: any, transaction: any, mpPayment: any) {
+  const productType = transaction.product_type;
+  const productId = transaction.product_id;
+  const buyerId = transaction.user_id;
+
+  console.log(`Processing catalog payment: ${productType} - ${productId}`);
+
+  if (mpPayment.status === 'approved') {
+    // Update transaction status
+    await supabase
+      .from('transactions')
+      .update({
+        status: 'paid',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', transaction.id);
+
+    // Update vendor_sales if exists
+    const { data: vendorSale } = await supabase
+      .from('vendor_sales')
+      .select('*')
+      .eq('item_id', productId)
+      .eq('item_type', productType)
+      .eq('buyer_id', buyerId)
+      .eq('status', 'pending')
+      .maybeSingle();
+
+    if (vendorSale) {
+      await supabase
+        .from('vendor_sales')
+        .update({
+          status: 'paid',
+          paid_at: new Date().toISOString(),
+          transaction_id: transaction.id,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', vendorSale.id);
+
+      console.log('Vendor sale updated to paid:', vendorSale.id);
+    }
+
+    // Handle product-specific delivery
+    if (productType === 'tiktok_account') {
+      await handleTikTokDelivery(supabase, productId, buyerId, transaction.id);
+    } else if (productType === 'instagram_account') {
+      await handleInstagramDelivery(supabase, productId, buyerId, transaction.id);
+    } else if (productType === 'telegram_group') {
+      await handleTelegramGroupDelivery(supabase, productId, buyerId, transaction.id);
+    } else if (productType === 'model') {
+      await handleModelDelivery(supabase, productId, buyerId, transaction.id);
+    }
+
+    console.log('Catalog payment processed successfully:', transaction.id);
+
+  } else if (mpPayment.status === 'refunded' || mpPayment.status === 'cancelled' || mpPayment.status === 'charged_back') {
+    // Update transaction status
+    await supabase
+      .from('transactions')
+      .update({
+        status: 'refunded',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', transaction.id);
+
+    // Update vendor_sales
+    await supabase
+      .from('vendor_sales')
+      .update({
+        status: 'refunded',
+        updated_at: new Date().toISOString()
+      })
+      .eq('item_id', productId)
+      .eq('item_type', productType)
+      .eq('buyer_id', buyerId);
+
+    console.log('Catalog payment refunded:', transaction.id);
+  }
+}
+
+async function handleTikTokDelivery(supabase: any, accountId: string, buyerId: string, transactionId: string) {
+  // Get account details
+  const { data: account } = await supabase
+    .from('tiktok_accounts')
+    .select('*')
+    .eq('id', accountId)
+    .single();
+
+  if (!account) return;
+
+  // Mark as sold
+  await supabase
+    .from('tiktok_accounts')
+    .update({
+      is_sold: true,
+      sold_at: new Date().toISOString(),
+      sold_to_user_id: buyerId
+    })
+    .eq('id', accountId);
+
+  // Create delivery record
+  await supabase
+    .from('deliveries')
+    .insert({
+      user_id: buyerId,
+      product_type: 'tiktok_account',
+      product_id: accountId,
+      transaction_id: transactionId,
+      delivered_at: new Date().toISOString(),
+      delivery_data: {
+        username: account.username,
+        login: account.deliverable_login,
+        password: account.deliverable_password,
+        email: account.deliverable_email,
+        notes: account.deliverable_notes,
+        info: account.deliverable_info
+      }
+    });
+
+  console.log('TikTok account delivery created:', accountId);
+}
+
+async function handleInstagramDelivery(supabase: any, accountId: string, buyerId: string, transactionId: string) {
+  // Get account details
+  const { data: account } = await supabase
+    .from('instagram_accounts')
+    .select('*')
+    .eq('id', accountId)
+    .single();
+
+  if (!account) return;
+
+  // Mark as sold
+  await supabase
+    .from('instagram_accounts')
+    .update({
+      is_sold: true,
+      sold_at: new Date().toISOString(),
+      sold_to_user_id: buyerId
+    })
+    .eq('id', accountId);
+
+  // Create delivery record
+  await supabase
+    .from('deliveries')
+    .insert({
+      user_id: buyerId,
+      product_type: 'instagram_account',
+      product_id: accountId,
+      transaction_id: transactionId,
+      delivered_at: new Date().toISOString(),
+      delivery_data: {
+        username: account.username,
+        login: account.deliverable_login,
+        password: account.deliverable_password,
+        email: account.deliverable_email,
+        notes: account.deliverable_notes,
+        info: account.deliverable_info
+      }
+    });
+
+  console.log('Instagram account delivery created:', accountId);
+}
+
+async function handleTelegramGroupDelivery(supabase: any, groupId: string, buyerId: string, transactionId: string) {
+  // Get group details
+  const { data: group } = await supabase
+    .from('telegram_groups')
+    .select('*')
+    .eq('id', groupId)
+    .single();
+
+  if (!group) return;
+
+  // Mark as sold
+  await supabase
+    .from('telegram_groups')
+    .update({
+      is_sold: true,
+      sold_at: new Date().toISOString(),
+      sold_to_user_id: buyerId
+    })
+    .eq('id', groupId);
+
+  // Create delivery record
+  await supabase
+    .from('deliveries')
+    .insert({
+      user_id: buyerId,
+      product_type: 'telegram_group',
+      product_id: groupId,
+      transaction_id: transactionId,
+      delivered_at: new Date().toISOString(),
+      delivery_data: {
+        group_name: group.group_name,
+        invite_link: group.deliverable_invite_link,
+        notes: group.deliverable_notes,
+        info: group.deliverable_info
+      }
+    });
+
+  console.log('Telegram group delivery created:', groupId);
+}
+
+async function handleModelDelivery(supabase: any, modelId: string, buyerId: string, transactionId: string) {
+  // Get model details
+  const { data: model } = await supabase
+    .from('models_for_sale')
+    .select('*')
+    .eq('id', modelId)
+    .single();
+
+  if (!model) return;
+
+  // Mark as sold
+  await supabase
+    .from('models_for_sale')
+    .update({
+      is_sold: true,
+      sold_at: new Date().toISOString(),
+      sold_to_user_id: buyerId
+    })
+    .eq('id', modelId);
+
+  // Create delivery record
+  await supabase
+    .from('deliveries')
+    .insert({
+      user_id: buyerId,
+      product_type: 'model',
+      product_id: modelId,
+      transaction_id: transactionId,
+      delivered_at: new Date().toISOString(),
+      delivery_data: {
+        name: model.name,
+        link: model.deliverable_link,
+        notes: model.deliverable_notes,
+        info: model.deliverable_info,
+        assets: model.assets,
+        scripts: model.scripts
+      }
+    });
+
+  // If model has funnel_json, import it for the buyer
+  if (model.funnel_json) {
+    try {
+      const funnelData = typeof model.funnel_json === 'string' 
+        ? JSON.parse(model.funnel_json) 
+        : model.funnel_json;
+
+      if (funnelData.nodes && funnelData.edges) {
+        // Create new funnel for buyer
+        const { data: newFunnel } = await supabase
+          .from('funnels')
+          .insert({
+            user_id: buyerId,
+            name: `${model.name} (Importado)`,
+            description: model.bio,
+            is_active: false
+          })
+          .select()
+          .single();
+
+        if (newFunnel) {
+          // Create a mapping of old node IDs to new node IDs
+          const nodeIdMap: Record<string, string> = {};
+
+          // Insert nodes
+          for (const node of funnelData.nodes) {
+            const { data: newNode } = await supabase
+              .from('funnel_nodes')
+              .insert({
+                funnel_id: newFunnel.id,
+                node_type: node.type || node.node_type || 'message',
+                position_x: node.position?.x || node.position_x || 0,
+                position_y: node.position?.y || node.position_y || 0,
+                content: node.data || node.content || {}
+              })
+              .select()
+              .single();
+
+            if (newNode) {
+              nodeIdMap[node.id] = newNode.id;
+            }
+          }
+
+          // Insert edges with mapped IDs
+          for (const edge of funnelData.edges) {
+            const newSourceId = nodeIdMap[edge.source] || nodeIdMap[edge.source_node_id];
+            const newTargetId = nodeIdMap[edge.target] || nodeIdMap[edge.target_node_id];
+
+            if (newSourceId && newTargetId) {
+              await supabase
+                .from('funnel_edges')
+                .insert({
+                  funnel_id: newFunnel.id,
+                  source_node_id: newSourceId,
+                  target_node_id: newTargetId,
+                  source_handle: edge.sourceHandle || edge.source_handle || 'default'
+                });
+            }
+          }
+
+          console.log('Funnel imported from model:', newFunnel.id);
+        }
+      }
+    } catch (e) {
+      console.error('Error importing funnel from model:', e);
+    }
+  }
+
+  console.log('Model delivery created:', modelId);
+}
 
 async function handleDelivery(supabase: any, payment: any) {
   try {
@@ -210,11 +583,9 @@ async function handleGroupDelivery(botToken: string, userChatId: string, product
     console.log(`Processing group delivery for user ${userChatId} to group ${groupChatId}`);
 
     // First, try to approve any pending join requests
-    // Get the user's Telegram ID from the chat
     const telegramUserId = payment.lead_telegram_id || userChatId;
     
     try {
-      // Try to approve the join request
       const approveResponse = await fetch(`${TELEGRAM_API_URL}${botToken}/approveChatJoinRequest`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -228,7 +599,6 @@ async function handleGroupDelivery(botToken: string, userChatId: string, product
       console.log('Approve join request result:', JSON.stringify(approveResult));
       
       if (approveResult.ok) {
-        // Send success message to user
         await fetch(`${TELEGRAM_API_URL}${botToken}/sendMessage`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -245,9 +615,8 @@ async function handleGroupDelivery(botToken: string, userChatId: string, product
       console.log('No pending join request to approve, will try alternative method');
     }
 
-    // If no join request exists, try to create an invite link or send the existing one
+    // If no join request exists, send invite link
     if (product.group_invite_link) {
-      // Send the invite link to the user
       await fetch(`${TELEGRAM_API_URL}${botToken}/sendMessage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -266,7 +635,7 @@ async function handleGroupDelivery(botToken: string, userChatId: string, product
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             chat_id: groupChatId,
-            member_limit: 1, // One-time use
+            member_limit: 1,
             name: `${product.name} - ${payment.lead_name || 'Cliente'}`
           })
         });
@@ -290,7 +659,6 @@ async function handleGroupDelivery(botToken: string, userChatId: string, product
         }
       } catch (e) {
         console.error('Error creating invite link:', e);
-        // Fallback: just notify the user
         await fetch(`${TELEGRAM_API_URL}${botToken}/sendMessage`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -315,7 +683,6 @@ async function handleRefund(supabase: any, payment: any) {
       return;
     }
 
-    // Get funnel to find the telegram integration
     const { data: funnel } = await supabase
       .from('funnels')
       .select('*, telegram_integrations(*)')
@@ -333,14 +700,13 @@ async function handleRefund(supabase: any, payment: any) {
 
     console.log(`Attempting to remove user ${telegramUserId} from group ${groupChatId}`);
 
-    // Ban the user from the group (this also removes them)
     const banResponse = await fetch(`${TELEGRAM_API_URL}${botToken}/banChatMember`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         chat_id: groupChatId,
         user_id: telegramUserId,
-        revoke_messages: false // Don't delete their messages
+        revoke_messages: false
       })
     });
 
@@ -348,7 +714,6 @@ async function handleRefund(supabase: any, payment: any) {
     console.log('Ban user result:', JSON.stringify(banResult));
 
     if (banResult.ok) {
-      // Optionally unban so they can request to join again in the future
       await fetch(`${TELEGRAM_API_URL}${botToken}/unbanChatMember`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -359,7 +724,6 @@ async function handleRefund(supabase: any, payment: any) {
         })
       });
 
-      // Notify user
       await fetch(`${TELEGRAM_API_URL}${botToken}/sendMessage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -372,7 +736,6 @@ async function handleRefund(supabase: any, payment: any) {
 
       console.log('User removed from group and notified');
 
-      // Update payment status
       await supabase
         .from('funnel_payments')
         .update({ 
