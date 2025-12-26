@@ -23,6 +23,12 @@ interface TelegramUpdate {
     message: { chat: { id: number }; message_id: number };
     data: string;
   };
+  chat_join_request?: {
+    chat: { id: number; title?: string; type: string };
+    from: { id: number; first_name: string; username?: string };
+    date: number;
+    invite_link?: { invite_link: string; name?: string };
+  };
 }
 
 interface FunnelNode {
@@ -114,6 +120,11 @@ serve(async (req) => {
     // Parse Telegram update
     const update: TelegramUpdate = await req.json();
     console.log("Telegram update:", JSON.stringify(update).slice(0, 500));
+
+    // Handle chat join requests (for group product delivery)
+    if (update.chat_join_request) {
+      return await handleChatJoinRequest(supabase, integrationId, update.chat_join_request);
+    }
 
     // Get chat info
     const chatId = update.message?.chat.id || update.callback_query?.message?.chat.id;
@@ -880,3 +891,118 @@ serve(async (req) => {
     });
   }
 });
+
+// Handle chat join requests for group product delivery
+async function handleChatJoinRequest(
+  supabase: any,
+  integrationId: string,
+  joinRequest: NonNullable<TelegramUpdate['chat_join_request']>
+) {
+  const corsHeaders = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  };
+
+  try {
+    const groupChatId = String(joinRequest.chat.id);
+    const telegramUserId = joinRequest.from.id;
+    const userName = joinRequest.from.first_name;
+    
+    console.log(`Chat join request from user ${telegramUserId} (${userName}) to group ${groupChatId}`);
+
+    // Get the telegram integration to get bot token
+    const { data: integration } = await supabase
+      .from("telegram_integrations")
+      .select("*")
+      .eq("id", integrationId)
+      .single();
+
+    if (!integration) {
+      console.log("Integration not found for join request");
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const botToken = integration.bot_token;
+
+    // Find approved payment for this user and group
+    const { data: payment } = await supabase
+      .from("funnel_payments")
+      .select("*, funnel_products(*)")
+      .eq("status", "approved")
+      .eq("lead_chat_id", String(telegramUserId))
+      .single();
+
+    // Also check by telegram user ID if lead_chat_id didn't match
+    let approvedPayment = payment;
+    
+    if (!approvedPayment) {
+      // Try finding by any payment where product has this group
+      const { data: productPayment } = await supabase
+        .from("funnel_payments")
+        .select("*, funnel_products!inner(*)")
+        .eq("status", "approved")
+        .eq("funnel_products.group_chat_id", groupChatId)
+        .eq("lead_chat_id", String(telegramUserId))
+        .single();
+      
+      approvedPayment = productPayment;
+    }
+
+    if (approvedPayment && approvedPayment.funnel_products?.delivery_type === 'group') {
+      // User has paid! Approve the join request
+      console.log(`Approving join request for paid user ${telegramUserId}`);
+      
+      const approveResponse = await fetch(`https://api.telegram.org/bot${botToken}/approveChatJoinRequest`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: groupChatId,
+          user_id: telegramUserId
+        })
+      });
+
+      const approveResult = await approveResponse.json();
+      console.log("Approve result:", JSON.stringify(approveResult));
+
+      if (approveResult.ok) {
+        // Notify the user in their private chat
+        await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: telegramUserId,
+            text: `🎉 *Bem-vindo!*\n\nSua entrada no grupo *${joinRequest.chat.title || 'exclusivo'}* foi aprovada!\n\n✅ Obrigado por sua compra!`,
+            parse_mode: 'Markdown'
+          })
+        });
+
+        // Log the approval
+        await supabase.from("telegram_logs").insert({
+          event_type: "group_join_approved",
+          payload: { 
+            user_id: telegramUserId,
+            user_name: userName,
+            group_id: groupChatId,
+            group_title: joinRequest.chat.title,
+            payment_id: approvedPayment.id
+          },
+        });
+      }
+    } else {
+      console.log(`No approved payment found for user ${telegramUserId} requesting to join group ${groupChatId}`);
+      // Don't auto-decline - let admin handle it or wait for payment
+    }
+
+    return new Response(JSON.stringify({ ok: true }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+
+  } catch (error: any) {
+    console.error("Error handling chat join request:", error);
+    return new Response(JSON.stringify({ ok: true }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+}

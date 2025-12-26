@@ -116,7 +116,13 @@ async function handleDelivery(supabase: any, payment: any) {
     const botToken = funnel.telegram_integrations.bot_token;
     const chatId = payment.lead_chat_id;
 
-    // Build delivery message
+    // Handle group delivery type
+    if (product.delivery_type === 'group' && product.group_chat_id) {
+      await handleGroupDelivery(botToken, chatId, product, payment);
+      return;
+    }
+
+    // Build delivery message for other types
     let message = '✅ *Pagamento Confirmado!*\n\n';
     message += `Obrigado pela compra de *${product.name}*!\n\n`;
 
@@ -147,5 +153,108 @@ async function handleDelivery(supabase: any, payment: any) {
 
   } catch (error) {
     console.error('Error handling delivery:', error);
+  }
+}
+
+async function handleGroupDelivery(botToken: string, userChatId: string, product: any, payment: any) {
+  try {
+    const groupChatId = product.group_chat_id;
+    console.log(`Processing group delivery for user ${userChatId} to group ${groupChatId}`);
+
+    // First, try to approve any pending join requests
+    // Get the user's Telegram ID from the chat
+    const telegramUserId = payment.lead_telegram_id || userChatId;
+    
+    try {
+      // Try to approve the join request
+      const approveResponse = await fetch(`${TELEGRAM_API_URL}${botToken}/approveChatJoinRequest`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: groupChatId,
+          user_id: telegramUserId
+        })
+      });
+      
+      const approveResult = await approveResponse.json();
+      console.log('Approve join request result:', JSON.stringify(approveResult));
+      
+      if (approveResult.ok) {
+        // Send success message to user
+        await fetch(`${TELEGRAM_API_URL}${botToken}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: userChatId,
+            text: `✅ *Pagamento Confirmado!*\n\n🎉 Seu acesso ao grupo *${product.name}* foi liberado!\n\nVocê já pode acessar o grupo.`,
+            parse_mode: 'Markdown'
+          })
+        });
+        console.log('Join request approved and user notified');
+        return;
+      }
+    } catch (e) {
+      console.log('No pending join request to approve, will try alternative method');
+    }
+
+    // If no join request exists, try to create an invite link or send the existing one
+    if (product.group_invite_link) {
+      // Send the invite link to the user
+      await fetch(`${TELEGRAM_API_URL}${botToken}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: userChatId,
+          text: `✅ *Pagamento Confirmado!*\n\n🎉 Obrigado pela compra de *${product.name}*!\n\n🔗 Acesse o grupo usando o link abaixo:\n${product.group_invite_link}\n\n⚠️ O link é exclusivo para você.`,
+          parse_mode: 'Markdown'
+        })
+      });
+      console.log('Invite link sent to user');
+    } else {
+      // Try to create a one-time invite link
+      try {
+        const createLinkResponse = await fetch(`${TELEGRAM_API_URL}${botToken}/createChatInviteLink`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: groupChatId,
+            member_limit: 1, // One-time use
+            name: `${product.name} - ${payment.lead_name || 'Cliente'}`
+          })
+        });
+        
+        const linkResult = await createLinkResponse.json();
+        console.log('Create invite link result:', JSON.stringify(linkResult));
+        
+        if (linkResult.ok && linkResult.result.invite_link) {
+          await fetch(`${TELEGRAM_API_URL}${botToken}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: userChatId,
+              text: `✅ *Pagamento Confirmado!*\n\n🎉 Obrigado pela compra de *${product.name}*!\n\n🔗 Seu link exclusivo para o grupo:\n${linkResult.result.invite_link}\n\n⚠️ Este link só pode ser usado uma vez.`,
+              parse_mode: 'Markdown'
+            })
+          });
+          console.log('One-time invite link created and sent');
+        } else {
+          throw new Error('Could not create invite link');
+        }
+      } catch (e) {
+        console.error('Error creating invite link:', e);
+        // Fallback: just notify the user
+        await fetch(`${TELEGRAM_API_URL}${botToken}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: userChatId,
+            text: `✅ *Pagamento Confirmado!*\n\n🎉 Obrigado pela compra de *${product.name}*!\n\n📩 Em breve você receberá o acesso ao grupo.`,
+            parse_mode: 'Markdown'
+          })
+        });
+      }
+    }
+  } catch (error) {
+    console.error('Error handling group delivery:', error);
   }
 }
