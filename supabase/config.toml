@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.payment-reminder]
 verify_jwt = false
+
+[functions.utmify-track]
+verify_jwt = false

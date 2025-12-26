@@ -3,6 +3,36 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.89.0';
 const MERCADOPAGO_API_URL = 'https://api.mercadopago.com';
 const TELEGRAM_API_URL = 'https://api.telegram.org/bot';
 
+// Helper to send UTMify tracking event
+async function trackUTMifyEvent(supabase: any, userId: string, paymentId: string, eventType: string) {
+  try {
+    console.log(`Tracking UTMify event: ${eventType} for payment ${paymentId}`);
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    
+    const response = await fetch(`${supabaseUrl}/functions/v1/utmify-track`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseAnonKey}`,
+      },
+      body: JSON.stringify({
+        action: 'track_event',
+        payment_id: paymentId,
+        user_id: userId,
+        event_type: eventType,
+      }),
+    });
+    
+    const result = await response.json();
+    console.log('UTMify tracking result:', JSON.stringify(result));
+    return result;
+  } catch (error) {
+    console.error('Error tracking UTMify event:', error);
+    return { ok: false, error: String(error) };
+  }
+}
+
 Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -74,12 +104,24 @@ Deno.serve(async (req) => {
           updateData.delivery_status = 'delivered';
           updateData.delivered_at = new Date().toISOString();
         }
+        
+        // Track UTMify approved event
+        await trackUTMifyEvent(supabase, payment.user_id, payment.id, 'approved');
       }
 
       // Handle refund - remove member from group
       if (mpPayment.status === 'refunded' || mpPayment.status === 'cancelled' || mpPayment.status === 'charged_back') {
         console.log('Refund detected, attempting to remove member from group');
         await handleRefund(supabase, payment);
+        
+        // Track UTMify refund event
+        const utmifyEventType = mpPayment.status === 'charged_back' ? 'chargeback' : 'refunded';
+        await trackUTMifyEvent(supabase, payment.user_id, payment.id, utmifyEventType);
+      }
+      
+      // Handle expired/rejected payments
+      if (mpPayment.status === 'rejected' || mpPayment.status === 'expired') {
+        await trackUTMifyEvent(supabase, payment.user_id, payment.id, 'refused');
       }
 
       await supabase

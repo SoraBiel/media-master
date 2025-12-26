@@ -401,7 +401,31 @@ serve(async (req) => {
         });
       }
 
-      // Create new session
+      // Extract UTMs from start command (format: /start utm_source=xxx&utm_medium=xxx)
+      let utmParams: Record<string, string> = {};
+      if (messageText) {
+        const startMatch = messageText.match(/\/start\s+(.+)/);
+        if (startMatch && startMatch[1]) {
+          const paramString = startMatch[1];
+          // Try URL encoded format
+          try {
+            const urlParams = new URLSearchParams(paramString);
+            urlParams.forEach((value, key) => {
+              utmParams[key] = value;
+            });
+          } catch (e) {
+            // Try key=value format
+            paramString.split('&').forEach((pair: string) => {
+              const [key, value] = pair.split('=');
+              if (key && value) {
+                utmParams[key] = decodeURIComponent(value);
+              }
+            });
+          }
+        }
+      }
+
+      // Create new session with UTM data
       const { data: newSession, error: sessError } = await supabase
         .from("telegram_sessions")
         .insert({
@@ -411,6 +435,13 @@ serve(async (req) => {
           current_node_id: startNode.id,
           variables: { nome: userName, user_id: userId, chat_id: chatId },
           history: [],
+          utm_source: utmParams.utm_source || null,
+          utm_medium: utmParams.utm_medium || null,
+          utm_campaign: utmParams.utm_campaign || null,
+          utm_content: utmParams.utm_content || null,
+          utm_term: utmParams.utm_term || null,
+          fbclid: utmParams.fbclid || null,
+          gclid: utmParams.gclid || null,
         })
         .select()
         .single();
@@ -784,7 +815,7 @@ serve(async (req) => {
           const pixQrcode = pixData?.qr_code_base64 || "";
           const amount = (product.price_cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-          // Save payment to database
+          // Save payment to database with UTM data from session
           const { data: savedPayment } = await supabase
             .from("funnel_payments")
             .insert({
@@ -801,9 +832,36 @@ serve(async (req) => {
               pix_qrcode: pixQrcode,
               pix_code: pixCode,
               pix_expiration: mpPayment.date_of_expiration,
+              // UTM data from session
+              utm_source: session.utm_source || null,
+              utm_medium: session.utm_medium || null,
+              utm_campaign: session.utm_campaign || null,
+              utm_content: session.utm_content || null,
+              utm_term: session.utm_term || null,
+              fbclid: session.fbclid || null,
+              gclid: session.gclid || null,
             })
             .select()
             .single();
+
+          // Track UTMify pending event (async, non-blocking)
+          if (savedPayment?.id) {
+            const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+            const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+            fetch(`${supabaseUrl}/functions/v1/utmify-track`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${supabaseAnonKey}`,
+              },
+              body: JSON.stringify({
+                action: 'track_event',
+                payment_id: savedPayment.id,
+                user_id: funnel.user_id,
+                event_type: 'pending',
+              }),
+            }).catch(e => console.error('UTMify track error:', e));
+          }
 
           // Store payment info in variables for next blocks
           variables.payment_id = savedPayment?.id || mpPayment.id;

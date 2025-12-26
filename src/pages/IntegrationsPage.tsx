@@ -1,14 +1,17 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Link2, Unlink, RefreshCw, ExternalLink, CreditCard, CheckCircle2, ArrowLeft } from "lucide-react";
+import { Loader2, Link2, Unlink, RefreshCw, ExternalLink, CreditCard, CheckCircle2, ArrowLeft, BarChart3, Save, Eye, EyeOff } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -23,6 +26,8 @@ interface Integration {
   status: string;
   last_sync_at: string | null;
   created_at: string;
+  tracking_enabled?: boolean;
+  api_token?: string;
 }
 
 const IntegrationsPage = () => {
@@ -31,6 +36,11 @@ const IntegrationsPage = () => {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+
+  // UTMify state
+  const [utmifyToken, setUtmifyToken] = useState("");
+  const [utmifyTracking, setUtmifyTracking] = useState(false);
+  const [showUtmifyToken, setShowUtmifyToken] = useState(false);
 
   const successParam = searchParams.get('success');
   const errorParam = searchParams.get('error');
@@ -82,6 +92,17 @@ const IntegrationsPage = () => {
 
   // Get Mercado Pago integration
   const mercadoPagoIntegration = integrations?.find(i => i.provider === 'mercadopago');
+  
+  // Get UTMify integration
+  const utmifyIntegration = integrations?.find(i => i.provider === 'utmify');
+
+  // Load UTMify state when integration data loads
+  useEffect(() => {
+    if (utmifyIntegration) {
+      setUtmifyToken(utmifyIntegration.api_token || "");
+      setUtmifyTracking(utmifyIntegration.tracking_enabled || false);
+    }
+  }, [utmifyIntegration]);
 
   // Connect to Mercado Pago
   const connectMutation = useMutation({
@@ -133,6 +154,87 @@ const IntegrationsPage = () => {
       toast({
         title: "Desconectado",
         description: "Mercado Pago foi desconectado com sucesso"
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao desconectar",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
+  // UTMify save mutation
+  const saveUtmifyMutation = useMutation({
+    mutationFn: async ({ token, trackingEnabled }: { token: string; trackingEnabled: boolean }) => {
+      if (!user?.id) throw new Error("Usuário não autenticado");
+      
+      if (utmifyIntegration) {
+        // Update existing integration
+        const { error } = await supabase
+          .from('integrations')
+          .update({
+            api_token: token,
+            tracking_enabled: trackingEnabled,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', utmifyIntegration.id);
+        
+        if (error) throw error;
+      } else {
+        // Create new integration
+        const { error } = await supabase
+          .from('integrations')
+          .insert({
+            user_id: user.id,
+            provider: 'utmify',
+            api_token: token,
+            tracking_enabled: trackingEnabled,
+            access_token: 'utmify_token', // Required field, using placeholder
+            status: token ? 'active' : 'inactive',
+          });
+        
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['integrations'] });
+      toast({
+        title: "UTMify salvo!",
+        description: utmifyTracking 
+          ? "Trackeamento ativado. Eventos serão enviados automaticamente." 
+          : "Configurações salvas.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao salvar UTMify",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // UTMify disconnect mutation
+  const disconnectUtmifyMutation = useMutation({
+    mutationFn: async () => {
+      if (!utmifyIntegration) throw new Error("Integração não encontrada");
+      
+      const { error } = await supabase
+        .from('integrations')
+        .delete()
+        .eq('id', utmifyIntegration.id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setUtmifyToken("");
+      setUtmifyTracking(false);
+      queryClient.invalidateQueries({ queryKey: ['integrations'] });
+      toast({
+        title: "Desconectado",
+        description: "UTMify foi desconectado com sucesso"
       });
     },
     onError: (error: Error) => {
@@ -314,6 +416,148 @@ const IntegrationsPage = () => {
                     </Button>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* UTMify Card */}
+            <Card className="relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-purple-500/20 to-transparent rounded-bl-full" />
+              
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-purple-500/10 rounded-xl flex items-center justify-center">
+                      <BarChart3 className="w-6 h-6 text-purple-500" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">UTMify</CardTitle>
+                      <CardDescription>Trackeamento de vendas</CardDescription>
+                    </div>
+                  </div>
+                  <Badge 
+                    variant={utmifyIntegration?.tracking_enabled ? 'default' : 'secondary'}
+                    className={utmifyIntegration?.tracking_enabled ? 'bg-success' : ''}
+                  >
+                    {utmifyIntegration?.tracking_enabled ? 'Ativo' : 'Inativo'}
+                  </Badge>
+                </div>
+              </CardHeader>
+
+              <CardContent className="space-y-4">
+                {/* Toggle Trackeamento */}
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="utmify-tracking" className="text-sm font-medium">
+                      Trackeamento
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Ativar envio de eventos para UTMify
+                    </p>
+                  </div>
+                  <Switch
+                    id="utmify-tracking"
+                    checked={utmifyTracking}
+                    onCheckedChange={setUtmifyTracking}
+                  />
+                </div>
+
+                {/* API Token Input */}
+                <div className="space-y-2">
+                  <Label htmlFor="utmify-token" className="text-sm">
+                    API Token
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="utmify-token"
+                      type={showUtmifyToken ? "text" : "password"}
+                      value={utmifyToken}
+                      onChange={(e) => setUtmifyToken(e.target.value)}
+                      placeholder="Cole seu token da UTMify"
+                      className="pr-10"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                      onClick={() => setShowUtmifyToken(!showUtmifyToken)}
+                    >
+                      {showUtmifyToken ? (
+                        <EyeOff className="w-4 h-4 text-muted-foreground" />
+                      ) : (
+                        <Eye className="w-4 h-4 text-muted-foreground" />
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Obtenha seu token em{" "}
+                    <a 
+                      href="https://app.utmify.com.br" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-purple-500 hover:underline"
+                    >
+                      app.utmify.com.br
+                    </a>
+                  </p>
+                </div>
+
+                {/* Status Info */}
+                {utmifyIntegration && (
+                  <div className="space-y-2 text-sm pt-2 border-t">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Status:</span>
+                      <Badge variant="outline" className="text-xs">
+                        {utmifyIntegration.status === 'active' ? 'Conectado' : 'Não conectado'}
+                      </Badge>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Última atualização:</span>
+                      <span className="text-xs">
+                        {utmifyIntegration.last_sync_at 
+                          ? format(new Date(utmifyIntegration.last_sync_at), "dd/MM/yyyy HH:mm", { locale: ptBR })
+                          : format(new Date(utmifyIntegration.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })
+                        }
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex gap-2 pt-2">
+                  <Button 
+                    className="flex-1 bg-purple-500 hover:bg-purple-600"
+                    onClick={() => saveUtmifyMutation.mutate({ token: utmifyToken, trackingEnabled: utmifyTracking })}
+                    disabled={saveUtmifyMutation.isPending || !utmifyToken.trim()}
+                  >
+                    {saveUtmifyMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : (
+                      <Save className="w-4 h-4 mr-2" />
+                    )}
+                    Salvar
+                  </Button>
+                  {utmifyIntegration && (
+                    <Button 
+                      variant="destructive" 
+                      size="icon"
+                      onClick={() => disconnectUtmifyMutation.mutate()}
+                      disabled={disconnectUtmifyMutation.isPending}
+                    >
+                      {disconnectUtmifyMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Unlink className="w-4 h-4" />
+                      )}
+                    </Button>
+                  )}
+                </div>
+
+                {/* Info Box */}
+                <div className="bg-purple-500/5 border border-purple-500/20 rounded-lg p-3 text-xs text-muted-foreground">
+                  <p className="font-medium text-purple-500 mb-1">100% Server-Side</p>
+                  <p>Trackeamento automático de vendas Pix sem bloqueio de navegador. Eventos enviados: Pendente, Aprovado, Recusado, Reembolso.</p>
+                </div>
               </CardContent>
             </Card>
 

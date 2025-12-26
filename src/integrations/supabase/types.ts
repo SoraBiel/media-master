@@ -463,7 +463,9 @@ export type Database = {
           currency: string
           delivered_at: string | null
           delivery_status: string | null
+          fbclid: string | null
           funnel_id: string
+          gclid: string | null
           id: string
           lead_chat_id: string | null
           lead_name: string | null
@@ -478,6 +480,11 @@ export type Database = {
           status: string
           updated_at: string
           user_id: string
+          utm_campaign: string | null
+          utm_content: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          utm_term: string | null
         }
         Insert: {
           amount_cents: number
@@ -485,7 +492,9 @@ export type Database = {
           currency?: string
           delivered_at?: string | null
           delivery_status?: string | null
+          fbclid?: string | null
           funnel_id: string
+          gclid?: string | null
           id?: string
           lead_chat_id?: string | null
           lead_name?: string | null
@@ -500,6 +509,11 @@ export type Database = {
           status?: string
           updated_at?: string
           user_id: string
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
         }
         Update: {
           amount_cents?: number
@@ -507,7 +521,9 @@ export type Database = {
           currency?: string
           delivered_at?: string | null
           delivery_status?: string | null
+          fbclid?: string | null
           funnel_id?: string
+          gclid?: string | null
           id?: string
           lead_chat_id?: string | null
           lead_name?: string | null
@@ -522,6 +538,11 @@ export type Database = {
           status?: string
           updated_at?: string
           user_id?: string
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
         }
         Relationships: [
           {
@@ -727,6 +748,7 @@ export type Database = {
       integrations: {
         Row: {
           access_token: string
+          api_token: string | null
           created_at: string
           environment: string
           id: string
@@ -738,11 +760,13 @@ export type Database = {
           refresh_token: string | null
           status: string
           token_expires_at: string | null
+          tracking_enabled: boolean | null
           updated_at: string
           user_id: string
         }
         Insert: {
           access_token: string
+          api_token?: string | null
           created_at?: string
           environment?: string
           id?: string
@@ -754,11 +778,13 @@ export type Database = {
           refresh_token?: string | null
           status?: string
           token_expires_at?: string | null
+          tracking_enabled?: boolean | null
           updated_at?: string
           user_id: string
         }
         Update: {
           access_token?: string
+          api_token?: string | null
           created_at?: string
           environment?: string
           id?: string
@@ -770,6 +796,7 @@ export type Database = {
           refresh_token?: string | null
           status?: string
           token_expires_at?: string | null
+          tracking_enabled?: boolean | null
           updated_at?: string
           user_id?: string
         }
@@ -1067,39 +1094,60 @@ export type Database = {
           chat_id: string
           created_at: string | null
           current_node_id: string | null
+          fbclid: string | null
           funnel_id: string
+          gclid: string | null
           history: Json | null
           id: string
           is_finished: boolean | null
           last_message_at: string | null
           telegram_user_id: string | null
           updated_at: string | null
+          utm_campaign: string | null
+          utm_content: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          utm_term: string | null
           variables: Json | null
         }
         Insert: {
           chat_id: string
           created_at?: string | null
           current_node_id?: string | null
+          fbclid?: string | null
           funnel_id: string
+          gclid?: string | null
           history?: Json | null
           id?: string
           is_finished?: boolean | null
           last_message_at?: string | null
           telegram_user_id?: string | null
           updated_at?: string | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
           variables?: Json | null
         }
         Update: {
           chat_id?: string
           created_at?: string | null
           current_node_id?: string | null
+          fbclid?: string | null
           funnel_id?: string
+          gclid?: string | null
           history?: Json | null
           id?: string
           is_finished?: boolean | null
           last_message_at?: string | null
           telegram_user_id?: string | null
           updated_at?: string | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
           variables?: Json | null
         }
         Relationships: [
