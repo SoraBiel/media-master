@@ -38,9 +38,9 @@ const IntegrationsPage = () => {
   const navigate = useNavigate();
 
   // UTMify state
-  const [utmifyToken, setUtmifyToken] = useState("");
+  const [utmifyWebhookUrl, setUtmifyWebhookUrl] = useState("");
   const [utmifyTracking, setUtmifyTracking] = useState(false);
-  const [showUtmifyToken, setShowUtmifyToken] = useState(false);
+  const [showUtmifyUrl, setShowUtmifyUrl] = useState(false);
 
   const successParam = searchParams.get('success');
   const errorParam = searchParams.get('error');
@@ -99,7 +99,7 @@ const IntegrationsPage = () => {
   // Load UTMify state when integration data loads
   useEffect(() => {
     if (utmifyIntegration) {
-      setUtmifyToken(utmifyIntegration.api_token || "");
+      setUtmifyWebhookUrl(utmifyIntegration.api_token || "");
       setUtmifyTracking(utmifyIntegration.tracking_enabled || false);
     }
   }, [utmifyIntegration]);
@@ -167,7 +167,7 @@ const IntegrationsPage = () => {
 
   // UTMify save mutation
   const saveUtmifyMutation = useMutation({
-    mutationFn: async ({ token, trackingEnabled }: { token: string; trackingEnabled: boolean }) => {
+    mutationFn: async ({ webhookUrl, trackingEnabled }: { webhookUrl: string; trackingEnabled: boolean }) => {
       if (!user?.id) throw new Error("Usuário não autenticado");
       
       if (utmifyIntegration) {
@@ -175,7 +175,7 @@ const IntegrationsPage = () => {
         const { error } = await supabase
           .from('integrations')
           .update({
-            api_token: token,
+            api_token: webhookUrl, // Store webhook URL in api_token field
             tracking_enabled: trackingEnabled,
             updated_at: new Date().toISOString(),
           })
@@ -189,10 +189,10 @@ const IntegrationsPage = () => {
           .insert({
             user_id: user.id,
             provider: 'utmify',
-            api_token: token,
+            api_token: webhookUrl, // Store webhook URL in api_token field
             tracking_enabled: trackingEnabled,
-            access_token: 'utmify_token', // Required field, using placeholder
-            status: token ? 'active' : 'inactive',
+            access_token: 'utmify_webhook', // Required field, using placeholder
+            status: webhookUrl ? 'active' : 'inactive',
           });
         
         if (error) throw error;
@@ -229,7 +229,7 @@ const IntegrationsPage = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      setUtmifyToken("");
+      setUtmifyWebhookUrl("");
       setUtmifyTracking(false);
       queryClient.invalidateQueries({ queryKey: ['integrations'] });
       toast({
@@ -272,11 +272,11 @@ const IntegrationsPage = () => {
     }
   });
 
-  // UTMify test token mutation
+  // UTMify test webhook mutation
   const testUtmifyMutation = useMutation({
-    mutationFn: async (token: string) => {
+    mutationFn: async (webhookUrl: string) => {
       const { data, error } = await supabase.functions.invoke('utmify-track', {
-        body: { action: 'test_token', api_token: token }
+        body: { action: 'test_webhook', webhook_url: webhookUrl }
       });
       
       if (error) throw error;
@@ -285,20 +285,20 @@ const IntegrationsPage = () => {
     onSuccess: (data) => {
       if (data.valid) {
         toast({
-          title: "Token válido!",
+          title: "Webhook válido!",
           description: data.message || "Conexão com UTMify testada com sucesso.",
         });
       } else {
         toast({
-          title: "Token inválido",
-          description: data.error || "O token não foi aceito pela UTMify.",
+          title: "Webhook inválido",
+          description: data.error || "A URL não foi aceita pela UTMify.",
           variant: "destructive",
         });
       }
     },
     onError: (error: Error) => {
       toast({
-        title: "Erro ao testar token",
+        title: "Erro ao testar webhook",
         description: error.message,
         variant: "destructive",
       });
@@ -494,18 +494,18 @@ const IntegrationsPage = () => {
                   />
                 </div>
 
-                {/* API Token Input */}
+                {/* Webhook URL Input */}
                 <div className="space-y-2">
-                  <Label htmlFor="utmify-token" className="text-sm">
-                    API Token
+                  <Label htmlFor="utmify-webhook" className="text-sm">
+                    URL do Webhook
                   </Label>
                   <div className="relative">
                     <Input
-                      id="utmify-token"
-                      type={showUtmifyToken ? "text" : "password"}
-                      value={utmifyToken}
-                      onChange={(e) => setUtmifyToken(e.target.value)}
-                      placeholder="Cole seu token da UTMify"
+                      id="utmify-webhook"
+                      type={showUtmifyUrl ? "text" : "password"}
+                      value={utmifyWebhookUrl}
+                      onChange={(e) => setUtmifyWebhookUrl(e.target.value)}
+                      placeholder="https://api.utmify.com.br/webhook/..."
                       className="pr-10"
                     />
                     <Button
@@ -513,9 +513,9 @@ const IntegrationsPage = () => {
                       variant="ghost"
                       size="sm"
                       className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                      onClick={() => setShowUtmifyToken(!showUtmifyToken)}
+                      onClick={() => setShowUtmifyUrl(!showUtmifyUrl)}
                     >
-                      {showUtmifyToken ? (
+                      {showUtmifyUrl ? (
                         <EyeOff className="w-4 h-4 text-muted-foreground" />
                       ) : (
                         <Eye className="w-4 h-4 text-muted-foreground" />
@@ -523,7 +523,7 @@ const IntegrationsPage = () => {
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Obtenha seu token em{" "}
+                    Acesse{" "}
                     <a 
                       href="https://app.utmify.com.br" 
                       target="_blank" 
@@ -532,6 +532,7 @@ const IntegrationsPage = () => {
                     >
                       app.utmify.com.br
                     </a>
+                    {" → Integrações → Webhooks → Adicionar Webhook"}
                   </p>
                 </div>
 
@@ -561,8 +562,8 @@ const IntegrationsPage = () => {
                   <Button 
                     variant="outline"
                     className="w-full border-purple-500/50 text-purple-500 hover:bg-purple-500/10"
-                    onClick={() => testUtmifyMutation.mutate(utmifyToken)}
-                    disabled={testUtmifyMutation.isPending || !utmifyToken.trim()}
+                    onClick={() => testUtmifyMutation.mutate(utmifyWebhookUrl)}
+                    disabled={testUtmifyMutation.isPending || !utmifyWebhookUrl.trim()}
                   >
                     {testUtmifyMutation.isPending ? (
                       <Loader2 className="w-4 h-4 animate-spin mr-2" />
@@ -574,8 +575,8 @@ const IntegrationsPage = () => {
                   <div className="flex gap-2">
                     <Button 
                       className="flex-1 bg-purple-500 hover:bg-purple-600"
-                      onClick={() => saveUtmifyMutation.mutate({ token: utmifyToken, trackingEnabled: utmifyTracking })}
-                      disabled={saveUtmifyMutation.isPending || !utmifyToken.trim()}
+                      onClick={() => saveUtmifyMutation.mutate({ webhookUrl: utmifyWebhookUrl, trackingEnabled: utmifyTracking })}
+                      disabled={saveUtmifyMutation.isPending || !utmifyWebhookUrl.trim()}
                     >
                       {saveUtmifyMutation.isPending ? (
                         <Loader2 className="w-4 h-4 animate-spin mr-2" />
