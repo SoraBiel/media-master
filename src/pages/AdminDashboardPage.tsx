@@ -158,6 +158,7 @@ interface TikTokAccount {
   deliverable_email: string | null;
   deliverable_notes: string | null;
   created_at: string;
+  created_by: string | null;
 }
 
 interface InstagramAccount {
@@ -178,6 +179,7 @@ interface InstagramAccount {
   deliverable_email: string | null;
   deliverable_notes: string | null;
   created_at: string;
+  created_by: string | null;
 }
 
 interface TelegramGroup {
@@ -196,6 +198,7 @@ interface TelegramGroup {
   deliverable_notes: string | null;
   deliverable_invite_link: string | null;
   created_at: string;
+  created_by: string | null;
 }
 
 interface ModelForSale {
@@ -210,6 +213,7 @@ interface ModelForSale {
   deliverable_link: string | null;
   deliverable_notes: string | null;
   created_at: string;
+  created_by: string | null;
 }
 
 interface AdminMedia {
@@ -271,7 +275,14 @@ const AdminDashboardPage = () => {
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
   const [vendorSales, setVendorSales] = useState<VendorSale[]>([]);
   const [vendorSalesFilter, setVendorSalesFilter] = useState<string>("all");
+  const [vendorProductsFilter, setVendorProductsFilter] = useState<string>("all");
   const [vendorCommissionPercent, setVendorCommissionPercent] = useState(80);
+  
+  // Reseller products (separate from admin products)
+  const [resellerInstagramAccounts, setResellerInstagramAccounts] = useState<InstagramAccount[]>([]);
+  const [resellerTiktokAccounts, setResellerTiktokAccounts] = useState<TikTokAccount[]>([]);
+  const [resellerTelegramGroups, setResellerTelegramGroups] = useState<TelegramGroup[]>([]);
+  const [resellerModels, setResellerModels] = useState<ModelForSale[]>([]);
   const [plans, setPlans] = useState<{ id: string; slug: string; name: string }[]>([]);
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("30days");
   const [billingStats, setBillingStats] = useState({
@@ -432,6 +443,7 @@ const AdminDashboardPage = () => {
       fetchPlans(),
       fetchUserRoles(),
       fetchVendorSales(),
+      fetchResellerProducts(),
     ]);
   };
 
@@ -466,6 +478,45 @@ const AdminDashboardPage = () => {
       const enriched = data.map(s => ({ ...s, vendor_profile: profileMap.get(s.vendor_id) || null }));
       setVendorSales(enriched);
     }
+  };
+
+  const fetchResellerProducts = async () => {
+    // Fetch products created by vendors (not admins)
+    const vendorRoleUsers = userRoles.filter(r => 
+      r.role === 'vendor' || r.role === 'vendor_instagram' || r.role === 'vendor_tiktok' || r.role === 'vendor_model'
+    ).map(r => r.user_id);
+
+    // Fetch Instagram accounts from resellers
+    const { data: instaData } = await supabase
+      .from("instagram_accounts")
+      .select("*")
+      .not("created_by", "is", null)
+      .order("created_at", { ascending: false });
+    setResellerInstagramAccounts((instaData || []) as InstagramAccount[]);
+
+    // Fetch TikTok accounts from resellers
+    const { data: tiktokData } = await supabase
+      .from("tiktok_accounts")
+      .select("*")
+      .not("created_by", "is", null)
+      .order("created_at", { ascending: false });
+    setResellerTiktokAccounts((tiktokData || []) as TikTokAccount[]);
+
+    // Fetch Telegram groups from resellers
+    const { data: telegramData } = await supabase
+      .from("telegram_groups")
+      .select("*")
+      .not("created_by", "is", null)
+      .order("created_at", { ascending: false });
+    setResellerTelegramGroups((telegramData || []) as TelegramGroup[]);
+
+    // Fetch Models from resellers
+    const { data: modelsData } = await supabase
+      .from("models_for_sale")
+      .select("*")
+      .not("created_by", "is", null)
+      .order("created_at", { ascending: false });
+    setResellerModels((modelsData || []) as ModelForSale[]);
   };
 
   const fetchData = async () => {
@@ -2099,6 +2150,7 @@ const AdminDashboardPage = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="w-[60px]">Foto</TableHead>
                         <TableHead>Username</TableHead>
                         <TableHead>Seguidores</TableHead>
                         <TableHead>Curtidas</TableHead>
@@ -2109,8 +2161,17 @@ const AdminDashboardPage = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {tiktokAccounts.map((account) => (
+                      {tiktokAccounts.filter(a => !a.created_by).map((account) => (
                         <TableRow key={account.id}>
+                          <TableCell>
+                            {account.image_url ? (
+                              <img src={account.image_url} alt={account.username} className="w-10 h-10 rounded-lg object-cover" />
+                            ) : (
+                              <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
+                                <Video className="w-5 h-5 text-muted-foreground" />
+                              </div>
+                            )}
+                          </TableCell>
                           <TableCell className="font-medium">@{account.username}</TableCell>
                           <TableCell>{formatNumber(account.followers)}</TableCell>
                           <TableCell>{formatNumber(account.likes)}</TableCell>
@@ -2120,8 +2181,8 @@ const AdminDashboardPage = () => {
                           <TableCell><Button variant="ghost" size="icon" onClick={() => handleDeleteTikTokAccount(account.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button></TableCell>
                         </TableRow>
                       ))}
-                      {tiktokAccounts.length === 0 && (
-                        <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Nenhuma conta TikTok cadastrada</TableCell></TableRow>
+                      {tiktokAccounts.filter(a => !a.created_by).length === 0 && (
+                        <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Nenhuma conta TikTok cadastrada</TableCell></TableRow>
                       )}
                     </TableBody>
                   </Table>
@@ -2226,6 +2287,7 @@ const AdminDashboardPage = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="w-[60px]">Foto</TableHead>
                         <TableHead>Username</TableHead>
                         <TableHead>Seguidores</TableHead>
                         <TableHead>Engajamento</TableHead>
@@ -2236,8 +2298,17 @@ const AdminDashboardPage = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {instagramAccounts.map((account) => (
+                      {instagramAccounts.filter(a => !a.created_by).map((account) => (
                         <TableRow key={account.id}>
+                          <TableCell>
+                            {account.image_url ? (
+                              <img src={account.image_url} alt={account.username} className="w-10 h-10 rounded-lg object-cover" />
+                            ) : (
+                              <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
+                                <Users className="w-5 h-5 text-muted-foreground" />
+                              </div>
+                            )}
+                          </TableCell>
                           <TableCell className="font-medium">
                             <div className="flex items-center gap-2">
                               @{account.username}
@@ -2252,8 +2323,8 @@ const AdminDashboardPage = () => {
                           <TableCell><Button variant="ghost" size="icon" onClick={() => handleDeleteInstagramAccount(account.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button></TableCell>
                         </TableRow>
                       ))}
-                      {instagramAccounts.length === 0 && (
-                        <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Nenhuma conta Instagram cadastrada</TableCell></TableRow>
+                      {instagramAccounts.filter(a => !a.created_by).length === 0 && (
+                        <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Nenhuma conta Instagram cadastrada</TableCell></TableRow>
                       )}
                     </TableBody>
                   </Table>
@@ -2628,6 +2699,197 @@ const AdminDashboardPage = () => {
                       ))}
                     </TableBody>
                   </Table>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Reseller Products Section */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Sparkles className="w-5 h-5" />
+                    Produtos de Revendedores ({resellerInstagramAccounts.length + resellerTiktokAccounts.length + resellerTelegramGroups.length + resellerModels.length})
+                  </CardTitle>
+                  <Select value={vendorProductsFilter} onValueChange={setVendorProductsFilter}>
+                    <SelectTrigger className="w-[180px]">
+                      <Filter className="w-4 h-4 mr-2" />
+                      <SelectValue placeholder="Filtrar por tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos</SelectItem>
+                      <SelectItem value="instagram">Instagram</SelectItem>
+                      <SelectItem value="tiktok">TikTok</SelectItem>
+                      <SelectItem value="telegram">Telegram</SelectItem>
+                      <SelectItem value="model">Modelos</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Instagram Accounts from Resellers */}
+                {(vendorProductsFilter === "all" || vendorProductsFilter === "instagram") && resellerInstagramAccounts.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+                      <Users className="w-4 h-4" /> Instagram ({resellerInstagramAccounts.length})
+                    </h4>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[60px]">Foto</TableHead>
+                          <TableHead>Username</TableHead>
+                          <TableHead>Seguidores</TableHead>
+                          <TableHead>Preço</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {resellerInstagramAccounts.map((acc) => (
+                          <TableRow key={acc.id}>
+                            <TableCell>
+                              {acc.image_url ? (
+                                <img src={acc.image_url} alt={acc.username} className="w-10 h-10 rounded-lg object-cover" />
+                              ) : (
+                                <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
+                                  <Users className="w-5 h-5 text-muted-foreground" />
+                                </div>
+                              )}
+                            </TableCell>
+                            <TableCell className="font-medium">@{acc.username}</TableCell>
+                            <TableCell>{formatNumber(acc.followers)}</TableCell>
+                            <TableCell>{formatPrice(acc.price_cents)}</TableCell>
+                            <TableCell><Badge variant={acc.is_sold ? "secondary" : "default"}>{acc.is_sold ? "Vendida" : "Disponível"}</Badge></TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+
+                {/* TikTok Accounts from Resellers */}
+                {(vendorProductsFilter === "all" || vendorProductsFilter === "tiktok") && resellerTiktokAccounts.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+                      <Video className="w-4 h-4" /> TikTok ({resellerTiktokAccounts.length})
+                    </h4>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[60px]">Foto</TableHead>
+                          <TableHead>Username</TableHead>
+                          <TableHead>Seguidores</TableHead>
+                          <TableHead>Curtidas</TableHead>
+                          <TableHead>Preço</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {resellerTiktokAccounts.map((acc) => (
+                          <TableRow key={acc.id}>
+                            <TableCell>
+                              {acc.image_url ? (
+                                <img src={acc.image_url} alt={acc.username} className="w-10 h-10 rounded-lg object-cover" />
+                              ) : (
+                                <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
+                                  <Video className="w-5 h-5 text-muted-foreground" />
+                                </div>
+                              )}
+                            </TableCell>
+                            <TableCell className="font-medium">@{acc.username}</TableCell>
+                            <TableCell>{formatNumber(acc.followers)}</TableCell>
+                            <TableCell>{formatNumber(acc.likes)}</TableCell>
+                            <TableCell>{formatPrice(acc.price_cents)}</TableCell>
+                            <TableCell><Badge variant={acc.is_sold ? "secondary" : "default"}>{acc.is_sold ? "Vendida" : "Disponível"}</Badge></TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+
+                {/* Telegram Groups from Resellers */}
+                {(vendorProductsFilter === "all" || vendorProductsFilter === "telegram") && resellerTelegramGroups.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+                      <MessageSquare className="w-4 h-4" /> Telegram ({resellerTelegramGroups.length})
+                    </h4>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[60px]">Foto</TableHead>
+                          <TableHead>Nome</TableHead>
+                          <TableHead>Membros</TableHead>
+                          <TableHead>Preço</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {resellerTelegramGroups.map((grp) => (
+                          <TableRow key={grp.id}>
+                            <TableCell>
+                              {grp.image_url ? (
+                                <img src={grp.image_url} alt={grp.group_name} className="w-10 h-10 rounded-lg object-cover" />
+                              ) : (
+                                <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
+                                  <MessageSquare className="w-5 h-5 text-muted-foreground" />
+                                </div>
+                              )}
+                            </TableCell>
+                            <TableCell className="font-medium">{grp.group_name}</TableCell>
+                            <TableCell>{formatNumber(grp.members_count)}</TableCell>
+                            <TableCell>{formatPrice(grp.price_cents)}</TableCell>
+                            <TableCell><Badge variant={grp.is_sold ? "secondary" : "default"}>{grp.is_sold ? "Vendido" : "Disponível"}</Badge></TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+
+                {/* Models from Resellers */}
+                {(vendorProductsFilter === "all" || vendorProductsFilter === "model") && resellerModels.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+                      <Sparkles className="w-4 h-4" /> Modelos ({resellerModels.length})
+                    </h4>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[60px]">Foto</TableHead>
+                          <TableHead>Nome</TableHead>
+                          <TableHead>Nicho</TableHead>
+                          <TableHead>Preço</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {resellerModels.map((model) => (
+                          <TableRow key={model.id}>
+                            <TableCell>
+                              {model.image_url ? (
+                                <img src={model.image_url} alt={model.name} className="w-10 h-10 rounded-lg object-cover" />
+                              ) : (
+                                <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
+                                  <Sparkles className="w-5 h-5 text-muted-foreground" />
+                                </div>
+                              )}
+                            </TableCell>
+                            <TableCell className="font-medium">{model.name}</TableCell>
+                            <TableCell>{model.niche || "—"}</TableCell>
+                            <TableCell>{formatPrice(model.price_cents)}</TableCell>
+                            <TableCell><Badge variant={model.is_sold ? "secondary" : "default"}>{model.is_sold ? "Vendido" : "Disponível"}</Badge></TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+
+                {resellerInstagramAccounts.length === 0 && resellerTiktokAccounts.length === 0 && resellerTelegramGroups.length === 0 && resellerModels.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Sparkles className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                    <p>Nenhum produto de revendedor cadastrado</p>
+                  </div>
                 )}
               </CardContent>
             </Card>
