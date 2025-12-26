@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,11 @@ interface Model {
 const ModelHubPage = () => {
   const [models, setModels] = useState<Model[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
+
+  const handleBuy = (model: Model) => {
+    navigate(`/checkout?type=model&id=${model.id}`);
+  };
 
   const fetchModels = async () => {
     try {
@@ -113,7 +119,7 @@ const ModelHubPage = () => {
                           <Badge variant="secondary"><MessageSquare className="w-3 h-3 mr-1" />Scripts</Badge>
                           <Badge variant="secondary"><Calendar className="w-3 h-3 mr-1" />Calendário</Badge>
                         </div>
-                        <Button variant="gradient" className="w-full">
+                        <Button variant="gradient" className="w-full" onClick={() => handleBuy(model)}>
                           Comprar<ArrowRight className="w-4 h-4 ml-1" />
                         </Button>
                       </CardContent>
@@ -169,7 +175,7 @@ const ModelHubPage = () => {
                           <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-success" />Roteiros de funil</li>
                           <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-success" />Checklist operacional</li>
                         </ul>
-                        <Button variant="gradient" className="w-full">
+                        <Button variant="gradient" className="w-full" onClick={() => handleBuy(model)}>
                           Comprar<ArrowRight className="w-4 h-4 ml-1" />
                         </Button>
                       </CardContent>

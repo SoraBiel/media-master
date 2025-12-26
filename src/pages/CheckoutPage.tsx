@@ -33,6 +33,10 @@ const CheckoutPage = () => {
   const [copied, setCopied] = useState(false);
   const [isValidCheckout, setIsValidCheckout] = useState(true);
 
+  // Determine if this is a subscription (BuckPay) or product (Mercado Pago)
+  const isSubscription = productType === "subscription";
+  const isProduct = ["tiktok_account", "model", "telegram_group", "instagram_account"].includes(productType);
+
   // Validate checkout params and fetch product info
   useEffect(() => {
     const fetchProductInfo = async () => {
@@ -40,6 +44,7 @@ const CheckoutPage = () => {
       const hasValidParams = 
         (productType === "subscription" && planSlug) ||
         (productType === "tiktok_account" && productId) ||
+        (productType === "instagram_account" && productId) ||
         (productType === "model" && productId) ||
         (productType === "telegram_group" && productId);
 
@@ -67,6 +72,13 @@ const CheckoutPage = () => {
       } else if (productType === "tiktok_account" && productId) {
         const { data } = await supabase
           .from("tiktok_accounts")
+          .select("*")
+          .eq("id", productId)
+          .single();
+        setProductInfo(data);
+      } else if (productType === "instagram_account" && productId) {
+        const { data } = await supabase
+          .from("instagram_accounts")
           .select("*")
           .eq("id", productId)
           .single();
@@ -113,18 +125,38 @@ const CheckoutPage = () => {
     setIsLoading(true);
 
     try {
-      const response = await supabase.functions.invoke("create-payment", {
-        body: {
-          product_type: productType,
-          product_id: productId || undefined,
-          plan_slug: planSlug || undefined,
-          buyer: {
-            name: profile.full_name,
-            email: profile.email,
-            phone: profile.phone || undefined,
+      let response;
+
+      if (isSubscription) {
+        // Use BuckPay for subscriptions
+        response = await supabase.functions.invoke("create-payment", {
+          body: {
+            product_type: productType,
+            product_id: productId || undefined,
+            plan_slug: planSlug || undefined,
+            buyer: {
+              name: profile.full_name,
+              email: profile.email,
+              phone: profile.phone || undefined,
+            },
           },
-        },
-      });
+        });
+      } else if (isProduct) {
+        // Use Mercado Pago for products
+        response = await supabase.functions.invoke("create-product-payment", {
+          body: {
+            product_type: productType,
+            product_id: productId,
+            buyer: {
+              name: profile.full_name,
+              email: profile.email,
+              phone: profile.phone || undefined,
+            },
+          },
+        });
+      } else {
+        throw new Error("Tipo de produto inválido");
+      }
 
       if (response.error) {
         throw new Error(response.error.message);
@@ -134,9 +166,9 @@ const CheckoutPage = () => {
       
       if (data.pix) {
         setPixData({
-          code: data.pix.code,
-          qrcode_base64: data.pix.qrcode_base64,
-          transaction_id: data.id,
+          code: data.pix.code || data.pix.qr_code,
+          qrcode_base64: data.pix.qrcode_base64 || data.pix.qr_code_base64,
+          transaction_id: data.id?.toString(),
           external_id: data.external_id,
         });
 
@@ -180,10 +212,12 @@ const CheckoutPage = () => {
             
             toast({
               title: "Pagamento confirmado!",
-              description: "Sua assinatura foi ativada com sucesso.",
+              description: isSubscription 
+                ? "Sua assinatura foi ativada com sucesso."
+                : "Seu produto está disponível para entrega.",
             });
 
-            // Redirect to thank you page for subscriptions, dashboard for other products
+            // Redirect based on product type
             setTimeout(() => {
               if (productType === "subscription") {
                 navigate("/thank-you");
@@ -212,7 +246,9 @@ const CheckoutPage = () => {
           
           toast({
             title: "Pagamento confirmado!",
-            description: "Sua assinatura foi ativada com sucesso.",
+            description: isSubscription 
+              ? "Sua assinatura foi ativada com sucesso."
+              : "Seu produto está disponível para entrega.",
           });
 
           setTimeout(() => {
@@ -254,6 +290,42 @@ const CheckoutPage = () => {
     }).format(cents / 100);
   };
 
+  const getProductTitle = () => {
+    if (!productInfo) return "";
+    switch (productType) {
+      case "subscription":
+        return `Plano ${productInfo.name}`;
+      case "tiktok_account":
+        return `@${productInfo.username}`;
+      case "instagram_account":
+        return `@${productInfo.username}`;
+      case "model":
+        return productInfo.name;
+      case "telegram_group":
+        return productInfo.group_name;
+      default:
+        return "";
+    }
+  };
+
+  const getProductDescription = () => {
+    if (!productInfo) return "";
+    switch (productType) {
+      case "subscription":
+        return productInfo.description;
+      case "tiktok_account":
+        return `${productInfo.followers?.toLocaleString()} seguidores`;
+      case "instagram_account":
+        return `${productInfo.followers?.toLocaleString()} seguidores`;
+      case "model":
+        return productInfo.bio;
+      case "telegram_group":
+        return `${productInfo.members_count?.toLocaleString()} membros`;
+      default:
+        return "";
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background p-4">
       <div className="max-w-lg mx-auto">
@@ -277,21 +349,16 @@ const CheckoutPage = () => {
             animate={{ opacity: 1, y: 0 }}
             className="glass-card p-6 mb-6"
           >
-            <h2 className="text-xl font-semibold mb-2">
-              {productType === "subscription" && `Plano ${productInfo.name}`}
-              {productType === "tiktok_account" && `@${productInfo.username}`}
-              {productType === "model" && productInfo.name}
-              {productType === "telegram_group" && productInfo.group_name}
-            </h2>
-            <p className="text-muted-foreground mb-4">
-              {productType === "subscription" && productInfo.description}
-              {productType === "tiktok_account" && `${productInfo.followers?.toLocaleString()} seguidores`}
-              {productType === "model" && productInfo.bio}
-              {productType === "telegram_group" && `${productInfo.members_count?.toLocaleString()} membros`}
-            </p>
+            <h2 className="text-xl font-semibold mb-2">{getProductTitle()}</h2>
+            <p className="text-muted-foreground mb-4">{getProductDescription()}</p>
             <div className="text-3xl font-bold gradient-text">
               {formatPrice(productInfo.price_cents)}
             </div>
+            {isProduct && (
+              <div className="mt-2 text-sm text-muted-foreground">
+                Pagamento via Mercado Pago
+              </div>
+            )}
           </motion.div>
         )}
 
@@ -346,7 +413,7 @@ const CheckoutPage = () => {
                 </div>
                 <h3 className="text-2xl font-bold mb-2">Pagamento Confirmado!</h3>
                 <p className="text-muted-foreground">
-                  Redirecionando para o dashboard...
+                  {isSubscription ? "Redirecionando para o dashboard..." : "Redirecionando para suas entregas..."}
                 </p>
               </div>
             ) : (
@@ -358,11 +425,15 @@ const CheckoutPage = () => {
 
                 {/* QR Code */}
                 <div className="bg-white p-4 rounded-lg mb-4 flex items-center justify-center">
-                  <img
-                    src={`data:image/png;base64,${pixData.qrcode_base64}`}
-                    alt="QR Code PIX"
-                    className="w-48 h-48"
-                  />
+                  {pixData.qrcode_base64 && (
+                    <img
+                      src={pixData.qrcode_base64.startsWith('data:') 
+                        ? pixData.qrcode_base64 
+                        : `data:image/png;base64,${pixData.qrcode_base64}`}
+                      alt="QR Code PIX"
+                      className="w-48 h-48"
+                    />
+                  )}
                 </div>
 
                 {/* PIX Code */}
