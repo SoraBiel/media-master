@@ -106,10 +106,26 @@ interface VendorSale {
 }
 
 const ResellerPage = () => {
-  const { user } = useAuth();
+  const { user, vendorRoles } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const { integration: mpIntegration, isConnected: isMpConnected, isLoading: mpLoading, refetch: refetchMp } = useMercadoPagoIntegration();
+
+  // Check vendor permissions
+  const isGeneralVendor = vendorRoles.includes("vendor");
+  const canSellInstagram = isGeneralVendor || vendorRoles.includes("vendor_instagram");
+  const canSellTiktok = isGeneralVendor || vendorRoles.includes("vendor_tiktok");
+  const canSellTelegram = isGeneralVendor; // Only general vendor can sell telegram
+  const canSellModels = isGeneralVendor || vendorRoles.includes("vendor_model");
+  
+  // Determine default tab based on permissions
+  const getDefaultTab = () => {
+    if (canSellInstagram) return "instagram";
+    if (canSellTiktok) return "tiktok";
+    if (canSellTelegram) return "telegram";
+    if (canSellModels) return "models";
+    return "sales";
+  };
 
   // File upload refs
   const instagramImageInputRef = useRef<HTMLInputElement>(null);
@@ -841,9 +857,55 @@ const ResellerPage = () => {
   const pendingEarnings = sales.filter(s => s.status === "pending").reduce((acc, sale) => acc + sale.vendor_commission_cents, 0);
   const totalProducts = instagramAccounts.length + tiktokAccounts.length + telegramGroups.length + models.length;
 
+  // Get vendor role label
+  const getVendorRoleLabel = () => {
+    if (vendorRoles.includes("vendor")) return "Vendedor Geral";
+    if (vendorRoles.includes("vendor_instagram")) return "Vendedor Instagram";
+    if (vendorRoles.includes("vendor_tiktok")) return "Vendedor TikTok";
+    if (vendorRoles.includes("vendor_model")) return "Vendedor Modelos";
+    return "Vendedor";
+  };
+
+  const getVendorRoleBadges = () => {
+    const badges: { label: string; color: string }[] = [];
+    if (vendorRoles.includes("vendor")) {
+      badges.push({ label: "Geral", color: "bg-primary" });
+    }
+    if (vendorRoles.includes("vendor_instagram")) {
+      badges.push({ label: "Instagram", color: "bg-gradient-to-r from-purple-500 to-pink-500" });
+    }
+    if (vendorRoles.includes("vendor_tiktok")) {
+      badges.push({ label: "TikTok", color: "bg-black" });
+    }
+    if (vendorRoles.includes("vendor_model")) {
+      badges.push({ label: "Modelos", color: "bg-gradient-to-r from-amber-500 to-orange-500" });
+    }
+    return badges;
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
+        {/* Vendor Role Banner */}
+        <Card className="bg-gradient-to-r from-primary/10 to-secondary/10 border-primary/20">
+          <CardContent className="flex items-center justify-between py-4">
+            <div className="flex items-center gap-3">
+              <Shield className="h-6 w-6 text-primary" />
+              <div>
+                <h3 className="font-semibold">Painel de Revendedor</h3>
+                <p className="text-sm text-muted-foreground">Gerencie seus produtos e vendas</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {getVendorRoleBadges().map((badge, idx) => (
+                <Badge key={idx} className={`${badge.color} text-white`}>
+                  {badge.label}
+                </Badge>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Header Stats */}
         <div className="grid gap-4 md:grid-cols-5">
           <Card>
@@ -962,24 +1024,32 @@ const ResellerPage = () => {
         </Card>
 
         {/* Accounts Tabs */}
-        <Tabs defaultValue="instagram" className="space-y-4">
+        <Tabs defaultValue={getDefaultTab()} className="space-y-4">
           <TabsList className="flex-wrap">
-            <TabsTrigger value="instagram" className="gap-2">
-              <Instagram className="w-4 h-4" />
-              Instagram
-            </TabsTrigger>
-            <TabsTrigger value="tiktok" className="gap-2">
-              <Music2 className="w-4 h-4" />
-              TikTok
-            </TabsTrigger>
-            <TabsTrigger value="telegram" className="gap-2">
-              <MessageSquare className="w-4 h-4" />
-              Telegram
-            </TabsTrigger>
-            <TabsTrigger value="models" className="gap-2">
-              <Sparkles className="w-4 h-4" />
-              Modelos
-            </TabsTrigger>
+            {canSellInstagram && (
+              <TabsTrigger value="instagram" className="gap-2">
+                <Instagram className="w-4 h-4" />
+                Instagram
+              </TabsTrigger>
+            )}
+            {canSellTiktok && (
+              <TabsTrigger value="tiktok" className="gap-2">
+                <Music2 className="w-4 h-4" />
+                TikTok
+              </TabsTrigger>
+            )}
+            {canSellTelegram && (
+              <TabsTrigger value="telegram" className="gap-2">
+                <MessageSquare className="w-4 h-4" />
+                Telegram
+              </TabsTrigger>
+            )}
+            {canSellModels && (
+              <TabsTrigger value="models" className="gap-2">
+                <Sparkles className="w-4 h-4" />
+                Modelos
+              </TabsTrigger>
+            )}
             <TabsTrigger value="sales" className="gap-2">
               <DollarSign className="w-4 h-4" />
               Minhas Vendas
@@ -987,6 +1057,7 @@ const ResellerPage = () => {
           </TabsList>
 
           {/* Instagram Tab */}
+          {canSellInstagram && (
           <TabsContent value="instagram">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
@@ -1227,8 +1298,10 @@ const ResellerPage = () => {
               </CardContent>
             </Card>
           </TabsContent>
+          )}
 
           {/* TikTok Tab */}
+          {canSellTiktok && (
           <TabsContent value="tiktok">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
@@ -1452,8 +1525,10 @@ const ResellerPage = () => {
               </CardContent>
             </Card>
           </TabsContent>
+          )}
 
           {/* Telegram Tab */}
+          {canSellTelegram && (
           <TabsContent value="telegram">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
@@ -1668,8 +1743,10 @@ const ResellerPage = () => {
               </CardContent>
             </Card>
           </TabsContent>
+          )}
 
           {/* Models Tab */}
+          {canSellModels && (
           <TabsContent value="models">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
@@ -1920,6 +1997,7 @@ const ResellerPage = () => {
               </CardContent>
             </Card>
           </TabsContent>
+          )}
 
           {/* Sales Tab */}
           <TabsContent value="sales">
