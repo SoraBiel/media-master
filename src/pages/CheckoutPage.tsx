@@ -40,7 +40,8 @@ const CheckoutPage = () => {
       const hasValidParams = 
         (productType === "subscription" && planSlug) ||
         (productType === "tiktok_account" && productId) ||
-        (productType === "model" && productId);
+        (productType === "model" && productId) ||
+        (productType === "telegram_group" && productId);
 
       if (!hasValidParams) {
         setIsValidCheckout(false);
@@ -73,6 +74,13 @@ const CheckoutPage = () => {
       } else if (productType === "model" && productId) {
         const { data } = await supabase
           .from("models_for_sale")
+          .select("*")
+          .eq("id", productId)
+          .single();
+        setProductInfo(data);
+      } else if (productType === "telegram_group" && productId) {
+        const { data } = await supabase
+          .from("telegram_groups")
           .select("*")
           .eq("id", productId)
           .single();
@@ -273,11 +281,13 @@ const CheckoutPage = () => {
               {productType === "subscription" && `Plano ${productInfo.name}`}
               {productType === "tiktok_account" && `@${productInfo.username}`}
               {productType === "model" && productInfo.name}
+              {productType === "telegram_group" && productInfo.group_name}
             </h2>
             <p className="text-muted-foreground mb-4">
               {productType === "subscription" && productInfo.description}
               {productType === "tiktok_account" && `${productInfo.followers?.toLocaleString()} seguidores`}
               {productType === "model" && productInfo.bio}
+              {productType === "telegram_group" && `${productInfo.members_count?.toLocaleString()} membros`}
             </p>
             <div className="text-3xl font-bold gradient-text">
               {formatPrice(productInfo.price_cents)}
