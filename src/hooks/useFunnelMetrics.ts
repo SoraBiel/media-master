@@ -25,7 +25,7 @@ export interface FunnelOverview {
 
 export interface RecentActivity {
   id: string;
-  type: "lead_started" | "message_sent" | "lead_responded" | "funnel_finished" | "webhook_error";
+  type: "lead_started" | "message_sent" | "lead_responded" | "funnel_finished" | "webhook_error" | "pix_generated" | "pix_paid";
   message: string;
   funnelName?: string;
   timestamp: string;
@@ -86,6 +86,14 @@ export const useFunnelMetrics = () => {
         l.event_type === "media_sent"
       ).length || 0;
 
+      // Fetch funnel payments for recent activity (Pix gerado/pago)
+      const { data: payments } = await supabase
+        .from("funnel_payments")
+        .select("*, funnels!inner(user_id, name)")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(20);
+
       // Calculate completion rate
       const totalSessions = sessions?.length || 0;
       const finishedSessions = sessions?.filter((s) => s.is_finished).length || 0;
@@ -139,43 +147,16 @@ export const useFunnelMetrics = () => {
       });
       setFunnelOverviews(overviews);
 
-      // Build recent activity from logs
-      const activities: RecentActivity[] = (logs || []).slice(0, 10).map((log) => {
-        let type: RecentActivity["type"] = "message_sent";
-        let message = "";
-
-        switch (log.event_type) {
-          case "session_started":
-            type = "lead_started";
-            message = "Novo lead entrou no funil";
-            break;
-          case "message_sent":
-          case "media_sent":
-            type = "message_sent";
-            message = "Mensagem enviada pelo bot";
-            break;
-          case "message_received":
-            type = "lead_responded";
-            message = "Lead respondeu";
-            break;
-          case "session_finished":
-            type = "funnel_finished";
-            message = "Funil finalizado";
-            break;
-          case "webhook_error":
-            type = "webhook_error";
-            message = "Erro no webhook";
-            break;
-          default:
-            message = log.event_type;
-        }
-
+      // Build recent activity from funnel_payments only (Pix gerado/pago)
+      const activities: RecentActivity[] = (payments || []).map((payment) => {
+        const isPaid = payment.status === "paid" || payment.status === "approved";
+        
         return {
-          id: log.id,
-          type,
-          message,
-          funnelName: (log.funnels as any)?.name,
-          timestamp: log.created_at,
+          id: payment.id,
+          type: isPaid ? "pix_paid" as any : "pix_generated" as any,
+          message: isPaid ? "Pix pago" : "Pix gerado",
+          funnelName: (payment.funnels as any)?.name,
+          timestamp: isPaid && payment.paid_at ? payment.paid_at : payment.created_at,
         };
       });
       setRecentActivity(activities);
