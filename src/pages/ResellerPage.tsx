@@ -106,16 +106,16 @@ interface VendorSale {
 }
 
 const ResellerPage = () => {
-  const { user, vendorRoles } = useAuth();
+  const { user, vendorRoles, isAdmin } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const { integration: mpIntegration, isConnected: isMpConnected, isLoading: mpLoading, refetch: refetchMp } = useMercadoPagoIntegration();
 
-  // Check vendor permissions
-  const isGeneralVendor = vendorRoles.includes("vendor");
+  // Check vendor permissions - admins have access to all tabs
+  const isGeneralVendor = vendorRoles.includes("vendor") || isAdmin;
   const canSellInstagram = isGeneralVendor || vendorRoles.includes("vendor_instagram");
   const canSellTiktok = isGeneralVendor || vendorRoles.includes("vendor_tiktok");
-  const canSellTelegram = isGeneralVendor; // Only general vendor can sell telegram
+  const canSellTelegram = isGeneralVendor; // Only general vendor or admin can sell telegram
   const canSellModels = isGeneralVendor || vendorRoles.includes("vendor_model");
   
   // Determine default tab based on permissions

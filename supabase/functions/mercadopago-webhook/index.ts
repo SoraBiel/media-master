@@ -300,6 +300,18 @@ async function handleTikTokDelivery(supabase: any, accountId: string, buyerId: s
     })
     .eq('id', accountId);
 
+  // Check if delivery already exists to avoid duplicates
+  const { data: existingDelivery } = await supabase
+    .from('deliveries')
+    .select('id')
+    .eq('transaction_id', transactionId)
+    .maybeSingle();
+
+  if (existingDelivery) {
+    console.log('TikTok delivery already exists, skipping');
+    return;
+  }
+
   // Create delivery record
   await supabase
     .from('deliveries')
@@ -341,6 +353,18 @@ async function handleInstagramDelivery(supabase: any, accountId: string, buyerId
       sold_to_user_id: buyerId
     })
     .eq('id', accountId);
+
+  // Check if delivery already exists to avoid duplicates
+  const { data: existingDelivery } = await supabase
+    .from('deliveries')
+    .select('id')
+    .eq('transaction_id', transactionId)
+    .maybeSingle();
+
+  if (existingDelivery) {
+    console.log('Instagram delivery already exists, skipping');
+    return;
+  }
 
   // Create delivery record
   await supabase
@@ -384,6 +408,18 @@ async function handleTelegramGroupDelivery(supabase: any, groupId: string, buyer
     })
     .eq('id', groupId);
 
+  // Check if delivery already exists to avoid duplicates
+  const { data: existingDelivery } = await supabase
+    .from('deliveries')
+    .select('id')
+    .eq('transaction_id', transactionId)
+    .maybeSingle();
+
+  if (existingDelivery) {
+    console.log('Telegram group delivery already exists, skipping');
+    return;
+  }
+
   // Create delivery record
   await supabase
     .from('deliveries')
@@ -423,6 +459,18 @@ async function handleModelDelivery(supabase: any, modelId: string, buyerId: stri
       sold_to_user_id: buyerId
     })
     .eq('id', modelId);
+
+  // Check if delivery already exists to avoid duplicates
+  const { data: existingDelivery } = await supabase
+    .from('deliveries')
+    .select('id')
+    .eq('transaction_id', transactionId)
+    .maybeSingle();
+
+  if (existingDelivery) {
+    console.log('Model delivery already exists, skipping');
+    return;
+  }
 
   // Create delivery record
   await supabase
