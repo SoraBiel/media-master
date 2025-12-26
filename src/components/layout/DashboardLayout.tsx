@@ -1,7 +1,7 @@
 import { ReactNode, useState, useEffect, useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Send, LayoutDashboard, CreditCard, MessageCircle, Target, Megaphone, Sparkles, Settings, LogOut, ChevronLeft, ChevronRight, Bell, User, Shield, Menu, Video, Crown, Headphones, GitBranch, MessageSquare, Plug, Wallet } from "lucide-react";
+import { Send, LayoutDashboard, CreditCard, MessageCircle, Target, Megaphone, Sparkles, Settings, LogOut, ChevronLeft, ChevronRight, Bell, User, Shield, Menu, Video, Crown, Headphones, GitBranch, MessageSquare, Plug, Wallet, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/AuthContext";
@@ -38,6 +38,13 @@ const DashboardLayout = ({
       label: "Dashboard",
       path: "/dashboard"
     }];
+    
+    // Pagamentos - right after Dashboard
+    items.push({
+      icon: Wallet,
+      label: "Pagamentos",
+      path: "/payments"
+    });
 
     // Show "Planos" only if user doesn't have an active subscription
     // Show "Meu Plano" if user has an active subscription
@@ -54,20 +61,6 @@ const DashboardLayout = ({
         path: "/billing"
       });
     }
-    
-    // Integrações - always visible
-    items.push({
-      icon: Plug,
-      label: "Integrações",
-      path: "/integrations"
-    });
-    
-    // Pagamentos - always visible
-    items.push({
-      icon: Wallet,
-      label: "Pagamentos",
-      path: "/payments"
-    });
     
     items.push({
       icon: MessageCircle,
@@ -124,10 +117,26 @@ const DashboardLayout = ({
     if (adminSettings.tiktok_enabled) {
       items.push({
         icon: Video,
-        label: "TikTok Accounts",
+        label: "Contas TikTok",
         path: "/tiktok-accounts"
       });
     }
+    
+    // Only show Telegram Groups if enabled by admin
+    if (adminSettings.telegram_groups_enabled) {
+      items.push({
+        icon: Users,
+        label: "Grupos Telegram",
+        path: "/telegram-groups"
+      });
+    }
+    
+    // Integrações - before Admin
+    items.push({
+      icon: Plug,
+      label: "Integrações",
+      path: "/integrations"
+    });
     
     return items;
   };

@@ -21,6 +21,7 @@ import OnboardingPage from "./pages/OnboardingPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import ThankYouPage from "./pages/ThankYouPage";
 import TikTokAccountsPage from "./pages/TikTokAccountsPage";
+import TelegramGroupsPage from "./pages/TelegramGroupsPage";
 import FunnelsPage from "./pages/FunnelsPage";
 import FunnelBuilderPage from "./pages/FunnelBuilderPage";
 import WhatsAppPage from "./pages/WhatsAppPage";
@@ -77,6 +78,13 @@ const App = () => (
               <ProtectedRoute>
                 <FeatureProtectedRoute featureKey="tiktok_enabled">
                   <TikTokAccountsPage />
+                </FeatureProtectedRoute>
+              </ProtectedRoute>
+            } />
+            <Route path="/telegram-groups" element={
+              <ProtectedRoute>
+                <FeatureProtectedRoute featureKey="telegram_groups_enabled">
+                  <TelegramGroupsPage />
                 </FeatureProtectedRoute>
               </ProtectedRoute>
             } />

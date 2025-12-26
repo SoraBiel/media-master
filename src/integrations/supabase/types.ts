@@ -999,6 +999,69 @@ export type Database = {
           },
         ]
       }
+      telegram_groups: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          deliverable_info: string | null
+          deliverable_invite_link: string | null
+          deliverable_notes: string | null
+          description: string | null
+          group_name: string
+          group_type: string | null
+          group_username: string | null
+          id: string
+          image_url: string | null
+          is_sold: boolean | null
+          is_verified: boolean | null
+          members_count: number | null
+          niche: string | null
+          price_cents: number
+          sold_at: string | null
+          sold_to_user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          deliverable_info?: string | null
+          deliverable_invite_link?: string | null
+          deliverable_notes?: string | null
+          description?: string | null
+          group_name: string
+          group_type?: string | null
+          group_username?: string | null
+          id?: string
+          image_url?: string | null
+          is_sold?: boolean | null
+          is_verified?: boolean | null
+          members_count?: number | null
+          niche?: string | null
+          price_cents: number
+          sold_at?: string | null
+          sold_to_user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          deliverable_info?: string | null
+          deliverable_invite_link?: string | null
+          deliverable_notes?: string | null
+          description?: string | null
+          group_name?: string
+          group_type?: string | null
+          group_username?: string | null
+          id?: string
+          image_url?: string | null
+          is_sold?: boolean | null
+          is_verified?: boolean | null
+          members_count?: number | null
+          niche?: string | null
+          price_cents?: number
+          sold_at?: string | null
+          sold_to_user_id?: string | null
+        }
+        Relationships: []
+      }
       telegram_integrations: {
         Row: {
           bot_name: string | null
