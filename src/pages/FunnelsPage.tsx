@@ -52,12 +52,13 @@ const FunnelsPage = () => {
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
 
   const getMaxFunnels = () => {
-    if (!currentPlan) return 0;
+    if (!currentPlan) return 1; // Free plan gets 1 funnel
     switch (currentPlan.slug) {
+      case "free": return 1;
       case "basic": return 3;
       case "pro": return 10;
       case "agency": return 999;
-      default: return 0;
+      default: return 1;
     }
   };
 
@@ -212,20 +213,7 @@ const FunnelsPage = () => {
     }
   };
 
-  if (maxFunnels === 0) {
-    return (
-      <DashboardLayout>
-        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-          <Lock className="w-12 h-12 text-muted-foreground mb-4" />
-          <h1 className="text-2xl font-bold mb-2">Funis de Chat</h1>
-          <p className="text-muted-foreground max-w-md mb-6">
-            Disponível a partir do plano Basic.
-          </p>
-          <Button variant="gradient" onClick={() => navigate("/billing")}>Ver Planos</Button>
-        </div>
-      </DashboardLayout>
-    );
-  }
+  // All plans now have at least 1 funnel
 
   return (
     <DashboardLayout>
