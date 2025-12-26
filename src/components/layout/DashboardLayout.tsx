@@ -1,7 +1,7 @@
 import { ReactNode, useState, useEffect, useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Send, LayoutDashboard, CreditCard, MessageCircle, Megaphone, Settings, LogOut, ChevronLeft, ChevronRight, Bell, User, Shield, Menu, Crown, Headphones, GitBranch, MessageSquare, Plug, Wallet, Users, ShoppingBag } from "lucide-react";
+import { Send, LayoutDashboard, CreditCard, MessageCircle, Megaphone, Settings, LogOut, ChevronLeft, ChevronRight, Bell, User, Shield, Menu, Crown, Headphones, GitBranch, MessageSquare, Plug, Wallet, Users, ShoppingBag, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/AuthContext";
@@ -23,6 +23,7 @@ const DashboardLayout = ({
   const {
     signOut,
     isAdmin,
+    isVendor,
     profile
   } = useAuth();
   const {
@@ -133,7 +134,19 @@ const DashboardLayout = ({
     label: "Admin",
     path: "/admin"
   }];
-  const allNavItems = isAdmin ? [...navItems, ...adminItems] : navItems;
+
+  // Vendor-only items
+  const vendorItems = [{
+    icon: Store,
+    label: "Revendedor",
+    path: "/reseller"
+  }];
+
+  const allNavItems = [
+    ...navItems,
+    ...(isVendor || isAdmin ? vendorItems : []),
+    ...(isAdmin ? adminItems : [])
+  ];
   const handleSignOut = async () => {
     await signOut();
     navigate("/login");

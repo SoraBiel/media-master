@@ -24,6 +24,7 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   isAdmin: boolean;
+  isVendor: boolean;
   isLoading: boolean;
   signUp: (email: string, password: string, fullName: string, phone: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
@@ -38,6 +39,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isVendor, setIsVendor] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchProfile = async (userId: string) => {
@@ -67,11 +69,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const { data: roleData } = await supabase
         .from("user_roles")
         .select("role")
-        .eq("user_id", userId)
-        .eq("role", "admin")
-        .maybeSingle();
+        .eq("user_id", userId);
 
-      setIsAdmin(!!roleData);
+      const roles = roleData?.map(r => r.role) || [];
+      setIsAdmin(roles.includes("admin"));
+      setIsVendor(roles.includes("vendor"));
     } catch (error) {
       console.error("Error in fetchProfile:", error);
     }
@@ -98,11 +100,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         } else {
           setProfile(null);
           setIsAdmin(false);
+          setIsVendor(false);
         }
 
         if (event === "SIGNED_OUT") {
           setProfile(null);
           setIsAdmin(false);
+          setIsVendor(false);
         }
 
         setIsLoading(false);
@@ -181,6 +185,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         session,
         profile,
         isAdmin,
+        isVendor,
         isLoading,
         signUp,
         signIn,

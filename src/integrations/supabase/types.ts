@@ -745,6 +745,78 @@ export type Database = {
           },
         ]
       }
+      instagram_accounts: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          deliverable_email: string | null
+          deliverable_info: string | null
+          deliverable_login: string | null
+          deliverable_notes: string | null
+          deliverable_password: string | null
+          description: string | null
+          engagement_rate: number | null
+          followers: number | null
+          following: number | null
+          id: string
+          image_url: string | null
+          is_sold: boolean | null
+          is_verified: boolean | null
+          niche: string | null
+          posts_count: number | null
+          price_cents: number
+          sold_at: string | null
+          sold_to_user_id: string | null
+          username: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          deliverable_email?: string | null
+          deliverable_info?: string | null
+          deliverable_login?: string | null
+          deliverable_notes?: string | null
+          deliverable_password?: string | null
+          description?: string | null
+          engagement_rate?: number | null
+          followers?: number | null
+          following?: number | null
+          id?: string
+          image_url?: string | null
+          is_sold?: boolean | null
+          is_verified?: boolean | null
+          niche?: string | null
+          posts_count?: number | null
+          price_cents: number
+          sold_at?: string | null
+          sold_to_user_id?: string | null
+          username: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          deliverable_email?: string | null
+          deliverable_info?: string | null
+          deliverable_login?: string | null
+          deliverable_notes?: string | null
+          deliverable_password?: string | null
+          description?: string | null
+          engagement_rate?: number | null
+          followers?: number | null
+          following?: number | null
+          id?: string
+          image_url?: string | null
+          is_sold?: boolean | null
+          is_verified?: boolean | null
+          niche?: string | null
+          posts_count?: number | null
+          price_cents?: number
+          sold_at?: string | null
+          sold_to_user_id?: string | null
+          username?: string
+        }
+        Relationships: []
+      }
       integrations: {
         Row: {
           access_token: string
@@ -1463,6 +1535,54 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      vendor_sales: {
+        Row: {
+          buyer_id: string
+          created_at: string | null
+          id: string
+          item_id: string
+          item_type: string
+          paid_at: string | null
+          platform_fee_cents: number
+          sale_amount_cents: number
+          status: string | null
+          transaction_id: string | null
+          updated_at: string | null
+          vendor_commission_cents: number
+          vendor_id: string
+        }
+        Insert: {
+          buyer_id: string
+          created_at?: string | null
+          id?: string
+          item_id: string
+          item_type: string
+          paid_at?: string | null
+          platform_fee_cents: number
+          sale_amount_cents: number
+          status?: string | null
+          transaction_id?: string | null
+          updated_at?: string | null
+          vendor_commission_cents: number
+          vendor_id: string
+        }
+        Update: {
+          buyer_id?: string
+          created_at?: string | null
+          id?: string
+          item_id?: string
+          item_type?: string
+          paid_at?: string | null
+          platform_fee_cents?: number
+          sale_amount_cents?: number
+          status?: string | null
+          transaction_id?: string | null
+          updated_at?: string | null
+          vendor_commission_cents?: number
+          vendor_id?: string
         }
         Relationships: []
       }
