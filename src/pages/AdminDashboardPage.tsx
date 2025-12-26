@@ -301,6 +301,9 @@ const AdminDashboardPage = () => {
   });
   const [modelImageFile, setModelImageFile] = useState<File | null>(null);
   const modelImageInputRef = useRef<HTMLInputElement>(null);
+  const [modelFunnelFile, setModelFunnelFile] = useState<File | null>(null);
+  const [modelFunnelJson, setModelFunnelJson] = useState<any>(null);
+  const modelFunnelInputRef = useRef<HTMLInputElement>(null);
 
   const [mediaForm, setMediaForm] = useState({
     name: "",
@@ -709,16 +712,19 @@ const AdminDashboardPage = () => {
         image_url: imageUrl,
         deliverable_link: modelForm.deliverable_link || null,
         deliverable_notes: modelForm.deliverable_notes || null,
+        funnel_json: modelFunnelJson || null,
       });
 
       if (error) throw error;
 
-      toast({ title: "Modelo adicionado!", description: `${modelForm.name} foi adicionado.` });
+      toast({ title: "Modelo adicionado!", description: `${modelForm.name} foi adicionado${modelFunnelJson ? " com funil incluso" : ""}.` });
       setModelForm({
         name: "", bio: "", niche: "", category: "black", price: "",
         deliverable_link: "", deliverable_notes: "",
       });
       setModelImageFile(null);
+      setModelFunnelFile(null);
+      setModelFunnelJson(null);
       setModelDialogOpen(false);
     } catch (error: any) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
@@ -2131,6 +2137,58 @@ const AdminDashboardPage = () => {
                           <div className="space-y-3">
                             <div><Label>Link de Acesso</Label><Input value={modelForm.deliverable_link} onChange={(e) => setModelForm({ ...modelForm, deliverable_link: e.target.value })} placeholder="https://drive.google.com/..." /></div>
                             <div><Label>Notas/Instruções</Label><Textarea value={modelForm.deliverable_notes} onChange={(e) => setModelForm({ ...modelForm, deliverable_notes: e.target.value })} placeholder="Instruções para o comprador..." /></div>
+                            <div>
+                              <Label className="flex items-center gap-2">
+                                <GitBranch className="w-4 h-4" />
+                                Funil JSON (opcional)
+                              </Label>
+                              <p className="text-xs text-muted-foreground mb-2">
+                                O funil será importado automaticamente para a conta do comprador
+                              </p>
+                              <input 
+                                type="file" 
+                                ref={modelFunnelInputRef} 
+                                accept=".json,application/json" 
+                                className="hidden" 
+                                onChange={(e) => { 
+                                  const file = e.target.files?.[0]; 
+                                  if (file) {
+                                    setModelFunnelFile(file);
+                                    const reader = new FileReader();
+                                    reader.onload = (event) => {
+                                      try {
+                                        const json = JSON.parse(event.target?.result as string);
+                                        setModelFunnelJson(json);
+                                        toast({ title: "Funil carregado!", description: `${json.name || "Funil"} será incluído na entrega.` });
+                                      } catch (err) {
+                                        toast({ title: "Erro", description: "Arquivo JSON inválido", variant: "destructive" });
+                                        setModelFunnelFile(null);
+                                        setModelFunnelJson(null);
+                                      }
+                                    };
+                                    reader.readAsText(file);
+                                  }
+                                }} 
+                              />
+                              <div className="mt-2">
+                                {modelFunnelFile ? (
+                                  <div className="flex items-center gap-2 p-2 bg-success/10 border border-success/30 rounded-lg">
+                                    <GitBranch className="w-4 h-4 text-success" />
+                                    <span className="text-sm flex-1 truncate">{modelFunnelFile.name}</span>
+                                    <Badge variant="outline" className="text-success border-success">
+                                      {modelFunnelJson?.nodes?.length || 0} blocos
+                                    </Badge>
+                                    <Button variant="ghost" size="sm" onClick={() => { setModelFunnelFile(null); setModelFunnelJson(null); }}>
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <Button variant="outline" className="w-full" onClick={() => modelFunnelInputRef.current?.click()}>
+                                    <Upload className="w-4 h-4 mr-2" />Selecionar Funil .json
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
                           </div>
                         </div>
                         <Button onClick={handleAddModel} className="w-full telegram-gradient text-white" disabled={isUploadingModel}>
