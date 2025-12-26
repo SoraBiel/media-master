@@ -1,7 +1,7 @@
 import { ReactNode, useState, useEffect, useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Send, LayoutDashboard, CreditCard, MessageCircle, Target, Megaphone, Sparkles, Settings, LogOut, ChevronLeft, ChevronRight, Bell, User, Shield, Menu, Video, Crown, Headphones, GitBranch, MessageSquare, Plug, Wallet, Users } from "lucide-react";
+import { Send, LayoutDashboard, CreditCard, MessageCircle, Target, Megaphone, Sparkles, Settings, LogOut, ChevronLeft, ChevronRight, Bell, User, Shield, Menu, Video, Crown, Headphones, GitBranch, MessageSquare, Plug, Wallet, Users, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/AuthContext";
@@ -130,6 +130,13 @@ const DashboardLayout = ({
         path: "/telegram-groups"
       });
     }
+    
+    // Minhas Compras
+    items.push({
+      icon: ShoppingBag,
+      label: "Minhas Compras",
+      path: "/my-purchases"
+    });
     
     // Integrações - before Admin
     items.push({
