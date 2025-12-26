@@ -48,27 +48,53 @@ const IntegrationsPage = () => {
   const mercadoPagoIntegration = integrations?.find(i => i.provider === 'mercadopago');
 
   // Connect to Mercado Pago
-  const connectMutation = useMutation({
+  const connectMutation = useMutation<any, Error, void, { popup: Window | null }>({
     mutationFn: async () => {
       const { data, error } = await supabase.functions.invoke('mercadopago-oauth', {
-        body: { action: 'get_auth_url' }
+        body: { action: 'get_auth_url' },
       });
-      
+
       if (error) throw error;
       return data;
     },
-    onSuccess: (data) => {
-      if (data.auth_url) {
-        window.location.href = data.auth_url;
-      }
+    onMutate: () => {
+      // Must open the popup synchronously from the user click, otherwise browsers may block it.
+      const popup = window.open('about:blank', '_blank', 'noopener,noreferrer');
+      return { popup };
     },
-    onError: (error: Error) => {
+    onSuccess: (data, _vars, ctx) => {
+      const authUrl = data?.auth_url as string | undefined;
+      if (!authUrl) return;
+
+      if (ctx?.popup && !ctx.popup.closed) {
+        ctx.popup.location.href = authUrl;
+        ctx.popup.focus?.();
+        return;
+      }
+
+      // Fallback: show a clickable link (works even with popup blockers / iframe limitations)
       toast({
-        title: "Erro ao conectar",
-        description: error.message,
-        variant: "destructive"
+        title: 'Abrir autorização do Mercado Pago',
+        description: (
+          <a
+            href={authUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="underline"
+          >
+            Clique aqui para abrir o Mercado Pago
+          </a>
+        ),
       });
-    }
+    },
+    onError: (error: Error, _vars, ctx) => {
+      if (ctx?.popup && !ctx.popup.closed) ctx.popup.close();
+      toast({
+        title: 'Erro ao conectar',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
   });
 
   // Disconnect from Mercado Pago
