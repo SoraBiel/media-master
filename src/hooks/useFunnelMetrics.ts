@@ -11,6 +11,8 @@ export interface FunnelMetrics {
   webhookStatus: "ok" | "error" | "unknown";
   lastError: string | null;
   lastMessageAt: string | null;
+  totalPaidAmountCents: number;
+  pixChartData: { date: string; label: string; amount: number; count: number }[];
 }
 
 export interface FunnelOverview {
@@ -42,6 +44,8 @@ export const useFunnelMetrics = () => {
     webhookStatus: "unknown",
     lastError: null,
     lastMessageAt: null,
+    totalPaidAmountCents: 0,
+    pixChartData: [],
   });
   const [funnelOverviews, setFunnelOverviews] = useState<FunnelOverview[]>([]);
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
@@ -92,7 +96,33 @@ export const useFunnelMetrics = () => {
         .select("*, funnels!inner(user_id, name)")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
-        .limit(20);
+        .limit(50);
+
+      // Calculate total paid amount
+      const paidPayments = payments?.filter(p => p.status === "paid" || p.status === "approved") || [];
+      const totalPaidAmountCents = paidPayments.reduce((sum, p) => sum + (p.amount_cents || 0), 0);
+
+      // Build chart data for last 7 days
+      const last7Days: { date: string; label: string; amount: number; count: number }[] = [];
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        date.setHours(0, 0, 0, 0);
+        const dateStr = date.toISOString().split('T')[0];
+        const dayLabel = date.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
+        
+        const dayPayments = paidPayments.filter(p => {
+          const paidDate = new Date(p.paid_at || p.created_at);
+          return paidDate.toISOString().split('T')[0] === dateStr;
+        });
+        
+        last7Days.push({
+          date: dateStr,
+          label: dayLabel,
+          amount: dayPayments.reduce((sum, p) => sum + (p.amount_cents || 0), 0) / 100,
+          count: dayPayments.length,
+        });
+      }
 
       // Calculate completion rate
       const totalSessions = sessions?.length || 0;
@@ -127,6 +157,8 @@ export const useFunnelMetrics = () => {
         webhookStatus,
         lastError: errorMessage,
         lastMessageAt: lastMessage?.created_at || null,
+        totalPaidAmountCents,
+        pixChartData: last7Days,
       });
 
       // Build funnel overviews
