@@ -160,6 +160,26 @@ interface TikTokAccount {
   created_at: string;
 }
 
+interface InstagramAccount {
+  id: string;
+  username: string;
+  followers: number;
+  following: number;
+  posts_count: number;
+  engagement_rate: number;
+  niche: string | null;
+  description: string | null;
+  price_cents: number;
+  is_sold: boolean;
+  is_verified: boolean;
+  image_url: string | null;
+  deliverable_login: string | null;
+  deliverable_password: string | null;
+  deliverable_email: string | null;
+  deliverable_notes: string | null;
+  created_at: string;
+}
+
 interface TelegramGroup {
   id: string;
   group_name: string;
@@ -244,6 +264,7 @@ const AdminDashboardPage = () => {
   const [checkouts, setCheckouts] = useState<CheckoutSession[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [tiktokAccounts, setTiktokAccounts] = useState<TikTokAccount[]>([]);
+  const [instagramAccounts, setInstagramAccounts] = useState<InstagramAccount[]>([]);
   const [telegramGroups, setTelegramGroups] = useState<TelegramGroup[]>([]);
   const [models, setModels] = useState<ModelForSale[]>([]);
   const [adminMedia, setAdminMedia] = useState<AdminMedia[]>([]);
@@ -352,6 +373,27 @@ const AdminDashboardPage = () => {
   const [telegramGroupImageFile, setTelegramGroupImageFile] = useState<File | null>(null);
   const telegramGroupImageInputRef = useRef<HTMLInputElement>(null);
 
+  // Instagram form state
+  const [instagramDialogOpen, setInstagramDialogOpen] = useState(false);
+  const [isUploadingInstagram, setIsUploadingInstagram] = useState(false);
+  const [instagramForm, setInstagramForm] = useState({
+    username: "",
+    followers: "",
+    following: "",
+    posts_count: "",
+    engagement_rate: "",
+    description: "",
+    niche: "",
+    price: "",
+    is_verified: false,
+    deliverable_login: "",
+    deliverable_password: "",
+    deliverable_email: "",
+    deliverable_notes: "",
+  });
+  const [instagramImageFile, setInstagramImageFile] = useState<File | null>(null);
+  const instagramImageInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     fetchAllData();
 
@@ -362,6 +404,7 @@ const AdminDashboardPage = () => {
       .on("postgres_changes", { event: "*", schema: "public", table: "subscriptions" }, () => fetchSubscriptions())
       .on("postgres_changes", { event: "*", schema: "public", table: "checkout_sessions" }, () => fetchCheckouts())
       .on("postgres_changes", { event: "*", schema: "public", table: "tiktok_accounts" }, () => fetchTikTokAccounts())
+      .on("postgres_changes", { event: "*", schema: "public", table: "instagram_accounts" }, () => fetchInstagramAccounts())
       .on("postgres_changes", { event: "*", schema: "public", table: "telegram_groups" }, () => fetchTelegramGroups())
       .on("postgres_changes", { event: "*", schema: "public", table: "models_for_sale" }, () => fetchModels())
       .on("postgres_changes", { event: "*", schema: "public", table: "admin_media" }, () => fetchAdminMedia())
@@ -381,6 +424,7 @@ const AdminDashboardPage = () => {
       fetchSubscriptions(),
       fetchCheckouts(),
       fetchTikTokAccounts(),
+      fetchInstagramAccounts(),
       fetchTelegramGroups(),
       fetchModels(),
       fetchAdminMedia(),
@@ -525,6 +569,14 @@ const AdminDashboardPage = () => {
       .select("*")
       .order("created_at", { ascending: false });
     setTiktokAccounts(data || []);
+  };
+
+  const fetchInstagramAccounts = async () => {
+    const { data } = await supabase
+      .from("instagram_accounts")
+      .select("*")
+      .order("created_at", { ascending: false });
+    setInstagramAccounts(data || []);
   };
 
   const fetchTelegramGroups = async () => {
@@ -732,6 +784,52 @@ const AdminDashboardPage = () => {
   const handleDeleteTelegramGroup = async (id: string) => {
     const { error } = await supabase.from("telegram_groups").delete().eq("id", id);
     if (!error) toast({ title: "Grupo removido!" });
+  };
+
+  const handleAddInstagramAccount = async () => {
+    setIsUploadingInstagram(true);
+    try {
+      let imageUrl: string | null = null;
+      if (instagramImageFile) {
+        imageUrl = await handleUploadImage(instagramImageFile, "product-images");
+      }
+
+      const { error } = await supabase.from("instagram_accounts").insert({
+        username: instagramForm.username.replace("@", ""),
+        followers: parseInt(instagramForm.followers) || 0,
+        following: parseInt(instagramForm.following) || 0,
+        posts_count: parseInt(instagramForm.posts_count) || 0,
+        engagement_rate: parseFloat(instagramForm.engagement_rate) || 0,
+        description: instagramForm.description || null,
+        niche: instagramForm.niche || null,
+        price_cents: Math.round(parseFloat(instagramForm.price) * 100) || 0,
+        is_verified: instagramForm.is_verified,
+        image_url: imageUrl,
+        deliverable_login: instagramForm.deliverable_login || null,
+        deliverable_password: instagramForm.deliverable_password || null,
+        deliverable_email: instagramForm.deliverable_email || null,
+        deliverable_notes: instagramForm.deliverable_notes || null,
+      });
+
+      if (!error) {
+        toast({ title: "Conta Instagram adicionada!" });
+        setInstagramDialogOpen(false);
+        setInstagramForm({
+          username: "", followers: "", following: "", posts_count: "", engagement_rate: "",
+          description: "", niche: "", price: "", is_verified: false,
+          deliverable_login: "", deliverable_password: "", deliverable_email: "", deliverable_notes: "",
+        });
+        setInstagramImageFile(null);
+        fetchInstagramAccounts();
+      }
+    } finally {
+      setIsUploadingInstagram(false);
+    }
+  };
+
+  const handleDeleteInstagramAccount = async (id: string) => {
+    const { error } = await supabase.from("instagram_accounts").delete().eq("id", id);
+    if (!error) toast({ title: "Conta Instagram removida!" });
   };
 
   const handleAddModel = async () => {
@@ -1908,7 +2006,8 @@ const AdminDashboardPage = () => {
                     TikTok ({tiktokAccounts.length})
                   </TabsTrigger>
                   <TabsTrigger value="instagram" className="gap-2">
-                    Instagram (0)
+                    <Image className="w-4 h-4" />
+                    Instagram ({instagramAccounts.length})
                   </TabsTrigger>
                   <TabsTrigger value="telegram-groups" className="gap-2">
                     <Users className="w-4 h-4" />
@@ -2030,13 +2129,134 @@ const AdminDashboardPage = () => {
 
               {/* Instagram Sub-Tab */}
               <TabsContent value="instagram" className="space-y-4">
-                <Card className="glass-card">
-                  <CardContent className="p-12 text-center">
-                    <Video className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">Em breve</h3>
-                    <p className="text-muted-foreground">Contas Instagram estarão disponíveis em breve.</p>
-                  </CardContent>
-                </Card>
+                <div className="flex items-center justify-end">
+                  <Dialog open={instagramDialogOpen} onOpenChange={setInstagramDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button className="telegram-gradient text-white gap-2">
+                        <Plus className="w-4 h-4" />Adicionar Conta Instagram
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>Nova Conta Instagram</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div>
+                          <Label>Username</Label>
+                          <Input value={instagramForm.username} onChange={(e) => setInstagramForm({ ...instagramForm, username: e.target.value })} placeholder="@usuario" />
+                        </div>
+                        <div className="grid grid-cols-3 gap-4">
+                          <div>
+                            <Label>Seguidores</Label>
+                            <Input type="number" value={instagramForm.followers} onChange={(e) => setInstagramForm({ ...instagramForm, followers: e.target.value })} placeholder="50000" />
+                          </div>
+                          <div>
+                            <Label>Seguindo</Label>
+                            <Input type="number" value={instagramForm.following} onChange={(e) => setInstagramForm({ ...instagramForm, following: e.target.value })} placeholder="500" />
+                          </div>
+                          <div>
+                            <Label>Posts</Label>
+                            <Input type="number" value={instagramForm.posts_count} onChange={(e) => setInstagramForm({ ...instagramForm, posts_count: e.target.value })} placeholder="100" />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label>Taxa de Engajamento (%)</Label>
+                            <Input type="number" step="0.1" value={instagramForm.engagement_rate} onChange={(e) => setInstagramForm({ ...instagramForm, engagement_rate: e.target.value })} placeholder="3.5" />
+                          </div>
+                          <div className="flex items-center gap-2 pt-6">
+                            <input 
+                              type="checkbox" 
+                              id="is_verified"
+                              checked={instagramForm.is_verified}
+                              onChange={(e) => setInstagramForm({ ...instagramForm, is_verified: e.target.checked })}
+                              className="h-4 w-4"
+                            />
+                            <Label htmlFor="is_verified">Conta Verificada</Label>
+                          </div>
+                        </div>
+                        <div>
+                          <Label>Nicho</Label>
+                          <Input value={instagramForm.niche} onChange={(e) => setInstagramForm({ ...instagramForm, niche: e.target.value })} placeholder="Moda, Fitness, etc." />
+                        </div>
+                        <div>
+                          <Label>Descrição</Label>
+                          <Textarea value={instagramForm.description} onChange={(e) => setInstagramForm({ ...instagramForm, description: e.target.value })} placeholder="Descreva a conta..." />
+                        </div>
+                        <div>
+                          <Label>Preço (R$)</Label>
+                          <Input type="number" step="0.01" value={instagramForm.price} onChange={(e) => setInstagramForm({ ...instagramForm, price: e.target.value })} placeholder="999.90" />
+                        </div>
+                        <div>
+                          <Label>Foto da Conta</Label>
+                          <input type="file" ref={instagramImageInputRef} accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) setInstagramImageFile(file); }} />
+                          <div className="mt-2">
+                            {instagramImageFile ? (
+                              <div className="flex items-center gap-2 p-2 bg-secondary/50 rounded-lg">
+                                <Image className="w-4 h-4" />
+                                <span className="text-sm flex-1 truncate">{instagramImageFile.name}</span>
+                                <Button variant="ghost" size="sm" onClick={() => setInstagramImageFile(null)}><Trash2 className="w-4 h-4" /></Button>
+                              </div>
+                            ) : (
+                              <Button variant="outline" className="w-full" onClick={() => instagramImageInputRef.current?.click()}>
+                                <Upload className="w-4 h-4 mr-2" />Selecionar Foto
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                        <div className="border-t pt-4 mt-4">
+                          <h4 className="font-semibold mb-3 flex items-center gap-2"><Shield className="w-4 h-4" />Dados para Entrega</h4>
+                          <div className="space-y-3">
+                            <div><Label>Login</Label><Input value={instagramForm.deliverable_login} onChange={(e) => setInstagramForm({ ...instagramForm, deliverable_login: e.target.value })} placeholder="email@exemplo.com" /></div>
+                            <div><Label>Senha</Label><Input type="password" value={instagramForm.deliverable_password} onChange={(e) => setInstagramForm({ ...instagramForm, deliverable_password: e.target.value })} placeholder="senha123" /></div>
+                            <div><Label>Email Vinculado</Label><Input value={instagramForm.deliverable_email} onChange={(e) => setInstagramForm({ ...instagramForm, deliverable_email: e.target.value })} placeholder="email@exemplo.com" /></div>
+                            <div><Label>Notas</Label><Textarea value={instagramForm.deliverable_notes} onChange={(e) => setInstagramForm({ ...instagramForm, deliverable_notes: e.target.value })} placeholder="Instruções..." /></div>
+                          </div>
+                        </div>
+                        <Button onClick={handleAddInstagramAccount} className="w-full telegram-gradient text-white" disabled={isUploadingInstagram}>
+                          {isUploadingInstagram ? <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />Salvando...</> : "Adicionar Conta"}
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+
+                <div className="glass-card overflow-hidden overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Username</TableHead>
+                        <TableHead>Seguidores</TableHead>
+                        <TableHead>Engajamento</TableHead>
+                        <TableHead>Nicho</TableHead>
+                        <TableHead>Preço</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {instagramAccounts.map((account) => (
+                        <TableRow key={account.id}>
+                          <TableCell className="font-medium">
+                            <div className="flex items-center gap-2">
+                              @{account.username}
+                              {account.is_verified && <CheckCircle2 className="w-4 h-4 text-telegram" />}
+                            </div>
+                          </TableCell>
+                          <TableCell>{formatNumber(account.followers)}</TableCell>
+                          <TableCell>{account.engagement_rate?.toFixed(1)}%</TableCell>
+                          <TableCell>{account.niche || "—"}</TableCell>
+                          <TableCell className="font-semibold">{formatPrice(account.price_cents)}</TableCell>
+                          <TableCell><Badge variant={account.is_sold ? "secondary" : "default"}>{account.is_sold ? "Vendido" : "Disponível"}</Badge></TableCell>
+                          <TableCell><Button variant="ghost" size="icon" onClick={() => handleDeleteInstagramAccount(account.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button></TableCell>
+                        </TableRow>
+                      ))}
+                      {instagramAccounts.length === 0 && (
+                        <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Nenhuma conta Instagram cadastrada</TableCell></TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
               </TabsContent>
 
               {/* Telegram Groups Sub-Tab */}

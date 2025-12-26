@@ -26,6 +26,7 @@ import {
   Megaphone,
   Bot,
   LayoutTemplate,
+  DollarSign,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
@@ -44,6 +45,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
 
 const DashboardPage = () => {
   const navigate = useNavigate();
@@ -229,6 +231,64 @@ const DashboardPage = () => {
               </Card>
             </motion.div>
           ))}
+        </div>
+
+        {/* Revenue and Chart Section */}
+        <div className="grid gap-6 lg:grid-cols-3">
+          {/* Total Revenue Card */}
+          <Card className="glass-card">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <DollarSign className="w-5 h-5 text-success" />
+                Total Recebido
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-bold text-success">
+                  R$ {(metrics.totalPaidAmountCents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">Pagamentos PIX aprovados</p>
+            </CardContent>
+          </Card>
+
+          {/* PIX Evolution Chart */}
+          <Card className="lg:col-span-2 glass-card">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <TrendingUp className="w-5 h-5" />
+                Evolução de Vendas - Últimos 7 dias
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[180px]">
+                {metrics.pixChartData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={metrics.pixChartData}>
+                      <defs>
+                        <linearGradient id="colorPixAmount" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="hsl(var(--success))" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="hsl(var(--success))" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <XAxis dataKey="label" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                      <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} tickFormatter={(v) => `R$${v}`} />
+                      <Tooltip 
+                        formatter={(value: number) => [`R$ ${value.toFixed(2)}`, 'Faturamento']}
+                        contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
+                      />
+                      <Area type="monotone" dataKey="amount" stroke="hsl(var(--success))" strokeWidth={2} fill="url(#colorPixAmount)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-full text-muted-foreground">
+                    <p>Nenhum pagamento registrado</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Main Content Grid */}
