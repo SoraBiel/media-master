@@ -31,11 +31,21 @@ export const PropertiesPanel = ({
   const [localData, setLocalData] = useState<BlockData>({});
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
   const debounceRef = useRef<NodeJS.Timeout>();
   const nodeIdRef = useRef<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  // Get current user id
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) setUserId(user.id);
+    };
+    getUser();
+  }, []);
 
   // Sync local state with selected node
   useEffect(() => {
@@ -198,13 +208,16 @@ export const PropertiesPanel = ({
                     className="hidden"
                     onChange={async (e) => {
                       const file = e.target.files?.[0];
-                      if (!file) return;
+                      if (!file || !userId) {
+                        if (!userId) toast({ title: 'Usuário não autenticado', variant: 'destructive' });
+                        return;
+                      }
                       
                       setUploadingImage(true);
                       try {
                         const fileExt = file.name.split('.').pop();
                         const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-                        const filePath = `funnel-media/${fileName}`;
+                        const filePath = `${userId}/${fileName}`;
                         
                         const { error: uploadError } = await supabase.storage
                           .from('user-media')
@@ -285,13 +298,16 @@ export const PropertiesPanel = ({
                     className="hidden"
                     onChange={async (e) => {
                       const file = e.target.files?.[0];
-                      if (!file) return;
+                      if (!file || !userId) {
+                        if (!userId) toast({ title: 'Usuário não autenticado', variant: 'destructive' });
+                        return;
+                      }
                       
                       setUploadingVideo(true);
                       try {
                         const fileExt = file.name.split('.').pop();
                         const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-                        const filePath = `funnel-media/${fileName}`;
+                        const filePath = `${userId}/${fileName}`;
                         
                         const { error: uploadError } = await supabase.storage
                           .from('user-media')
