@@ -86,27 +86,7 @@ serve(async (req) => {
       });
     }
 
-    // Get media pack
-    const { data: mediaPack, error: mediaError } = await supabaseClient
-      .from("admin_media")
-      .select("*")
-      .eq("id", campaign.media_pack_id)
-      .single();
-
-    if (mediaError || !mediaPack) {
-      console.error("Media pack not found:", mediaError);
-      await supabaseClient.from("campaigns").update({
-        status: "failed",
-        error_message: "Pacote de mídia não encontrado",
-      }).eq("id", campaignId);
-      
-      return new Response(JSON.stringify({ error: "Pacote de mídia não encontrado" }), {
-        status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Get destination
+    // Get destination first
     const { data: destination, error: destError } = await supabaseClient
       .from("destinations")
       .select("*")
@@ -164,21 +144,89 @@ serve(async (req) => {
       });
     }
 
-    // Extract media URLs
-    const rawMediaFiles = mediaPack.media_files as (string | { url: string; type?: string; name?: string })[] || [];
-    const mediaUrls = rawMediaFiles.map((file: string | { url: string }) => {
-      if (typeof file === 'string') return file;
-      return file.url;
-    }).filter(Boolean);
+    // Determine media source: admin media pack OR user's own media
+    let mediaUrls: string[] = [];
+    
+    if (campaign.media_pack_id) {
+      // Using admin media pack
+      const { data: mediaPack, error: mediaError } = await supabaseClient
+        .from("admin_media")
+        .select("*")
+        .eq("id", campaign.media_pack_id)
+        .single();
+
+      if (mediaError || !mediaPack) {
+        console.error("Media pack not found:", mediaError);
+        await supabaseClient.from("campaigns").update({
+          status: "failed",
+          error_message: "Pacote de mídia não encontrado",
+        }).eq("id", campaignId);
+        
+        return new Response(JSON.stringify({ error: "Pacote de mídia não encontrado" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Extract media URLs from admin pack
+      const rawMediaFiles = mediaPack.media_files as (string | { url: string; type?: string; name?: string })[] || [];
+      mediaUrls = rawMediaFiles.map((file: string | { url: string }) => {
+        if (typeof file === 'string') return file;
+        return file.url;
+      }).filter(Boolean);
+
+      console.log(`Using admin media pack: ${mediaPack.name} with ${mediaUrls.length} files`);
+    } else {
+      // Using user's own media from storage
+      console.log(`Fetching user media from storage for user: ${user.id}`);
+      
+      const { data: userFiles, error: storageError } = await supabaseClient.storage
+        .from("user-media")
+        .list(user.id, {
+          limit: 1000,
+          sortBy: { column: "created_at", order: "desc" },
+        });
+
+      if (storageError) {
+        console.error("Error fetching user media:", storageError);
+        await supabaseClient.from("campaigns").update({
+          status: "failed",
+          error_message: "Erro ao buscar mídias do usuário",
+        }).eq("id", campaignId);
+        
+        return new Response(JSON.stringify({ error: "Erro ao buscar mídias" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Filter out placeholder files and generate public URLs
+      const validFiles = (userFiles || []).filter(f => 
+        f.name !== ".emptyFolderPlaceholder" && 
+        !f.name.startsWith(".")
+      );
+
+      for (const file of validFiles) {
+        const { data: urlData } = supabaseClient.storage
+          .from("user-media")
+          .getPublicUrl(`${user.id}/${file.name}`);
+        
+        if (urlData?.publicUrl) {
+          mediaUrls.push(urlData.publicUrl);
+        }
+      }
+
+      console.log(`Using user's own media: ${mediaUrls.length} files`);
+    }
 
     if (mediaUrls.length === 0) {
-      console.error("No media files in pack");
+      console.error("No media files found");
       await supabaseClient.from("campaigns").update({
         status: "failed",
-        error_message: "Pacote de mídia sem arquivos",
+        error_message: "Nenhum arquivo de mídia encontrado",
       }).eq("id", campaignId);
       
-      return new Response(JSON.stringify({ error: "Pacote sem arquivos" }), {
+      return new Response(JSON.stringify({ error: "Nenhum arquivo encontrado" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
