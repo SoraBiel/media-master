@@ -12,6 +12,7 @@ import {
   Webhook,
   Flag,
   RefreshCcw,
+  CreditCard,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { BlockType, BLOCK_INFO, BLOCK_CATEGORIES } from './types';
@@ -29,6 +30,7 @@ const ICONS: Record<BlockType, typeof Play> = {
   action_notify: Bell,
   action_webhook: Webhook,
   remarketing: RefreshCcw,
+  payment: CreditCard,
   end: Flag,
 };
 
@@ -42,6 +44,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   logic: 'Lógica',
   actions: 'Ações',
   automation: 'Automação',
+  payments: 'Pagamentos',
 };
 
 export const BlockSidebar = ({ onDragStart }: BlockSidebarProps) => {

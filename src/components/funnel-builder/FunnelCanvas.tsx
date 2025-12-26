@@ -505,6 +505,14 @@ function getDefaultDataForType(type: BlockType): BlockData {
         remarketingMessage: 'Oi! Notei que você não finalizou. Posso ajudar?',
         remarketingMaxAttempts: 3,
       };
+    case 'payment':
+      return { 
+        productId: '',
+        productSelectionType: 'fixed',
+        paymentMessage: '💰 Segue o PIX para pagamento:\n\n{pix_code}\n\nValor: R$ {amount}',
+        successMessage: '✅ Pagamento confirmado! Obrigado pela compra.',
+        timeoutMinutes: 30,
+      };
     case 'end':
       return { label: 'Fim' };
     default:
