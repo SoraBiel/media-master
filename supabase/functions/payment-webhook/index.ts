@@ -266,6 +266,13 @@ serve(async (req) => {
     } else if (transaction.product_type === "tiktok_account") {
       console.log(`Processing TikTok account purchase: ${transaction.product_id}`);
       
+      // Get account details for delivery
+      const { data: account } = await supabaseClient
+        .from("tiktok_accounts")
+        .select("*")
+        .eq("id", transaction.product_id)
+        .single();
+      
       // Mark account as sold
       const { error } = await supabaseClient
         .from("tiktok_accounts")
@@ -282,7 +289,14 @@ serve(async (req) => {
         console.log(`TikTok account ${transaction.product_id} marked as sold`);
       }
 
-      // Create delivery record
+      // Create delivery record with deliverable data
+      const deliveryData = account ? {
+        login: account.deliverable_login,
+        password: account.deliverable_password,
+        email: account.deliverable_email,
+        notes: account.deliverable_notes,
+      } : {};
+
       const { error: deliveryError } = await supabaseClient
         .from("deliveries")
         .insert({
@@ -291,6 +305,7 @@ serve(async (req) => {
           product_id: transaction.product_id,
           transaction_id: transaction.id,
           delivered_at: new Date().toISOString(),
+          delivery_data: deliveryData,
         });
 
       if (deliveryError) {
@@ -300,6 +315,13 @@ serve(async (req) => {
       }
     } else if (transaction.product_type === "model") {
       console.log(`Processing model purchase: ${transaction.product_id}`);
+      
+      // Get model details for delivery
+      const { data: model } = await supabaseClient
+        .from("models_for_sale")
+        .select("*")
+        .eq("id", transaction.product_id)
+        .single();
       
       // Mark model as sold
       const { error } = await supabaseClient
@@ -317,7 +339,12 @@ serve(async (req) => {
         console.log(`Model ${transaction.product_id} marked as sold`);
       }
 
-      // Create delivery record
+      // Create delivery record with deliverable data
+      const deliveryData = model ? {
+        link: model.deliverable_link,
+        notes: model.deliverable_notes,
+      } : {};
+
       const { error: deliveryError } = await supabaseClient
         .from("deliveries")
         .insert({
@@ -326,12 +353,62 @@ serve(async (req) => {
           product_id: transaction.product_id,
           transaction_id: transaction.id,
           delivered_at: new Date().toISOString(),
+          delivery_data: deliveryData,
         });
 
       if (deliveryError) {
         console.error("Error creating delivery:", deliveryError);
       } else {
         console.log("Delivery record created for model");
+      }
+    } else if (transaction.product_type === "telegram_group") {
+      console.log(`Processing Telegram group purchase: ${transaction.product_id}`);
+      
+      // Get group details for delivery
+      const { data: group } = await supabaseClient
+        .from("telegram_groups")
+        .select("*")
+        .eq("id", transaction.product_id)
+        .single();
+      
+      // Mark group as sold
+      const { error } = await supabaseClient
+        .from("telegram_groups")
+        .update({
+          is_sold: true,
+          sold_to_user_id: transaction.user_id,
+          sold_at: new Date().toISOString(),
+        })
+        .eq("id", transaction.product_id);
+
+      if (error) {
+        console.error("Error updating telegram group:", error);
+      } else {
+        console.log(`Telegram group ${transaction.product_id} marked as sold`);
+      }
+
+      // Create delivery record with deliverable data
+      const deliveryData = group ? {
+        invite_link: group.deliverable_invite_link,
+        info: group.deliverable_info,
+        notes: group.deliverable_notes,
+      } : {};
+
+      const { error: deliveryError } = await supabaseClient
+        .from("deliveries")
+        .insert({
+          user_id: transaction.user_id,
+          product_type: "telegram_group",
+          product_id: transaction.product_id,
+          transaction_id: transaction.id,
+          delivered_at: new Date().toISOString(),
+          delivery_data: deliveryData,
+        });
+
+      if (deliveryError) {
+        console.error("Error creating delivery:", deliveryError);
+      } else {
+        console.log("Delivery record created for Telegram group");
       }
     }
 

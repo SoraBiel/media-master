@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 interface PaymentRequest {
-  product_type: "subscription" | "tiktok_account" | "model";
+  product_type: "subscription" | "tiktok_account" | "model" | "telegram_group";
   product_id?: string;
   plan_slug?: string;
   buyer: {
@@ -150,6 +150,24 @@ serve(async (req) => {
       amountCents = model.price_cents;
       productName = `Modelo ${model.name}`;
       productIdForDb = model.id;
+    } else if (product_type === "telegram_group" && product_id) {
+      const { data: group, error: groupError } = await supabaseClient
+        .from("telegram_groups")
+        .select("*")
+        .eq("id", product_id)
+        .eq("is_sold", false)
+        .single();
+
+      if (groupError || !group) {
+        return new Response(JSON.stringify({ error: "Telegram group not found or already sold" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      amountCents = group.price_cents;
+      productName = `Grupo Telegram ${group.group_name}`;
+      productIdForDb = group.id;
     } else {
       return new Response(JSON.stringify({ error: "Invalid product" }), {
         status: 400,

@@ -95,6 +95,13 @@ const DeliveryPage = () => {
             .eq("id", deliveryData.product_id)
             .maybeSingle();
           setProductInfo(data);
+        } else if (deliveryData.product_type === "telegram_group") {
+          const { data } = await supabase
+            .from("telegram_groups")
+            .select("*")
+            .eq("id", deliveryData.product_id)
+            .maybeSingle();
+          setProductInfo(data);
         }
       } catch (error) {
         console.error("Error fetching delivery:", error);
@@ -299,6 +306,74 @@ const DeliveryPage = () => {
               <p className="text-sm whitespace-pre-wrap">{data.notes}</p>
             </div>
           )}
+        </div>
+      );
+    }
+
+    if (delivery.product_type === "telegram_group" && productInfo) {
+      return (
+        <div className="space-y-4">
+          <div className="p-4 rounded-lg bg-success/10 border border-success/30 text-center">
+            <CheckCircle2 className="w-12 h-12 mx-auto text-success mb-2" />
+            <h3 className="text-xl font-bold">Compra Confirmada!</h3>
+            <p className="text-muted-foreground">Seu grupo Telegram está pronto</p>
+          </div>
+
+          {productInfo.image_url && (
+            <div className="flex justify-center">
+              <img
+                src={productInfo.image_url}
+                alt={productInfo.group_name}
+                className="w-24 h-24 rounded-full object-cover border-4 border-primary"
+              />
+            </div>
+          )}
+
+          <div className="text-center">
+            <h2 className="text-2xl font-bold">{productInfo.group_name}</h2>
+            {productInfo.group_username && (
+              <p className="text-muted-foreground">@{productInfo.group_username}</p>
+            )}
+            <p className="text-sm text-muted-foreground mt-1">
+              {productInfo.members_count?.toLocaleString()} membros
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            {data.invite_link && (
+              <div className="p-4 rounded-lg bg-secondary">
+                <p className="text-sm text-muted-foreground mb-2">Link de Convite</p>
+                <div className="flex items-center gap-2">
+                  <a
+                    href={data.invite_link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary underline break-all flex-1"
+                  >
+                    {data.invite_link}
+                  </a>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleCopy(data.invite_link, "Link")}
+                  >
+                    {copiedField === "Link" ? (
+                      <CheckCircle2 className="w-4 h-4 text-success" />
+                    ) : (
+                      <Copy className="w-4 h-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {data.notes && (
+              <div className="p-4 rounded-lg bg-warning/10 border border-warning/30">
+                <p className="text-sm font-medium text-warning mb-1">Informações Adicionais</p>
+                <p className="text-sm whitespace-pre-wrap">{data.notes}</p>
+              </div>
+            )}
+          </div>
         </div>
       );
     }
