@@ -23,6 +23,7 @@ import FunnelsPage from "./pages/FunnelsPage";
 import FunnelBuilderPage from "./pages/FunnelBuilderPage";
 import WhatsAppPage from "./pages/WhatsAppPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
+import ResellerPage from "./pages/ResellerPage";
 import SettingsPage from "./pages/SettingsPage";
 import DeliveryPage from "./pages/DeliveryPage";
 import UserDetailsPage from "./pages/UserDetailsPage";
@@ -77,6 +78,7 @@ const App = () => (
             <Route path="/delivery" element={<ProtectedRoute><DeliveryPage /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute requireAdmin><AdminDashboardPage /></ProtectedRoute>} />
             <Route path="/admin/user/:userId" element={<ProtectedRoute requireAdmin><UserDetailsPage /></ProtectedRoute>} />
+            <Route path="/reseller" element={<ProtectedRoute requireVendor><ResellerPage /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
             <Route path="/integrations" element={<ProtectedRoute><IntegrationsPage /></ProtectedRoute>} />
             <Route path="/payments" element={<ProtectedRoute><PaymentsPage /></ProtectedRoute>} />
