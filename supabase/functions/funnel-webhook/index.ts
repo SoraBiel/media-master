@@ -180,48 +180,117 @@ serve(async (req) => {
       }
 
       if (action === 'pix_paid') {
-        // Check payment status in Mercado Pago
-        const { data: payment } = await supabase
+        // Reconcile payment status with Mercado Pago (webhooks may be blocked)
+        const { data: payment, error: paymentError } = await supabase
           .from('funnel_payments')
           .select('*, funnel_products(*)')
           .eq('id', paymentId)
-          .single();
+          .maybeSingle();
 
-        if (payment) {
-          if (payment.status === 'approved' || payment.status === 'paid') {
-            await callTelegramAPI(botToken, "sendMessage", {
-              chat_id: chatId,
-              text: "✅ <b>Pagamento confirmado!</b>\n\nSeu acesso está sendo liberado...",
-              parse_mode: "HTML",
-            });
-          } else if (payment.status === 'pending') {
-            await callTelegramAPI(botToken, "sendMessage", {
-              chat_id: chatId,
-              text: "⏳ <b>Pagamento ainda não identificado.</b>\n\nAguarde alguns instantes e tente novamente. O PIX pode levar até 1 minuto para ser processado.",
-              parse_mode: "HTML",
-              reply_markup: {
-                inline_keyboard: [
-                  [{ text: "🔄 Verificar Novamente", callback_data: `pix_paid:${paymentId}` }],
-                ],
-              },
-            });
-          } else {
-            await callTelegramAPI(botToken, "sendMessage", {
-              chat_id: chatId,
-              text: `⚠️ Status do pagamento: ${payment.status}.\n\nSe você já pagou, aguarde alguns instantes.`,
-              parse_mode: "HTML",
-            });
-          }
-        } else {
-          await callTelegramAPI(botToken, "sendMessage", {
+        if (paymentError) {
+          console.error('Error fetching payment:', paymentError);
+        }
+
+        if (!payment) {
+          await callTelegramAPI(botToken, 'sendMessage', {
             chat_id: chatId,
-            text: "❌ Pagamento não encontrado. Entre em contato com o suporte.",
-            parse_mode: "HTML",
+            text: '❌ Pagamento não encontrado. Entre em contato com o suporte.',
+            parse_mode: 'HTML',
+          });
+
+          return new Response(JSON.stringify({ ok: true, action: 'pix_paid', status: 'not_found' }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
 
-        return new Response(JSON.stringify({ ok: true, action: 'pix_paid', status: payment?.status }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        // Get user's Mercado Pago integration (token)
+        const { data: mpIntegration, error: mpIntegrationError } = await supabase
+          .from('integrations')
+          .select('*')
+          .eq('user_id', payment.user_id)
+          .eq('provider', 'mercadopago')
+          .eq('status', 'active')
+          .maybeSingle();
+
+        if (mpIntegrationError) {
+          console.error('Error fetching Mercado Pago integration:', mpIntegrationError);
+        }
+
+        if (!mpIntegration) {
+          await callTelegramAPI(botToken, 'sendMessage', {
+            chat_id: chatId,
+            text: '⚠️ Não foi possível verificar o pagamento agora. Tente novamente em alguns instantes.',
+            parse_mode: 'HTML',
+          });
+
+          return new Response(JSON.stringify({ ok: true, action: 'pix_paid', status: payment.status }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        // Fetch payment status from Mercado Pago
+        let mpStatus: string | undefined;
+        try {
+          const providerPaymentId = String(payment.provider_payment_id || '');
+          const mpRes = await fetch(`https://api.mercadopago.com/v1/payments/${providerPaymentId}`, {
+            headers: {
+              Authorization: `Bearer ${mpIntegration.access_token}`,
+              'Content-Type': 'application/json',
+            },
+          });
+
+          const mpPayment = await mpRes.json();
+          if (!mpRes.ok) {
+            console.error('Mercado Pago status fetch failed:', mpPayment);
+          } else {
+            mpStatus = mpPayment?.status;
+          }
+        } catch (e) {
+          console.error('Error fetching Mercado Pago payment:', e);
+        }
+
+        const newStatus = mpStatus || payment.status;
+        const nowIso = new Date().toISOString();
+
+        // Persist latest status
+        const statusUpdate: Record<string, unknown> = { status: newStatus, updated_at: nowIso };
+        if (newStatus === 'approved' && !payment.paid_at) statusUpdate.paid_at = nowIso;
+        await supabase.from('funnel_payments').update(statusUpdate).eq('id', payment.id);
+
+        if (newStatus === 'approved') {
+          // Deliver product (once)
+          if (payment.delivery_status !== 'delivered') {
+            await deliverFunnelProduct(botToken, chatId, payment);
+            await supabase
+              .from('funnel_payments')
+              .update({ delivery_status: 'delivered', delivered_at: nowIso, updated_at: nowIso })
+              .eq('id', payment.id);
+          }
+
+          await callTelegramAPI(botToken, 'sendMessage', {
+            chat_id: chatId,
+            text: '✅ <b>Pagamento confirmado!</b>\n\nSe você comprou acesso ao grupo, peça para entrar que eu aprovo automaticamente.',
+            parse_mode: 'HTML',
+          });
+        } else if (newStatus === 'pending' || !newStatus) {
+          await callTelegramAPI(botToken, 'sendMessage', {
+            chat_id: chatId,
+            text: '⏳ <b>Pagamento ainda não identificado.</b>\n\nAguarde alguns instantes e tente novamente. O PIX pode levar até 1 minuto para ser processado.',
+            parse_mode: 'HTML',
+            reply_markup: {
+              inline_keyboard: [[{ text: '🔄 Verificar Novamente', callback_data: `pix_paid:${paymentId}` }]],
+            },
+          });
+        } else {
+          await callTelegramAPI(botToken, 'sendMessage', {
+            chat_id: chatId,
+            text: `⚠️ Status do pagamento: ${newStatus}.\n\nSe você já pagou, aguarde alguns instantes e tente novamente.`,
+            parse_mode: 'HTML',
+          });
+        }
+
+        return new Response(JSON.stringify({ ok: true, action: 'pix_paid', status: newStatus }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
@@ -892,6 +961,46 @@ serve(async (req) => {
   }
 });
 
+async function deliverFunnelProduct(botToken: string, chatId: string | number, payment: any) {
+  try {
+    const product = payment?.funnel_products;
+    if (!product) return;
+
+    // Group product: send invite link / instructions (approval happens on join request)
+    if (product.delivery_type === 'group') {
+      const groupText = product.group_invite_link
+        ? `✅ <b>Pagamento confirmado!</b>\n\n🎉 Seu acesso ao grupo <b>${product.name}</b> foi liberado.\n\n🔗 Entre por aqui: ${product.group_invite_link}\n\nDepois de pedir para entrar, eu aprovo automaticamente.`
+        : `✅ <b>Pagamento confirmado!</b>\n\n🎉 Seu acesso ao grupo <b>${product.name}</b> foi liberado.\n\nAgora peça para entrar no grupo (solicitação de entrada) que eu aprovo automaticamente.`;
+
+      await callTelegramAPI(botToken, 'sendMessage', {
+        chat_id: chatId,
+        text: groupText,
+        parse_mode: 'HTML',
+      });
+      return;
+    }
+
+    // Link/message product
+    let message = `✅ <b>Pagamento Confirmado!</b>\n\nObrigado pela compra de <b>${product.name}</b>!\n\n`;
+
+    if ((product.delivery_type === 'link' || product.delivery_type === 'both') && product.delivery_content) {
+      message += `🔗 Seu acesso: ${product.delivery_content}\n\n`;
+    }
+
+    if ((product.delivery_type === 'message' || product.delivery_type === 'both') && product.delivery_message) {
+      message += product.delivery_message;
+    }
+
+    await callTelegramAPI(botToken, 'sendMessage', {
+      chat_id: chatId,
+      text: message,
+      parse_mode: 'HTML',
+    });
+  } catch (e) {
+    console.error('deliverFunnelProduct error:', e);
+  }
+}
+
 // Handle chat join requests for group product delivery
 async function handleChatJoinRequest(
   supabase: any,
@@ -932,11 +1041,11 @@ async function handleChatJoinRequest(
       .select("*, funnel_products(*)")
       .eq("status", "approved")
       .eq("lead_chat_id", String(telegramUserId))
-      .single();
+      .maybeSingle();
 
     // Also check by telegram user ID if lead_chat_id didn't match
     let approvedPayment = payment;
-    
+
     if (!approvedPayment) {
       // Try finding by any payment where product has this group
       const { data: productPayment } = await supabase
@@ -945,8 +1054,8 @@ async function handleChatJoinRequest(
         .eq("status", "approved")
         .eq("funnel_products.group_chat_id", groupChatId)
         .eq("lead_chat_id", String(telegramUserId))
-        .single();
-      
+        .maybeSingle();
+
       approvedPayment = productPayment;
     }
 
