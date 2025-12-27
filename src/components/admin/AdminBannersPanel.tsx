@@ -347,6 +347,17 @@ export const AdminBannersPanel = () => {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {/* Dimension Guidelines */}
+            <div className="rounded-lg bg-muted/50 p-3 border border-border">
+              <p className="text-sm font-medium mb-1">Dimensões recomendadas:</p>
+              <ul className="text-xs text-muted-foreground space-y-0.5">
+                <li>• <span className="font-medium text-foreground">Desktop:</span> 1200x400px (proporção 3:1)</li>
+                <li>• <span className="font-medium text-foreground">Mobile:</span> 1200x400px (proporção 3:1)</li>
+                <li>• <span className="font-medium text-foreground">Formatos:</span> JPG, PNG, WebP</li>
+                <li>• <span className="font-medium text-foreground">Tamanho máximo:</span> 2MB</li>
+              </ul>
+            </div>
+
             <div>
               <Label>Imagem do Banner *</Label>
               <div className="mt-1">
@@ -377,7 +388,7 @@ export const AdminBannersPanel = () => {
                     <div className="flex flex-col items-center gap-2">
                       <Upload className="w-6 h-6" />
                       <span className="text-sm">Clique para upload</span>
-                      <span className="text-xs text-muted-foreground">Recomendado: 1200x400px</span>
+                      <span className="text-xs text-muted-foreground">1200x400px recomendado</span>
                     </div>
                   </Button>
                 )}
