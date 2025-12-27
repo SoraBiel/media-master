@@ -1,8 +1,12 @@
+import { useState } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { DateRangePicker } from "@/components/DateRangePicker";
+import { DateRange } from "react-day-picker";
+import { subDays, startOfDay, endOfDay, differenceInDays } from "date-fns";
 import {
   Users,
   GitBranch,
@@ -63,13 +67,23 @@ const DashboardPage = () => {
     isFeatureBlocked,
     getBlockReason,
   } = usePlanExpiration();
+  
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: startOfDay(subDays(new Date(), 6)),
+    to: endOfDay(new Date()),
+  });
+  
   const {
     metrics,
     funnelOverviews,
     recentActivity,
     isLoading: metricsLoading,
     refetch,
-  } = useFunnelMetrics();
+  } = useFunnelMetrics(dateRange);
+
+  const periodLabel = dateRange?.from && dateRange?.to 
+    ? `${differenceInDays(dateRange.to, dateRange.from) + 1} dias`
+    : 'Últimos 7 dias';
 
   const formatTimeAgo = (date: string) => {
     const now = new Date();
@@ -195,7 +209,12 @@ const DashboardPage = () => {
               Acompanhe seus funis e conversões em tempo real.
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <DateRangePicker
+              dateRange={dateRange}
+              onDateRangeChange={setDateRange}
+              className="w-[260px]"
+            />
             <TelegramSandbox />
             <Button variant="outline" size="icon" onClick={refetch}>
               <RefreshCw className="w-4 h-4" />
@@ -258,7 +277,7 @@ const DashboardPage = () => {
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-base">
                 <TrendingUp className="w-5 h-5" />
-                Evolução de Vendas - Últimos 7 dias
+                Evolução de Vendas - {periodLabel}
               </CardTitle>
             </CardHeader>
             <CardContent>

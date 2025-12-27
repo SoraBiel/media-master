@@ -2,11 +2,12 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DateRangePicker } from "@/components/DateRangePicker";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
+import { DateRange } from "react-day-picker";
 import { 
   Loader2, 
   DollarSign, 
@@ -19,7 +20,7 @@ import {
   ArrowDownRight,
   RefreshCw
 } from "lucide-react";
-import { format, subDays, startOfDay, endOfDay } from "date-fns";
+import { format, subDays, startOfDay, endOfDay, differenceInDays, eachDayOfInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   LineChart,
@@ -55,27 +56,32 @@ const COLORS = ['#10b981', '#f59e0b', '#ef4444', '#6366f1'];
 
 const PaymentsPage = () => {
   const { user } = useAuth();
-  const [period, setPeriod] = useState('7');
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: startOfDay(subDays(new Date(), 6)),
+    to: endOfDay(new Date()),
+  });
 
   // Fetch payments
   const { data: payments, isLoading, refetch } = useQuery({
-    queryKey: ['payments-dashboard', user?.id, period],
+    queryKey: ['payments-dashboard', user?.id, dateRange?.from?.toISOString(), dateRange?.to?.toISOString()],
     queryFn: async () => {
-      if (!user?.id) return [];
+      if (!user?.id || !dateRange?.from) return [];
       
-      const startDate = startOfDay(subDays(new Date(), parseInt(period))).toISOString();
+      const startDate = startOfDay(dateRange.from).toISOString();
+      const endDate = dateRange.to ? endOfDay(dateRange.to).toISOString() : endOfDay(new Date()).toISOString();
       
       const { data, error } = await supabase
         .from('funnel_payments')
         .select('*, funnel_products(name)')
         .eq('user_id', user.id)
         .gte('created_at', startDate)
+        .lte('created_at', endDate)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
       return data as Payment[];
     },
-    enabled: !!user?.id
+    enabled: !!user?.id && !!dateRange?.from
   });
 
   // Calculate metrics
@@ -105,13 +111,13 @@ const PaymentsPage = () => {
 
   // Chart data - daily revenue
   const dailyRevenueData = useMemo(() => {
-    if (!payments) return [];
+    if (!payments || !dateRange?.from) return [];
 
-    const days = parseInt(period);
-    const data: { date: string; revenue: number; count: number }[] = [];
+    const from = dateRange.from;
+    const to = dateRange.to || new Date();
+    const days = eachDayOfInterval({ start: from, end: to });
 
-    for (let i = days - 1; i >= 0; i--) {
-      const date = subDays(new Date(), i);
+    return days.map(date => {
       const dateStr = format(date, 'yyyy-MM-dd');
       const displayDate = format(date, 'dd/MM');
       
@@ -120,15 +126,13 @@ const PaymentsPage = () => {
         return format(new Date(p.paid_at), 'yyyy-MM-dd') === dateStr;
       });
 
-      data.push({
+      return {
         date: displayDate,
         revenue: dayPayments.reduce((sum, p) => sum + p.amount_cents / 100, 0),
         count: dayPayments.length,
-      });
-    }
-
-    return data;
-  }, [payments, period]);
+      };
+    });
+  }, [payments, dateRange]);
 
   // Status distribution for pie chart
   const statusData = useMemo(() => {
@@ -161,11 +165,15 @@ const PaymentsPage = () => {
     }
   };
 
+  const periodLabel = dateRange?.from && dateRange?.to 
+    ? `${differenceInDays(dateRange.to, dateRange.from) + 1} dias`
+    : '';
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <h1 className="text-3xl font-bold">Pagamentos</h1>
             <p className="text-muted-foreground mt-1">
@@ -173,17 +181,11 @@ const PaymentsPage = () => {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <Select value={period} onValueChange={setPeriod}>
-              <SelectTrigger className="w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="7">Últimos 7 dias</SelectItem>
-                <SelectItem value="14">Últimos 14 dias</SelectItem>
-                <SelectItem value="30">Últimos 30 dias</SelectItem>
-                <SelectItem value="90">Últimos 90 dias</SelectItem>
-              </SelectContent>
-            </Select>
+            <DateRangePicker
+              dateRange={dateRange}
+              onDateRangeChange={setDateRange}
+              className="w-[280px]"
+            />
             <Button variant="outline" size="icon" onClick={() => refetch()}>
               <RefreshCw className="w-4 h-4" />
             </Button>
@@ -238,7 +240,7 @@ const PaymentsPage = () => {
                     {metrics?.totalTransactions || 0}
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    nos últimos {period} dias
+                    {periodLabel && `nos últimos ${periodLabel}`}
                   </p>
                 </CardContent>
               </Card>
