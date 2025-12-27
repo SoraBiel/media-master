@@ -16,23 +16,120 @@ interface DispatchRequest {
   campaignId: string;
 }
 
-async function callTelegramAPI(botToken: string, method: string, params?: Record<string, any>) {
+// Helper to detect if media is a video
+function isVideoUrl(url: string): boolean {
+  const lowerUrl = url.toLowerCase();
+  return lowerUrl.includes(".mp4") || 
+         lowerUrl.includes(".mov") || 
+         lowerUrl.includes(".webm") ||
+         lowerUrl.includes(".avi") ||
+         lowerUrl.includes(".mkv") ||
+         lowerUrl.includes(".flv") ||
+         lowerUrl.includes(".wmv");
+}
+
+// Call Telegram API with retry logic
+async function callTelegramAPI(botToken: string, method: string, params?: Record<string, any>, retries = 2): Promise<any> {
   const url = `${TELEGRAM_API_BASE}${botToken}/${method}`;
   
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: params ? JSON.stringify(params) : undefined,
-  });
-  
-  const data = await response.json();
-  console.log(`Telegram API ${method} response:`, JSON.stringify(data).substring(0, 500));
-  
-  if (!data.ok) {
-    throw new Error(data.description || "Telegram API error");
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: params ? JSON.stringify(params) : undefined,
+      });
+      
+      const data = await response.json();
+      console.log(`Telegram API ${method} response (attempt ${attempt + 1}):`, JSON.stringify(data).substring(0, 500));
+      
+      if (!data.ok) {
+        // If it's a specific error about file being too large, try sendDocument instead
+        if (data.description?.includes("file is too big") || data.description?.includes("video_file_invalid")) {
+          throw new Error(`FILE_TOO_BIG:${data.description}`);
+        }
+        
+        // Rate limit - wait and retry
+        if (data.error_code === 429) {
+          const retryAfter = data.parameters?.retry_after || 30;
+          console.log(`Rate limited, waiting ${retryAfter}s before retry`);
+          await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
+          continue;
+        }
+        
+        throw new Error(data.description || "Telegram API error");
+      }
+      
+      return data.result;
+    } catch (error: any) {
+      if (attempt === retries || error.message?.startsWith("FILE_TOO_BIG")) {
+        throw error;
+      }
+      console.log(`Attempt ${attempt + 1} failed, retrying...`);
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
   }
+}
+
+// Send media group (album) to Telegram
+async function sendMediaGroup(botToken: string, chatId: string, mediaUrls: string[], caption?: string): Promise<any> {
+  const media = mediaUrls.map((url, index) => {
+    const isVideo = isVideoUrl(url);
+    return {
+      type: isVideo ? "video" : "photo",
+      media: url,
+      caption: index === 0 && caption ? caption : undefined,
+      parse_mode: index === 0 && caption ? "HTML" : undefined,
+    };
+  });
+
+  return callTelegramAPI(botToken, "sendMediaGroup", {
+    chat_id: chatId,
+    media,
+  });
+}
+
+// Send single media item with fallback to document for large files
+async function sendSingleMedia(botToken: string, chatId: string, mediaUrl: string, caption?: string, isFirstInBatch = true): Promise<any> {
+  const isVideo = isVideoUrl(mediaUrl);
   
-  return data.result;
+  try {
+    // First try the standard method
+    const method = isVideo ? "sendVideo" : "sendPhoto";
+    const params: Record<string, any> = {
+      chat_id: chatId,
+      [isVideo ? "video" : "photo"]: mediaUrl,
+      parse_mode: "HTML",
+    };
+    
+    if (isFirstInBatch && caption) {
+      params.caption = caption;
+    }
+
+    // For videos, add support for long videos
+    if (isVideo) {
+      params.supports_streaming = true;
+    }
+
+    return await callTelegramAPI(botToken, method, params);
+  } catch (error: any) {
+    // If file is too big for sendVideo, try sendDocument
+    if (error.message?.startsWith("FILE_TOO_BIG") && isVideo) {
+      console.log("Video too large for sendVideo, trying sendDocument...");
+      const docParams: Record<string, any> = {
+        chat_id: chatId,
+        document: mediaUrl,
+        parse_mode: "HTML",
+      };
+      
+      if (isFirstInBatch && caption) {
+        docParams.caption = caption;
+      }
+      
+      return await callTelegramAPI(botToken, "sendDocument", docParams);
+    }
+    throw error;
+  }
 }
 
 serve(async (req) => {
@@ -232,7 +329,8 @@ serve(async (req) => {
       });
     }
 
-    console.log(`Dispatching ${mediaUrls.length} media files to chat ${destination.chat_id}`);
+    const packSize = campaign.pack_size || 1;
+    console.log(`Dispatching ${mediaUrls.length} media files to chat ${destination.chat_id} with pack_size=${packSize}`);
 
     // Return response immediately and continue processing in background
     EdgeRuntime.waitUntil(dispatchMediaInBackground(
@@ -243,13 +341,16 @@ serve(async (req) => {
       destination.chat_id,
       campaign.delay_seconds || 10,
       campaign.caption,
-      user.id
+      user.id,
+      packSize,
+      campaign.send_mode || "media"
     ));
 
     return new Response(JSON.stringify({ 
       success: true, 
-      message: `Iniciando envio de ${mediaUrls.length} mídias`,
-      total: mediaUrls.length 
+      message: `Iniciando envio de ${mediaUrls.length} mídias em packs de ${packSize}`,
+      total: mediaUrls.length,
+      packSize
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -271,7 +372,9 @@ async function dispatchMediaInBackground(
   chatId: string,
   delaySeconds: number,
   caption: string | null,
-  userId: string
+  userId: string,
+  packSize: number = 1,
+  sendMode: string = "media"
 ) {
   let sentCount = 0;
   let successCount = 0;
@@ -279,9 +382,17 @@ async function dispatchMediaInBackground(
   const errorsLog: { index: number; url: string; error: string; timestamp: string }[] = [];
   const sendTimes: number[] = [];
 
-  console.log(`Background dispatch started for campaign ${campaignId} with ${mediaFiles.length} files`);
+  console.log(`Background dispatch started for campaign ${campaignId} with ${mediaFiles.length} files, packSize=${packSize}`);
 
-  for (let i = 0; i < mediaFiles.length; i++) {
+  // Chunk the media files according to pack size
+  const chunks: string[][] = [];
+  for (let i = 0; i < mediaFiles.length; i += packSize) {
+    chunks.push(mediaFiles.slice(i, i + packSize));
+  }
+
+  console.log(`Created ${chunks.length} chunks from ${mediaFiles.length} files with pack size ${packSize}`);
+
+  for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
     // Check if campaign is still running
     const { data: currentCampaign } = await supabase
       .from("campaigns")
@@ -290,52 +401,100 @@ async function dispatchMediaInBackground(
       .single();
     
     if (currentCampaign?.status !== "running") {
-      console.log(`Campaign ${campaignId} stopped (status: ${currentCampaign?.status}), aborting dispatch at ${i}/${mediaFiles.length}`);
+      console.log(`Campaign ${campaignId} stopped (status: ${currentCampaign?.status}), aborting dispatch at chunk ${chunkIndex}/${chunks.length}`);
       break;
     }
 
-    const mediaUrl = mediaFiles[i];
-    const isVideo = mediaUrl.toLowerCase().includes(".mp4") || 
-                    mediaUrl.toLowerCase().includes(".mov") || 
-                    mediaUrl.toLowerCase().includes(".webm") ||
-                    mediaUrl.toLowerCase().includes(".avi");
-    
+    const chunk = chunks[chunkIndex];
     const startTime = Date.now();
     
     try {
-      console.log(`Sending media ${i + 1}/${mediaFiles.length}: ${mediaUrl.substring(0, 100)}...`);
+      console.log(`Sending chunk ${chunkIndex + 1}/${chunks.length} with ${chunk.length} items`);
       
-      const method = isVideo ? "sendVideo" : "sendPhoto";
-      const params: Record<string, any> = {
-        chat_id: chatId,
-        [isVideo ? "video" : "photo"]: mediaUrl,
-        parse_mode: "HTML",
-      };
-      
-      // Only add caption to first media
-      if (i === 0 && caption) {
-        params.caption = caption;
+      if (chunk.length === 1 || sendMode === "document") {
+        // Send individually
+        for (let i = 0; i < chunk.length; i++) {
+          const mediaUrl = chunk[i];
+          const isFirstInChunk = i === 0;
+          
+          if (sendMode === "document") {
+            // Always use sendDocument mode
+            const docParams: Record<string, any> = {
+              chat_id: chatId,
+              document: mediaUrl,
+              parse_mode: "HTML",
+            };
+            
+            if (isFirstInChunk && chunkIndex === 0 && caption) {
+              docParams.caption = caption;
+            }
+            
+            await callTelegramAPI(botToken, "sendDocument", docParams);
+          } else {
+            await sendSingleMedia(botToken, chatId, mediaUrl, 
+              (isFirstInChunk && chunkIndex === 0) ? caption || undefined : undefined, 
+              isFirstInChunk && chunkIndex === 0);
+          }
+          
+          sentCount++;
+          successCount++;
+          
+          // Small delay between individual items in same chunk
+          if (i < chunk.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        }
+      } else {
+        // Send as media group (album)
+        const captionForChunk = chunkIndex === 0 ? caption : null;
+        await sendMediaGroup(botToken, chatId, chunk, captionForChunk || undefined);
+        sentCount += chunk.length;
+        successCount += chunk.length;
       }
 
-      await callTelegramAPI(botToken, method, params);
-      
       const endTime = Date.now();
       sendTimes.push(endTime - startTime);
       
-      sentCount++;
-      successCount++;
-      console.log(`Successfully sent media ${i + 1}/${mediaFiles.length}`);
+      console.log(`Successfully sent chunk ${chunkIndex + 1}/${chunks.length}`);
 
     } catch (error: any) {
-      console.error(`Error sending media ${i + 1}:`, error.message);
-      errorCount++;
-      errorsLog.push({
-        index: i,
-        url: mediaUrl.substring(0, 100),
-        error: error.message,
-        timestamp: new Date().toISOString(),
-      });
-      sentCount++; // Count as processed even if failed
+      console.error(`Error sending chunk ${chunkIndex + 1}:`, error.message);
+      
+      // Try sending individually if album failed
+      if (chunk.length > 1 && sendMode !== "document") {
+        console.log("Album failed, trying to send individually...");
+        for (let i = 0; i < chunk.length; i++) {
+          try {
+            await sendSingleMedia(botToken, chatId, chunk[i], 
+              (i === 0 && chunkIndex === 0) ? caption || undefined : undefined,
+              i === 0 && chunkIndex === 0);
+            sentCount++;
+            successCount++;
+            await new Promise(resolve => setTimeout(resolve, 1500));
+          } catch (innerError: any) {
+            console.error(`Error sending individual item ${i}:`, innerError.message);
+            errorCount++;
+            errorsLog.push({
+              index: chunkIndex * packSize + i,
+              url: chunk[i].substring(0, 100),
+              error: innerError.message,
+              timestamp: new Date().toISOString(),
+            });
+            sentCount++;
+          }
+        }
+      } else {
+        errorCount += chunk.length;
+        for (let i = 0; i < chunk.length; i++) {
+          errorsLog.push({
+            index: chunkIndex * packSize + i,
+            url: chunk[i].substring(0, 100),
+            error: error.message,
+            timestamp: new Date().toISOString(),
+          });
+        }
+        sentCount += chunk.length;
+      }
     }
 
     // Calculate average send time
@@ -344,7 +503,7 @@ async function dispatchMediaInBackground(
       : 0;
 
     // Update progress in database
-    const progress = Math.round(((i + 1) / mediaFiles.length) * 100);
+    const progress = Math.round((sentCount / mediaFiles.length) * 100);
     await supabase.from("campaigns").update({
       sent_count: sentCount,
       progress,
@@ -356,9 +515,9 @@ async function dispatchMediaInBackground(
 
     console.log(`Progress: ${progress}% (${sentCount}/${mediaFiles.length})`);
 
-    // Wait for delay before next send (if not last item)
-    if (i < mediaFiles.length - 1) {
-      console.log(`Waiting ${delaySeconds} seconds before next send...`);
+    // Wait for delay before next chunk (if not last chunk)
+    if (chunkIndex < chunks.length - 1) {
+      console.log(`Waiting ${delaySeconds} seconds before next chunk...`);
       await new Promise(resolve => setTimeout(resolve, delaySeconds * 1000));
     }
   }

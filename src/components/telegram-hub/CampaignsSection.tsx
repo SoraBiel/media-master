@@ -151,6 +151,7 @@ const CampaignsSection = () => {
     caption: "",
     scheduled_start: "",
     scheduled_end: "",
+    pack_size: 1,
   });
   
   const { toast } = useToast();
@@ -447,6 +448,7 @@ const CampaignsSection = () => {
         status: startImmediately ? "running" : "queued",
         total_count: totalCount,
         started_at: startImmediately ? new Date().toISOString() : null,
+        pack_size: newCampaign.pack_size,
       }).select().single();
 
       if (error) throw error;
@@ -459,7 +461,7 @@ const CampaignsSection = () => {
       }
 
       setIsDialogOpen(false);
-      setNewCampaign({ name: "", destination_id: "", media_pack_id: "", use_user_media: false, delay_seconds: 10, send_mode: "media", caption: "", scheduled_start: "", scheduled_end: "" });
+      setNewCampaign({ name: "", destination_id: "", media_pack_id: "", use_user_media: false, delay_seconds: 10, send_mode: "media", caption: "", scheduled_start: "", scheduled_end: "", pack_size: 1 });
       setStartImmediately(true);
     } catch (error: any) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
@@ -1043,6 +1045,26 @@ const CampaignsSection = () => {
                       </Select>
                     </div>
                   </div>
+                  
+                  {/* Pack Size Selection */}
+                  <div className="space-y-2">
+                    <Label>Tamanho do Pack</Label>
+                    <p className="text-xs text-muted-foreground">Quantas mídias enviar por vez (álbum)</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[1, 2, 5].map((size) => (
+                        <Button
+                          key={size}
+                          type="button"
+                          variant={newCampaign.pack_size === size ? "default" : "outline"}
+                          onClick={() => setNewCampaign({ ...newCampaign, pack_size: size })}
+                          className="w-full"
+                        >
+                          {size === 1 ? "1 (Individual)" : `${size} por vez`}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                  
                   <div className="space-y-2">
                     <Label>Caption (opcional)</Label>
                     <Textarea placeholder="Texto que acompanha a mídia." rows={2} value={newCampaign.caption} onChange={(e) => setNewCampaign({ ...newCampaign, caption: e.target.value })} />

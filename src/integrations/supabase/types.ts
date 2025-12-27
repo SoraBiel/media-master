@@ -118,6 +118,7 @@ export type Database = {
           id: string
           media_pack_id: string | null
           name: string
+          pack_size: number | null
           progress: number | null
           scheduled_end: string | null
           scheduled_start: string | null
@@ -143,6 +144,7 @@ export type Database = {
           id?: string
           media_pack_id?: string | null
           name: string
+          pack_size?: number | null
           progress?: number | null
           scheduled_end?: string | null
           scheduled_start?: string | null
@@ -168,6 +170,7 @@ export type Database = {
           id?: string
           media_pack_id?: string | null
           name?: string
+          pack_size?: number | null
           progress?: number | null
           scheduled_end?: string | null
           scheduled_start?: string | null
