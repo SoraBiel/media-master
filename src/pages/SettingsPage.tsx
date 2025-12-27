@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
 import { motion } from "framer-motion";
+import { NotificationSettings } from "@/components/NotificationSettings";
 
 const SettingsPage = () => {
   const { profile, refreshProfile, isAdmin } = useAuth();
@@ -281,12 +282,17 @@ const SettingsPage = () => {
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
+              className="space-y-6"
             >
+              {/* Payment Notifications - New Component */}
+              <NotificationSettings />
+
+              {/* Other Notifications */}
               <Card className="glass-card">
                 <CardHeader>
-                  <CardTitle>Preferências de Notificações</CardTitle>
+                  <CardTitle>Outras Notificações</CardTitle>
                   <CardDescription>
-                    Configure como você deseja receber notificações
+                    Configure outras preferências de notificação
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
