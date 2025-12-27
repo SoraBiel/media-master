@@ -84,8 +84,6 @@ const LandingPage = () => {
   const stats = [
     { value: "50K+", label: "Usuários Ativos" },
     { value: "2M+", label: "Mensagens/Mês" },
-    { value: "99.9%", label: "Uptime" },
-    { value: "4.9", label: "Avaliação", icon: Star },
   ];
 
   return (
@@ -188,7 +186,6 @@ const LandingPage = () => {
                 <div key={i} className="text-center">
                   <div className="flex items-center justify-center gap-1">
                     <span className="text-2xl md:text-3xl font-bold text-foreground">{stat.value}</span>
-                    {stat.icon && <stat.icon className="w-5 h-5 text-warning fill-warning" />}
                   </div>
                   <span className="text-sm text-muted-foreground">{stat.label}</span>
                 </div>

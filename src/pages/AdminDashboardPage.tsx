@@ -37,6 +37,7 @@ import {
   MessageSquare,
   Store,
   Percent,
+  Bell,
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend } from "recharts";
 import { Button } from "@/components/ui/button";
@@ -91,6 +92,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { AdminTemplatesPanel } from "@/components/admin/AdminTemplatesPanel";
+import { AdminNotificationsPanel } from "@/components/admin/AdminNotificationsPanel";
 import { useAdminSettings, getSettingLabel } from "@/hooks/useAdminSettings";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -1331,6 +1333,10 @@ const AdminDashboardPage = () => {
             <TabsTrigger value="templates" className="flex items-center gap-1">
               <GitBranch className="h-4 w-4" />
               Templates Funis
+            </TabsTrigger>
+            <TabsTrigger value="notifications" className="flex items-center gap-1">
+              <Bell className="h-4 w-4" />
+              Notificações
             </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center gap-1">
               <Settings className="h-4 w-4" />
@@ -2994,6 +3000,11 @@ const AdminDashboardPage = () => {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Notifications Tab */}
+          <TabsContent value="notifications" className="space-y-4">
+            <AdminNotificationsPanel />
           </TabsContent>
 
           {/* Settings Tab - All Feature Toggles */}
