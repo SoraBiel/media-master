@@ -51,7 +51,7 @@ export interface BlockData {
   
   // Condition block
   variable?: string;
-  operator?: 'equals' | 'not_equals' | 'contains' | 'greater' | 'less' | 'exists' | 'empty';
+  operator?: 'equals' | 'not_equals' | 'contains' | 'greater' | 'less' | 'exists' | 'empty' | 'is_paid' | 'is_pending';
   value?: string;
   
   // Delay block
