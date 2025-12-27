@@ -15,11 +15,16 @@ import {
   XCircle,
   AlertTriangle,
   Phone,
+  Pencil,
+  Save,
+  X,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -28,6 +33,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -78,6 +91,10 @@ const UserDetailsPage = () => {
   const [integrations, setIntegrations] = useState<TelegramIntegration[]>([]);
   const [activities, setActivities] = useState<UserActivity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isEditingEmail, setIsEditingEmail] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [isUpdatingEmail, setIsUpdatingEmail] = useState(false);
+  const [showEmailDialog, setShowEmailDialog] = useState(false);
 
   useEffect(() => {
     if (userId) {
@@ -147,6 +164,65 @@ const UserDetailsPage = () => {
     }).format(cents / 100);
   };
 
+  const handleUpdateEmail = async () => {
+    if (!profile || !newEmail || newEmail === profile.email) {
+      setShowEmailDialog(false);
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newEmail)) {
+      toast({
+        title: "Email inválido",
+        description: "Por favor, insira um email válido.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUpdatingEmail(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      
+      const response = await supabase.functions.invoke("admin-update-email", {
+        body: { userId: profile.user_id, newEmail },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || "Erro ao atualizar email");
+      }
+
+      if (response.data?.error) {
+        throw new Error(response.data.error);
+      }
+
+      // Update local state
+      setProfile({ ...profile, email: newEmail });
+      setShowEmailDialog(false);
+      setNewEmail("");
+
+      toast({
+        title: "Email atualizado",
+        description: `Email alterado para ${newEmail}`,
+      });
+    } catch (error: any) {
+      console.error("Error updating email:", error);
+      toast({
+        title: "Erro ao atualizar email",
+        description: error.message || "Tente novamente mais tarde.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdatingEmail(false);
+    }
+  };
+
+  const openEmailDialog = () => {
+    setNewEmail(profile?.email || "");
+    setShowEmailDialog(true);
+  };
+
   if (isLoading) {
     return (
       <DashboardLayout>
@@ -212,10 +288,18 @@ const UserDetailsPage = () => {
                 </div>
 
                 <div className="flex-1 grid grid-cols-2 md:grid-cols-5 gap-4">
-                  <div className="p-3 rounded-lg bg-secondary">
+                  <div className="p-3 rounded-lg bg-secondary group relative">
                     <div className="flex items-center gap-2 text-muted-foreground mb-1">
                       <Mail className="w-4 h-4" />
                       <span className="text-xs">Email</span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="w-5 h-5 ml-auto opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={openEmailDialog}
+                      >
+                        <Pencil className="w-3 h-3" />
+                      </Button>
                     </div>
                     <p className="text-sm font-medium truncate">{profile.email}</p>
                   </div>
@@ -420,6 +504,53 @@ const UserDetailsPage = () => {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Email Edit Dialog */}
+        <Dialog open={showEmailDialog} onOpenChange={setShowEmailDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Alterar Email do Usuário</DialogTitle>
+              <DialogDescription>
+                Insira o novo email para o usuário. O usuário será notificado da alteração.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <label className="text-sm font-medium mb-2 block">Novo Email</label>
+              <Input
+                type="email"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                placeholder="novoemail@exemplo.com"
+                disabled={isUpdatingEmail}
+              />
+            </div>
+            <DialogFooter>
+              <Button 
+                variant="outline" 
+                onClick={() => setShowEmailDialog(false)}
+                disabled={isUpdatingEmail}
+              >
+                Cancelar
+              </Button>
+              <Button 
+                onClick={handleUpdateEmail}
+                disabled={isUpdatingEmail || !newEmail || newEmail === profile?.email}
+              >
+                {isUpdatingEmail ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Atualizando...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4 mr-2" />
+                    Salvar
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
