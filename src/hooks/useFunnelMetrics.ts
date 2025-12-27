@@ -1,6 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { subDays, startOfDay, endOfDay, eachDayOfInterval, format } from "date-fns";
+import { DateRange } from "react-day-picker";
 
 export interface FunnelMetrics {
   leadsToday: number;
@@ -33,7 +35,7 @@ export interface RecentActivity {
   timestamp: string;
 }
 
-export const useFunnelMetrics = () => {
+export const useFunnelMetrics = (dateRange?: DateRange) => {
   const { user } = useAuth();
   const [metrics, setMetrics] = useState<FunnelMetrics>({
     leadsToday: 0,
@@ -51,12 +53,16 @@ export const useFunnelMetrics = () => {
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchMetrics = async () => {
+  const fetchMetrics = useCallback(async () => {
     if (!user) return;
 
     try {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
+
+      // Date range for chart (default to last 7 days if not provided)
+      const chartFrom = dateRange?.from || startOfDay(subDays(new Date(), 6));
+      const chartTo = dateRange?.to || endOfDay(new Date());
 
       // Fetch funnels
       const { data: funnels } = await supabase
@@ -90,39 +96,37 @@ export const useFunnelMetrics = () => {
         l.event_type === "media_sent"
       ).length || 0;
 
-      // Fetch funnel payments for recent activity (Pix gerado/pago)
+      // Fetch funnel payments for chart period
       const { data: payments } = await supabase
         .from("funnel_payments")
         .select("*, funnels!inner(user_id, name)")
         .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(50);
+        .gte("created_at", chartFrom.toISOString())
+        .lte("created_at", chartTo.toISOString())
+        .order("created_at", { ascending: false });
 
-      // Calculate total paid amount
+      // Calculate total paid amount in the period
       const paidPayments = payments?.filter(p => p.status === "paid" || p.status === "approved") || [];
       const totalPaidAmountCents = paidPayments.reduce((sum, p) => sum + (p.amount_cents || 0), 0);
 
-      // Build chart data for last 7 days
-      const last7Days: { date: string; label: string; amount: number; count: number }[] = [];
-      for (let i = 6; i >= 0; i--) {
-        const date = new Date();
-        date.setDate(date.getDate() - i);
-        date.setHours(0, 0, 0, 0);
-        const dateStr = date.toISOString().split('T')[0];
-        const dayLabel = date.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
+      // Build chart data for the selected date range
+      const days = eachDayOfInterval({ start: chartFrom, end: chartTo });
+      const chartData = days.map(date => {
+        const dateStr = format(date, 'yyyy-MM-dd');
+        const dayLabel = format(date, 'dd/MM');
         
         const dayPayments = paidPayments.filter(p => {
           const paidDate = new Date(p.paid_at || p.created_at);
-          return paidDate.toISOString().split('T')[0] === dateStr;
+          return format(paidDate, 'yyyy-MM-dd') === dateStr;
         });
         
-        last7Days.push({
+        return {
           date: dateStr,
           label: dayLabel,
           amount: dayPayments.reduce((sum, p) => sum + (p.amount_cents || 0), 0) / 100,
           count: dayPayments.length,
-        });
-      }
+        };
+      });
 
       // Calculate completion rate
       const totalSessions = sessions?.length || 0;
@@ -158,7 +162,7 @@ export const useFunnelMetrics = () => {
         lastError: errorMessage,
         lastMessageAt: lastMessage?.created_at || null,
         totalPaidAmountCents,
-        pixChartData: last7Days,
+        pixChartData: chartData,
       });
 
       // Build funnel overviews
@@ -198,7 +202,7 @@ export const useFunnelMetrics = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user, dateRange?.from?.toISOString(), dateRange?.to?.toISOString()]);
 
   useEffect(() => {
     fetchMetrics();
@@ -228,7 +232,7 @@ export const useFunnelMetrics = () => {
         supabase.removeChannel(channel);
       };
     }
-  }, [user]);
+  }, [user, fetchMetrics]);
 
   return {
     metrics,
