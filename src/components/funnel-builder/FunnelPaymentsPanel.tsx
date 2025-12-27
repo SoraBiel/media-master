@@ -10,8 +10,6 @@ import {
   Package,
   AlertCircle,
   Loader2,
-  Bell,
-  BellOff,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -36,10 +34,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { usePaymentNotifications } from '@/hooks/usePaymentNotifications';
 
 interface FunnelPayment {
   id: string;
@@ -67,7 +63,6 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [resendingId, setResendingId] = useState<string | null>(null);
   const { toast } = useToast();
-  const { permissionStatus, requestPermission, isSupported } = usePaymentNotifications();
 
   const fetchPayments = async () => {
     setIsLoading(true);
@@ -356,35 +351,10 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
     <div className="h-full flex flex-col bg-background">
       <div className="p-4 border-b flex items-center justify-between">
         <h2 className="font-semibold text-lg">Pagamentos</h2>
-        <div className="flex gap-2">
-          {isSupported && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  variant={permissionStatus === 'granted' ? 'default' : 'outline'} 
-                  size="sm" 
-                  onClick={requestPermission}
-                  disabled={permissionStatus === 'granted'}
-                >
-                  {permissionStatus === 'granted' ? (
-                    <Bell className="h-4 w-4" />
-                  ) : (
-                    <BellOff className="h-4 w-4" />
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                {permissionStatus === 'granted' 
-                  ? 'Notificações ativadas' 
-                  : 'Ativar notificações de pagamento'}
-              </TooltipContent>
-            </Tooltip>
-          )}
-          <Button variant="outline" size="sm" onClick={fetchPayments} disabled={isLoading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            Atualizar
-          </Button>
-        </div>
+        <Button variant="outline" size="sm" onClick={fetchPayments} disabled={isLoading}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+          Atualizar
+        </Button>
       </div>
 
       <div className="grid grid-cols-4 gap-3 p-4 border-b">

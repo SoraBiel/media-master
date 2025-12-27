@@ -1,13 +1,15 @@
 import { ReactNode, useState, useEffect, useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Send, LayoutDashboard, CreditCard, MessageCircle, Megaphone, Settings, LogOut, ChevronLeft, ChevronRight, Bell, User, Shield, Menu, Crown, Headphones, GitBranch, MessageSquare, Plug, Wallet, Users, ShoppingBag, Store, Package } from "lucide-react";
+import { Send, LayoutDashboard, CreditCard, MessageCircle, Megaphone, Settings, LogOut, ChevronLeft, ChevronRight, Bell, BellOff, User, Shield, Menu, Crown, Headphones, GitBranch, MessageSquare, Plug, Wallet, Users, ShoppingBag, Store, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/AuthContext";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useAdminSettings } from "@/hooks/useAdminSettings";
+import { usePaymentNotifications } from "@/hooks/usePaymentNotifications";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -31,7 +33,7 @@ const DashboardLayout = ({
     currentPlan
   } = useSubscription();
   const { settings: adminSettings, isLoading: isLoadingSettings } = useAdminSettings();
-
+  const { permissionStatus, isEnabled, toggleNotifications, isSupported } = usePaymentNotifications();
   // Build navigation items dynamically based on subscription status
   const getNavItems = () => {
     const items = [{
@@ -228,10 +230,36 @@ const DashboardLayout = ({
           <Button variant="ghost" size="icon" onClick={openSupport} className="text-success">
             <Headphones className="w-5 h-5" />
           </Button>
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="w-5 h-5" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-telegram rounded-full" />
-          </Button>
+          
+          {isSupported && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={toggleNotifications}
+                  className={cn(
+                    "relative",
+                    isEnabled && permissionStatus === 'granted' && "text-primary"
+                  )}
+                >
+                  {isEnabled && permissionStatus === 'granted' ? (
+                    <Bell className="w-5 h-5" />
+                  ) : (
+                    <BellOff className="w-5 h-5" />
+                  )}
+                  {isEnabled && permissionStatus === 'granted' && (
+                    <span className="absolute top-1 right-1 w-2 h-2 bg-green-500 rounded-full" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {isEnabled && permissionStatus === 'granted' 
+                  ? 'Notificações de pagamento ativadas' 
+                  : 'Ativar notificações de pagamento'}
+              </TooltipContent>
+            </Tooltip>
+          )}
           
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
@@ -261,10 +289,35 @@ const DashboardLayout = ({
               <Headphones className="w-4 h-4 mr-2" />
               Suporte
             </Button>
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-telegram rounded-full" />
-            </Button>
+            {isSupported && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={toggleNotifications}
+                    className={cn(
+                      "relative",
+                      isEnabled && permissionStatus === 'granted' && "text-primary"
+                    )}
+                  >
+                    {isEnabled && permissionStatus === 'granted' ? (
+                      <Bell className="w-5 h-5" />
+                    ) : (
+                      <BellOff className="w-5 h-5" />
+                    )}
+                    {isEnabled && permissionStatus === 'granted' && (
+                      <span className="absolute top-1 right-1 w-2 h-2 bg-green-500 rounded-full" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {isEnabled && permissionStatus === 'granted' 
+                    ? 'Notificações de pagamento ativadas' 
+                    : 'Ativar notificações de pagamento'}
+                </TooltipContent>
+              </Tooltip>
+            )}
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
