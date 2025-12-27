@@ -265,14 +265,34 @@ serve(async (req) => {
         });
       }
 
-      // Extract media URLs from admin pack
+      // Extract media URLs from admin pack - create signed URLs for storage files
       const rawMediaFiles = mediaPack.media_files as (string | { url: string; type?: string; name?: string })[] || [];
-      mediaUrls = rawMediaFiles.map((file: string | { url: string }) => {
-        if (typeof file === 'string') return file;
-        return file.url;
-      }).filter(Boolean);
+      
+      for (const file of rawMediaFiles) {
+        const url = typeof file === 'string' ? file : file.url;
+        if (!url) continue;
+        
+        // Check if it's a Supabase storage URL and create signed URL
+        if (url.includes('/storage/v1/object/public/')) {
+          // Extract bucket and path from public URL
+          const match = url.match(/\/storage\/v1\/object\/public\/([^/]+)\/(.+)/);
+          if (match) {
+            const [, bucket, path] = match;
+            const { data: signedUrlData } = await supabaseClient.storage
+              .from(bucket)
+              .createSignedUrl(decodeURIComponent(path), 3600);
+            
+            if (signedUrlData?.signedUrl) {
+              mediaUrls.push(signedUrlData.signedUrl);
+              continue;
+            }
+          }
+        }
+        // Use original URL if not a storage URL or signing failed
+        mediaUrls.push(url);
+      }
 
-      console.log(`Using admin media pack: ${mediaPack.name} with ${mediaUrls.length} files`);
+      console.log(`Using admin media pack: ${mediaPack.name} with ${mediaUrls.length} files (signed URLs)`);
     } else {
       // Using user's own media from storage
       console.log(`Fetching user media from storage for user: ${user.id}`);
@@ -297,23 +317,26 @@ serve(async (req) => {
         });
       }
 
-      // Filter out placeholder files and generate public URLs
+      // Filter out placeholder files and generate signed URLs (more reliable for Telegram)
       const validFiles = (userFiles || []).filter(f => 
         f.name !== ".emptyFolderPlaceholder" && 
         !f.name.startsWith(".")
       );
 
+      // Use signed URLs instead of public URLs - Telegram needs direct access
       for (const file of validFiles) {
-        const { data: urlData } = supabaseClient.storage
+        const { data: signedUrlData, error: signedError } = await supabaseClient.storage
           .from("user-media")
-          .getPublicUrl(`${user.id}/${file.name}`);
+          .createSignedUrl(`${user.id}/${file.name}`, 3600); // 1 hour expiry
         
-        if (urlData?.publicUrl) {
-          mediaUrls.push(urlData.publicUrl);
+        if (signedUrlData?.signedUrl && !signedError) {
+          mediaUrls.push(signedUrlData.signedUrl);
+        } else {
+          console.warn(`Failed to create signed URL for ${file.name}:`, signedError);
         }
       }
 
-      console.log(`Using user's own media: ${mediaUrls.length} files`);
+      console.log(`Using user's own media: ${mediaUrls.length} files with signed URLs`);
     }
 
     if (mediaUrls.length === 0) {
