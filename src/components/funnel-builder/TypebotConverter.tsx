@@ -45,9 +45,18 @@ interface TypebotEdge {
 
 interface TypebotFlow {
   version?: string;
-  groups: TypebotGroup[];
-  edges: TypebotEdge[];
+  groups?: TypebotGroup[];
+  edges?: TypebotEdge[];
   variables?: any[];
+  // Alternative format (exported from dashboard)
+  typebot?: {
+    groups: TypebotGroup[];
+    edges: TypebotEdge[];
+    variables?: any[];
+  };
+  // Another format variant
+  publicId?: string;
+  name?: string;
 }
 
 export const TypebotConverter = ({ funnelId, onImport }: TypebotConverterProps) => {
@@ -61,132 +70,188 @@ export const TypebotConverter = ({ funnelId, onImport }: TypebotConverterProps) 
   const [convertedData, setConvertedData] = useState<{ nodes: FunnelNode[]; edges: FunnelEdge[] } | null>(null);
 
   const mapTypebotBlockType = (typebotType: string): BlockType => {
-    const typeMap: Record<string, BlockType> = {
-      // Start blocks
-      'start': 'start',
-      'Start': 'start',
-      
-      // Text/Message blocks
-      'text': 'message',
-      'Text': 'message',
-      'Bubble text': 'message',
-      'bubbleText': 'message',
-      
-      // Input blocks
-      'text input': 'question',
-      'Text input': 'question',
-      'textInput': 'question',
-      'email input': 'question',
-      'Email input': 'question',
-      'emailInput': 'question',
-      'phone input': 'question',
-      'Phone input': 'question',
-      'phoneInput': 'question',
-      'url input': 'question',
-      'Url input': 'question',
-      'urlInput': 'question',
-      
-      // Number input
-      'number input': 'question_number',
-      'Number input': 'question_number',
-      'numberInput': 'question_number',
-      
-      // Choice blocks
-      'choice input': 'question_choice',
-      'Choice input': 'question_choice',
-      'choiceInput': 'question_choice',
-      'Buttons input': 'question_choice',
-      'buttons input': 'question_choice',
-      'buttonsInput': 'question_choice',
-      
-      // Condition
-      'condition': 'condition',
-      'Condition': 'condition',
-      
-      // Wait/Delay
-      'wait': 'delay',
-      'Wait': 'delay',
-      
-      // Set variable
-      'set variable': 'variable',
-      'Set variable': 'variable',
-      'setVariable': 'variable',
-      
-      // Webhook
-      'webhook': 'action_webhook',
-      'Webhook': 'action_webhook',
-      'HTTP request': 'action_webhook',
-      'httpRequest': 'action_webhook',
-      
-      // Image/Video
-      'image': 'message',
-      'Image': 'message',
-      'Bubble image': 'message',
-      'bubbleImage': 'message',
-      'video': 'message',
-      'Video': 'message',
-      'Bubble video': 'message',
-      'bubbleVideo': 'message',
-      
-      // End
-      'redirect': 'end',
-      'Redirect': 'end',
-    };
+    const normalizedType = typebotType?.toLowerCase()?.trim() || '';
+    
+    // Start blocks
+    if (normalizedType === 'start') return 'start';
+    
+    // Text/Message blocks
+    if (normalizedType.includes('text') && !normalizedType.includes('input')) return 'message';
+    if (normalizedType === 'bubbletext' || normalizedType === 'bubble text') return 'message';
+    
+    // Image blocks
+    if (normalizedType.includes('image')) return 'message';
+    if (normalizedType === 'bubbleimage' || normalizedType === 'bubble image') return 'message';
+    
+    // Video blocks
+    if (normalizedType.includes('video')) return 'message';
+    if (normalizedType === 'bubblevideo' || normalizedType === 'bubble video') return 'message';
+    
+    // Audio blocks
+    if (normalizedType.includes('audio')) return 'message';
+    if (normalizedType === 'bubbleaudio' || normalizedType === 'bubble audio') return 'message';
+    
+    // File upload blocks
+    if (normalizedType.includes('file') && normalizedType.includes('input')) return 'question';
+    if (normalizedType === 'fileinput' || normalizedType === 'file input') return 'question';
+    
+    // Email input
+    if (normalizedType.includes('email')) return 'question';
+    
+    // Phone input
+    if (normalizedType.includes('phone')) return 'question';
+    
+    // URL input
+    if (normalizedType.includes('url') && normalizedType.includes('input')) return 'question';
+    
+    // Number input
+    if (normalizedType.includes('number')) return 'question_number';
+    
+    // Text input
+    if (normalizedType.includes('text') && normalizedType.includes('input')) return 'question';
+    
+    // Rating input - map to question_number
+    if (normalizedType.includes('rating')) return 'question_number';
+    
+    // Date input
+    if (normalizedType.includes('date')) return 'question';
+    
+    // Choice/Buttons blocks
+    if (normalizedType.includes('choice') || normalizedType.includes('button')) return 'question_choice';
+    if (normalizedType === 'pictureinput' || normalizedType === 'picture choice') return 'question_choice';
+    
+    // Payment blocks
+    if (normalizedType.includes('payment') || normalizedType.includes('stripe')) return 'payment';
+    if (normalizedType.includes('checkout')) return 'payment';
+    
+    // Condition
+    if (normalizedType.includes('condition')) return 'condition';
+    
+    // Wait/Delay/Typing
+    if (normalizedType === 'wait' || normalizedType.includes('delay')) return 'delay';
+    if (normalizedType.includes('typing') || normalizedType === 'typebubble') return 'delay';
+    
+    // Set variable
+    if (normalizedType.includes('variable') || normalizedType === 'setvariable') return 'variable';
+    
+    // Webhook/HTTP
+    if (normalizedType.includes('webhook') || normalizedType.includes('http')) return 'action_webhook';
+    
+    // Script/Code
+    if (normalizedType.includes('script') || normalizedType.includes('code')) return 'action_webhook';
+    
+    // Google Sheets
+    if (normalizedType.includes('sheet') || normalizedType.includes('google')) return 'action_webhook';
+    
+    // Email send
+    if (normalizedType.includes('send') && normalizedType.includes('email')) return 'action_webhook';
+    
+    // Redirect/End
+    if (normalizedType.includes('redirect') || normalizedType === 'end') return 'end';
+    
+    // Jump/Link
+    if (normalizedType.includes('jump') || normalizedType.includes('link')) return 'end';
+    
+    // Embed
+    if (normalizedType.includes('embed')) return 'message';
+    
+    // Default fallback
+    return 'message';
+  };
 
-    return typeMap[typebotType] || 'message';
+  const extractTextFromRichText = (richText: any[]): string => {
+    if (!Array.isArray(richText)) return '';
+    return richText.map((r: any) => 
+      r.children?.map((c: any) => c.text || '').join('') || r.text || ''
+    ).join('\n');
   };
 
   const extractBlockData = (block: TypebotBlock, blockType: BlockType): Record<string, any> => {
     const data: Record<string, any> = {};
+    const normalizedType = block.type?.toLowerCase() || '';
     
     switch (blockType) {
       case 'message':
+        // Extract text content
         if (block.content?.richText) {
-          data.text = block.content.richText.map((r: any) => 
-            r.children?.map((c: any) => c.text || '').join('') || ''
-          ).join('\n');
+          data.text = extractTextFromRichText(block.content.richText);
         } else if (block.content?.plainText) {
           data.text = block.content.plainText;
+        } else if (block.content?.html) {
+          data.text = block.content.html.replace(/<[^>]*>/g, '');
         } else if (typeof block.content === 'string') {
           data.text = block.content;
         }
+        
+        // Extract media URLs
         if (block.content?.url) {
-          if (block.type?.toLowerCase().includes('image')) {
+          if (normalizedType.includes('image')) {
             data.imageUrl = block.content.url;
-          } else if (block.type?.toLowerCase().includes('video')) {
+          } else if (normalizedType.includes('video')) {
             data.videoUrl = block.content.url;
+          } else if (normalizedType.includes('audio')) {
+            data.audioUrl = block.content.url;
           }
+        }
+        
+        // Embed content
+        if (block.content?.embedUrl || block.content?.iframeUrl) {
+          data.embedUrl = block.content.embedUrl || block.content.iframeUrl;
         }
         break;
         
       case 'question':
       case 'question_number':
+        // Question text
         if (block.content?.richText) {
-          data.questionText = block.content.richText.map((r: any) => 
-            r.children?.map((c: any) => c.text || '').join('') || ''
-          ).join('\n');
+          data.questionText = extractTextFromRichText(block.content.richText);
+        } else if (block.options?.labels?.placeholder) {
+          data.questionText = block.options.labels.placeholder;
         }
+        
+        // Variable to save
         if (block.options?.variableId) {
           data.variableName = block.options.variableId;
         }
+        
+        // Placeholder
         if (block.options?.labels?.placeholder) {
           data.placeholder = block.options.labels.placeholder;
+        }
+        
+        // File upload specific
+        if (normalizedType.includes('file')) {
+          data.isFileUpload = true;
+          data.acceptedFileTypes = block.options?.acceptedFileTypes || ['*'];
+        }
+        
+        // Rating specific
+        if (normalizedType.includes('rating')) {
+          data.maxRating = block.options?.length || 5;
         }
         break;
         
       case 'question_choice':
         if (block.content?.richText) {
-          data.questionText = block.content.richText.map((r: any) => 
-            r.children?.map((c: any) => c.text || '').join('') || ''
-          ).join('\n');
+          data.questionText = extractTextFromRichText(block.content.richText);
         }
         if (block.items) {
           data.choices = block.items.map((item: any, index: number) => ({
             id: item.id || `choice_${index}`,
-            label: item.content || item.label || `Opção ${index + 1}`,
+            label: item.content || item.title || item.label || `Opção ${index + 1}`,
             value: String(index + 1),
+            imageUrl: item.pictureSrc || item.imageUrl || undefined,
           }));
         }
+        data.isMultiple = block.options?.isMultipleChoice || false;
+        break;
+        
+      case 'payment':
+        data.provider = 'mercadopago';
+        data.amount = block.options?.amount || block.options?.price || 0;
+        data.currency = block.options?.currency || 'BRL';
+        data.productName = block.options?.name || block.options?.productName || 'Produto';
+        data.description = block.options?.description || '';
         break;
         
       case 'condition':
@@ -199,18 +264,23 @@ export const TypebotConverter = ({ funnelId, onImport }: TypebotConverterProps) 
         break;
         
       case 'delay':
-        data.seconds = block.options?.secondsToWaitFor || 5;
+        data.seconds = block.options?.secondsToWaitFor || block.options?.delay || 3;
         break;
         
       case 'variable':
         data.action = 'set';
         data.variableName = block.options?.variableId || '';
-        data.varValue = block.options?.expressionToEvaluate || '';
+        data.varValue = block.options?.expressionToEvaluate || block.options?.value || '';
         break;
         
       case 'action_webhook':
-        data.webhookUrl = block.options?.url || '';
+        data.webhookUrl = block.options?.url || block.options?.webhook?.url || '';
         data.webhookMethod = block.options?.method || 'POST';
+        data.webhookBody = block.options?.body || block.options?.data || '';
+        break;
+        
+      case 'end':
+        data.redirectUrl = block.options?.url || '';
         break;
     }
     
@@ -222,8 +292,11 @@ export const TypebotConverter = ({ funnelId, onImport }: TypebotConverterProps) 
     const edges: FunnelEdge[] = [];
     const blockIdMap = new Map<string, string>();
     
+    const groups = typebotData.groups || [];
+    const typebotEdges = typebotData.edges || [];
+    
     // Process each group
-    typebotData.groups.forEach((group, groupIndex) => {
+    groups.forEach((group, groupIndex) => {
       const baseX = group.graphCoordinates?.x || groupIndex * 300;
       const baseY = group.graphCoordinates?.y || 0;
       
@@ -268,7 +341,7 @@ export const TypebotConverter = ({ funnelId, onImport }: TypebotConverterProps) 
           .find(([_, newId]) => newId === edge.source)?.[0];
         
         if (sourceOriginalId) {
-          const typebotEdge = typebotData.edges.find(e => e.from.blockId === sourceOriginalId);
+          const typebotEdge = typebotEdges.find(e => e.from.blockId === sourceOriginalId);
           if (typebotEdge?.to.blockId) {
             edge.target = blockIdMap.get(typebotEdge.to.blockId) || '';
           }
@@ -277,13 +350,13 @@ export const TypebotConverter = ({ funnelId, onImport }: TypebotConverterProps) 
     });
     
     // Process typebot edges
-    typebotData.edges.forEach((typebotEdge) => {
+    typebotEdges.forEach((typebotEdge) => {
       const sourceId = blockIdMap.get(typebotEdge.from.blockId);
       let targetId = typebotEdge.to.blockId ? blockIdMap.get(typebotEdge.to.blockId) : undefined;
       
       // If target is a group, find first block
       if (!targetId && typebotEdge.to.groupId) {
-        const targetGroup = typebotData.groups.find(g => g.id === typebotEdge.to.groupId);
+        const targetGroup = groups.find(g => g.id === typebotEdge.to.groupId);
         if (targetGroup?.blocks[0]) {
           targetId = blockIdMap.get(targetGroup.blocks[0].id);
         }
@@ -345,6 +418,58 @@ export const TypebotConverter = ({ funnelId, onImport }: TypebotConverterProps) 
     }
   };
 
+  const normalizeTypebotData = (parsed: any): TypebotFlow => {
+    // Check different Typebot export formats
+    
+    // Format 1: Direct groups/edges at root
+    if (parsed.groups && Array.isArray(parsed.groups)) {
+      return {
+        groups: parsed.groups,
+        edges: parsed.edges || [],
+        variables: parsed.variables || [],
+      };
+    }
+    
+    // Format 2: Nested inside "typebot" object
+    if (parsed.typebot?.groups && Array.isArray(parsed.typebot.groups)) {
+      return {
+        groups: parsed.typebot.groups,
+        edges: parsed.typebot.edges || [],
+        variables: parsed.typebot.variables || [],
+      };
+    }
+    
+    // Format 3: Results export format (has "results" array)
+    if (parsed.results && parsed.typebot) {
+      return {
+        groups: parsed.typebot.groups || [],
+        edges: parsed.typebot.edges || [],
+        variables: parsed.typebot.variables || [],
+      };
+    }
+    
+    // Format 4: Workspace export (has "typebots" array)
+    if (parsed.typebots && Array.isArray(parsed.typebots) && parsed.typebots[0]) {
+      const firstBot = parsed.typebots[0];
+      return {
+        groups: firstBot.groups || [],
+        edges: firstBot.edges || [],
+        variables: firstBot.variables || [],
+      };
+    }
+    
+    // Format 5: Version 6 format
+    if (parsed.version && parsed.events && parsed.groups) {
+      return {
+        groups: parsed.groups,
+        edges: parsed.edges || [],
+        variables: parsed.variables || [],
+      };
+    }
+    
+    throw new Error('Formato não reconhecido. Tente exportar seu Typebot novamente usando "Export flow" nas configurações.');
+  };
+
   const handleConvert = () => {
     setIsConverting(true);
     setError(null);
@@ -353,12 +478,10 @@ export const TypebotConverter = ({ funnelId, onImport }: TypebotConverterProps) 
     try {
       const parsed = JSON.parse(inputJson);
       
-      // Validate basic structure
-      if (!parsed.groups || !Array.isArray(parsed.groups)) {
-        throw new Error('Arquivo inválido: não encontrado "groups" no JSON do Typebot');
-      }
+      // Normalize to standard format
+      const normalizedData = normalizeTypebotData(parsed);
       
-      const result = convertTypebotToNexo(parsed);
+      const result = convertTypebotToNexo(normalizedData);
       
       const nexoFormat = {
         schemaVersion: SCHEMA_VERSION,
