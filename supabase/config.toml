@@ -41,3 +41,9 @@ verify_jwt = false
 
 [functions.utmify-track]
 verify_jwt = false
+
+[functions.social-oauth]
+verify_jwt = true
+
+[functions.social-post]
+verify_jwt = true
