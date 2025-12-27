@@ -13,10 +13,13 @@ import {
   OnConnect,
   ReactFlowProvider,
   useReactFlow,
+  EdgeProps,
+  getBezierPath,
+  BaseEdge,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Pencil, ScrollText, Webhook, Package, Settings } from 'lucide-react';
+import { Pencil, ScrollText, Webhook, Package, Settings, X, LayoutGrid, LayoutList } from 'lucide-react';
 
 import BlockNode from './BlockNode';
 import { BlockSidebar } from './BlockSidebar';
@@ -30,9 +33,76 @@ import { BlockType, BLOCK_INFO, BlockData, FunnelNode, FunnelEdge, SCHEMA_VERSIO
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const nodeTypes = {
   block: BlockNode,
+};
+
+// Custom deletable edge component
+interface DeletableEdgeData {
+  onDelete?: (id: string) => void;
+  [key: string]: unknown;
+}
+
+const DeletableEdge = ({
+  id,
+  sourceX,
+  sourceY,
+  targetX,
+  targetY,
+  sourcePosition,
+  targetPosition,
+  style = {},
+  markerEnd,
+  data,
+}: EdgeProps<Edge<DeletableEdgeData>>) => {
+  const [edgePath, labelX, labelY] = getBezierPath({
+    sourceX,
+    sourceY,
+    sourcePosition,
+    targetX,
+    targetY,
+    targetPosition,
+  });
+
+  const onEdgeClick = (event: React.MouseEvent) => {
+    event.stopPropagation();
+    const edgeData = data as DeletableEdgeData | undefined;
+    if (edgeData?.onDelete) {
+      edgeData.onDelete(id);
+    }
+  };
+
+  return (
+    <>
+      <BaseEdge path={edgePath} markerEnd={markerEnd} style={style} />
+      <foreignObject
+        width={24}
+        height={24}
+        x={labelX - 12}
+        y={labelY - 12}
+        className="edgebutton-foreignobject"
+        requiredExtensions="http://www.w3.org/1999/xhtml"
+      >
+        <div className="flex items-center justify-center w-full h-full">
+          <button
+            className="w-5 h-5 rounded-full bg-destructive hover:bg-destructive/80 flex items-center justify-center cursor-pointer transition-all opacity-0 hover:opacity-100 group-hover:opacity-100"
+            onClick={onEdgeClick}
+            style={{ opacity: 0.7 }}
+            onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
+            onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.7')}
+          >
+            <X className="w-3 h-3 text-destructive-foreground" />
+          </button>
+        </div>
+      </foreignObject>
+    </>
+  );
+};
+
+const edgeTypes = {
+  deletable: DeletableEdge,
 };
 
 interface FunnelCanvasProps {
@@ -66,6 +136,7 @@ const FunnelCanvasInner = ({
   const [activeTab, setActiveTab] = useState('editor');
   const [webhookDialogOpen, setWebhookDialogOpen] = useState(false);
   const didInitialFitRef = useRef(false);
+  const [layoutDirection, setLayoutDirection] = useState<'horizontal' | 'vertical'>('horizontal');
   
   // Convert to React Flow format
   const convertToFlowNodes = (nodes: FunnelNode[]): Node[] => {
@@ -80,27 +151,42 @@ const FunnelCanvasInner = ({
     }));
   };
 
-  const convertToFlowEdges = (edges: FunnelEdge[]): Edge[] => {
+  const [nodes, setNodes, onNodesChange] = useNodesState(convertToFlowNodes(initialNodes));
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+
+  // Delete edge handler - must be after setEdges is defined
+  const handleDeleteEdge = useCallback((edgeId: string) => {
+    setEdges((eds) => eds.filter((e) => e.id !== edgeId));
+    setHasUnsavedChanges(true);
+    toast({ title: 'Conexão removida - Clique em Salvar para persistir' });
+  }, [setEdges, toast]);
+
+  // Convert edges with delete handler
+  const convertToFlowEdges = useCallback((edges: FunnelEdge[]): Edge[] => {
     return edges.map((edge) => ({
       id: edge.id,
       source: edge.source,
       target: edge.target,
       sourceHandle: edge.sourceHandle || 'default',
       targetHandle: edge.targetHandle,
+      type: 'deletable',
       animated: true,
       style: { stroke: 'hsl(var(--primary))' },
+      data: { onDelete: handleDeleteEdge },
     }));
-  };
+  }, [handleDeleteEdge]);
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(convertToFlowNodes(initialNodes));
-  const [edges, setEdges, onEdgesChange] = useEdgesState(convertToFlowEdges(initialEdges));
-  const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+  // Initialize edges after handleDeleteEdge is defined
+  useEffect(() => {
+    setEdges(convertToFlowEdges(initialEdges));
+  }, []);
 
   // Update nodes when initialNodes change
   useEffect(() => {
     setNodes(convertToFlowNodes(initialNodes));
     setEdges(convertToFlowEdges(initialEdges));
-  }, [initialNodes, initialEdges, setNodes, setEdges]);
+  }, [initialNodes, initialEdges, setNodes, setEdges, convertToFlowEdges]);
 
   // Fit view only once (avoid re-centering after save)
   useEffect(() => {
@@ -212,14 +298,16 @@ const FunnelCanvasInner = ({
         {
           id: crypto.randomUUID(),
           ...params,
+          type: 'deletable',
           animated: true,
           style: { stroke: 'hsl(var(--primary))' },
+          data: { onDelete: handleDeleteEdge },
         },
         eds
       )
     );
     markUnsaved();
-  }, [setEdges, markUnsaved]);
+  }, [setEdges, markUnsaved, handleDeleteEdge]);
 
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
@@ -279,6 +367,111 @@ const FunnelCanvasInner = ({
     markUnsaved();
     toast({ title: 'Bloco removido - Clique em Salvar para persistir' });
   }, [setNodes, setEdges, toast, markUnsaved]);
+
+  // Toggle layout between horizontal and vertical
+  const handleToggleLayout = useCallback(() => {
+    const newDirection = layoutDirection === 'horizontal' ? 'vertical' : 'horizontal';
+    setLayoutDirection(newDirection);
+    
+    // Reorganize nodes based on current edges (flow order)
+    const nodeMap = new Map(nodes.map(n => [n.id, n]));
+    const incomingEdges = new Map<string, string[]>();
+    const outgoingEdges = new Map<string, string[]>();
+    
+    edges.forEach(edge => {
+      if (!outgoingEdges.has(edge.source)) outgoingEdges.set(edge.source, []);
+      outgoingEdges.get(edge.source)!.push(edge.target);
+      
+      if (!incomingEdges.has(edge.target)) incomingEdges.set(edge.target, []);
+      incomingEdges.get(edge.target)!.push(edge.source);
+    });
+    
+    // Find start nodes (no incoming edges)
+    const startNodes = nodes.filter(n => !incomingEdges.has(n.id) || incomingEdges.get(n.id)!.length === 0);
+    
+    // BFS to order nodes by level
+    const visited = new Set<string>();
+    const levels: Node[][] = [];
+    let currentLevel = startNodes;
+    
+    while (currentLevel.length > 0) {
+      levels.push(currentLevel);
+      currentLevel.forEach(n => visited.add(n.id));
+      
+      const nextLevel: Node[] = [];
+      currentLevel.forEach(node => {
+        const targets = outgoingEdges.get(node.id) || [];
+        targets.forEach(targetId => {
+          if (!visited.has(targetId)) {
+            const targetNode = nodeMap.get(targetId);
+            if (targetNode && !nextLevel.find(n => n.id === targetId)) {
+              nextLevel.push(targetNode);
+            }
+          }
+        });
+      });
+      currentLevel = nextLevel;
+    }
+    
+    // Add any unvisited nodes
+    nodes.forEach(n => {
+      if (!visited.has(n.id)) {
+        if (levels.length === 0) levels.push([]);
+        levels[levels.length - 1].push(n);
+      }
+    });
+    
+    // Reposition nodes
+    const NODE_WIDTH = 250;
+    const NODE_HEIGHT = 120;
+    const GAP_X = newDirection === 'horizontal' ? 300 : 50;
+    const GAP_Y = newDirection === 'horizontal' ? 150 : 200;
+    
+    const updatedNodes = nodes.map(node => {
+      let levelIndex = 0;
+      let indexInLevel = 0;
+      
+      for (let i = 0; i < levels.length; i++) {
+        const idx = levels[i].findIndex(n => n.id === node.id);
+        if (idx !== -1) {
+          levelIndex = i;
+          indexInLevel = idx;
+          break;
+        }
+      }
+      
+      const levelSize = levels[levelIndex]?.length || 1;
+      
+      let x, y;
+      if (newDirection === 'horizontal') {
+        // Horizontal: nodes flow left to right
+        x = levelIndex * GAP_X;
+        y = indexInLevel * GAP_Y - ((levelSize - 1) * GAP_Y) / 2;
+      } else {
+        // Vertical: nodes flow top to bottom
+        x = indexInLevel * (NODE_WIDTH + GAP_X) - ((levelSize - 1) * (NODE_WIDTH + GAP_X)) / 2;
+        y = levelIndex * GAP_Y;
+      }
+      
+      return {
+        ...node,
+        position: { x, y },
+      };
+    });
+    
+    setNodes(updatedNodes);
+    markUnsaved();
+    
+    // Fit view after layout change
+    setTimeout(() => {
+      fitView({ padding: 0.2, duration: 300 });
+    }, 50);
+    
+    toast({
+      title: newDirection === 'horizontal' ? 'Layout horizontal' : 'Layout vertical',
+      description: 'Os blocos foram reorganizados.',
+    });
+  }, [layoutDirection, nodes, edges, setNodes, markUnsaved, fitView, toast]);
 
   const onSelectionChange = useCallback(({ nodes: selectedNodes }: { nodes: Node[] }) => {
     setSelectedNode(selectedNodes.length === 1 ? selectedNodes[0] : null);
@@ -383,14 +576,36 @@ const FunnelCanvasInner = ({
               Configurações
             </TabsTrigger>
           </TabsList>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setWebhookDialogOpen(true)}
-          >
-            <Webhook className="h-4 w-4 mr-2" />
-            Webhook
-          </Button>
+          <div className="flex items-center gap-2">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleToggleLayout}
+                  >
+                    {layoutDirection === 'horizontal' ? (
+                      <LayoutList className="h-4 w-4" />
+                    ) : (
+                      <LayoutGrid className="h-4 w-4" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {layoutDirection === 'horizontal' ? 'Mudar para layout vertical' : 'Mudar para layout horizontal'}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setWebhookDialogOpen(true)}
+            >
+              <Webhook className="h-4 w-4 mr-2" />
+              Webhook
+            </Button>
+          </div>
         </div>
 
         <TabsContent value="editor" className="flex-1 min-h-0 flex m-0 data-[state=inactive]:hidden overflow-hidden">
@@ -416,10 +631,12 @@ const FunnelCanvasInner = ({
                 onDragOver={onDragOver}
                 onSelectionChange={onSelectionChange}
                 nodeTypes={nodeTypes}
+                edgeTypes={edgeTypes}
                 snapToGrid
                 snapGrid={[20, 20]}
                 defaultEdgeOptions={{
                   animated: true,
+                  type: 'deletable',
                   style: { stroke: 'hsl(var(--primary))' },
                 }}
                 className="bg-muted/20"
