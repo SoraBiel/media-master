@@ -15,6 +15,7 @@ import {
   RefreshCcw,
   CreditCard,
   GripVertical,
+  Package,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { BlockType, BLOCK_INFO, BLOCK_CATEGORIES } from './types';
@@ -39,6 +40,7 @@ const ICONS: Record<BlockType, typeof Play> = {
   action_webhook: Webhook,
   remarketing: RefreshCcw,
   payment: CreditCard,
+  delivery: Package,
   end: Flag,
 };
 
@@ -76,6 +78,11 @@ const CATEGORY_CONFIG: Record<string, { label: string; icon: typeof Play; gradie
     label: 'Pagamentos', 
     icon: CreditCard,
     gradient: 'from-green-500/20 to-green-600/5'
+  },
+  delivery: { 
+    label: 'Entrega', 
+    icon: Package,
+    gradient: 'from-teal-500/20 to-teal-600/5'
   },
 };
 

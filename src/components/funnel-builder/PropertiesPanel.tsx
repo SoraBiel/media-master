@@ -723,6 +723,14 @@ export const PropertiesPanel = ({
             selectedNode={selectedNode}
           />
         )}
+
+        {/* Delivery block */}
+        {blockType === 'delivery' && (
+          <DeliveryBlockProperties
+            localData={localData}
+            handleChange={handleChange}
+          />
+        )}
       </div>
     </div>
   );
@@ -862,6 +870,107 @@ const PaymentBlockProperties = ({
         />
         <p className="text-xs text-muted-foreground">
           Tempo máximo para pagamento
+        </p>
+      </div>
+    </>
+  );
+};
+
+// Component for delivery block (packs)
+const DeliveryBlockProperties = ({ 
+  localData, 
+  handleChange,
+}: { 
+  localData: BlockData; 
+  handleChange: (field: keyof BlockData, value: any) => void;
+}) => {
+  const [packs, setPacks] = useState<Array<{ id: string; name: string; file_count: number | null }>>([]);
+  const [loadingPacks, setLoadingPacks] = useState(true);
+
+  useEffect(() => {
+    const fetchPacks = async () => {
+      const { data, error } = await supabase
+        .from('admin_media')
+        .select('id, name, file_count')
+        .order('name', { ascending: true });
+      
+      if (!error && data) {
+        setPacks(data);
+      }
+      setLoadingPacks(false);
+    };
+    fetchPacks();
+  }, []);
+
+  return (
+    <>
+      <div className="space-y-2">
+        <Label>Tipo de Entrega</Label>
+        <Select
+          value={localData.deliveryType || 'pack'}
+          onValueChange={(v) => handleChange('deliveryType', v)}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="pack">Pack de Mídia</SelectItem>
+            <SelectItem value="link">Link</SelectItem>
+            <SelectItem value="message">Mensagem</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {localData.deliveryType === 'pack' && (
+        <div className="space-y-2">
+          <Label>Pack de Mídia</Label>
+          {loadingPacks ? (
+            <div className="text-sm text-muted-foreground">Carregando packs...</div>
+          ) : packs.length === 0 ? (
+            <div className="text-sm text-warning">
+              Nenhum pack disponível.
+            </div>
+          ) : (
+            <Select
+              value={localData.deliveryPackId || ''}
+              onValueChange={(v) => handleChange('deliveryPackId', v)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione um pack" />
+              </SelectTrigger>
+              <SelectContent>
+                {packs.map((pack) => (
+                  <SelectItem key={pack.id} value={pack.id}>
+                    {pack.name} ({pack.file_count || 0} arquivos)
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+      )}
+
+      {localData.deliveryType === 'link' && (
+        <div className="space-y-2">
+          <Label>Link de Entrega</Label>
+          <Input
+            value={localData.deliveryLink || ''}
+            onChange={(e) => handleChange('deliveryLink', e.target.value)}
+            placeholder="https://..."
+          />
+        </div>
+      )}
+
+      <div className="space-y-2">
+        <Label>Mensagem de Entrega</Label>
+        <Textarea
+          value={localData.deliveryMessage || ''}
+          onChange={(e) => handleChange('deliveryMessage', e.target.value)}
+          placeholder="🎁 Aqui está sua entrega!"
+          className="min-h-[80px]"
+        />
+        <p className="text-xs text-muted-foreground">
+          Mensagem enviada junto com a entrega
         </p>
       </div>
     </>

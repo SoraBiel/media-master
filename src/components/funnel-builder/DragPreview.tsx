@@ -15,6 +15,7 @@ import {
   RefreshCcw,
   CreditCard,
   GripVertical,
+  Package,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { BlockType, BLOCK_INFO } from './types';
@@ -34,6 +35,7 @@ const ICONS: Record<BlockType, typeof Play> = {
   action_webhook: Webhook,
   remarketing: RefreshCcw,
   payment: CreditCard,
+  delivery: Package,
   end: Flag,
 };
 
