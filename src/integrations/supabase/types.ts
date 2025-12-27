@@ -272,6 +272,51 @@ export type Database = {
         }
         Relationships: []
       }
+      dashboard_banners: {
+        Row: {
+          created_at: string
+          description: string | null
+          expires_at: string | null
+          id: string
+          image_url: string
+          is_active: boolean
+          link_text: string | null
+          link_url: string | null
+          priority: number
+          starts_at: string | null
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          image_url: string
+          is_active?: boolean
+          link_text?: string | null
+          link_url?: string | null
+          priority?: number
+          starts_at?: string | null
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          image_url?: string
+          is_active?: boolean
+          link_text?: string | null
+          link_url?: string | null
+          priority?: number
+          starts_at?: string | null
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       deliveries: {
         Row: {
           created_at: string | null
