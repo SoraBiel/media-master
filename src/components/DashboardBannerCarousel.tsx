@@ -66,18 +66,18 @@ export const DashboardBannerCarousel = () => {
   const currentBanner = banners[currentIndex];
 
   return (
-    <div className="relative w-full rounded-xl overflow-hidden mb-6">
+    <div className="relative w-full rounded-xl overflow-hidden mb-4 md:mb-6 touch-pan-x">
       <AnimatePresence mode="wait">
         <motion.div
           key={currentBanner.id}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.5 }}
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -20 }}
+          transition={{ duration: 0.3 }}
           className="relative"
         >
-          {/* Banner Image */}
-          <div className="relative aspect-[3/1] md:aspect-[4/1] w-full">
+          {/* Banner Image - More compact on mobile */}
+          <div className="relative aspect-[2.5/1] sm:aspect-[3/1] md:aspect-[4/1] w-full">
             <img
               src={currentBanner.image_url}
               alt={currentBanner.title || "Banner promocional"}
@@ -85,18 +85,18 @@ export const DashboardBannerCarousel = () => {
             />
             
             {/* Overlay gradient for text visibility */}
-            <div className="absolute inset-0 bg-gradient-to-r from-background/80 via-transparent to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-r from-background/90 via-background/40 to-transparent sm:from-background/80 sm:via-transparent" />
             
-            {/* Content overlay */}
+            {/* Content overlay - Better mobile positioning */}
             {(currentBanner.title || currentBanner.description || currentBanner.link_url) && (
-              <div className="absolute inset-0 flex flex-col justify-center p-4 md:p-8 max-w-lg">
+              <div className="absolute inset-0 flex flex-col justify-center p-3 sm:p-4 md:p-8 max-w-[70%] sm:max-w-lg">
                 {currentBanner.title && (
-                  <h3 className="text-lg md:text-2xl font-bold text-foreground mb-1 md:mb-2 line-clamp-2">
+                  <h3 className="text-sm sm:text-lg md:text-2xl font-bold text-foreground mb-0.5 sm:mb-1 md:mb-2 line-clamp-2">
                     {currentBanner.title}
                   </h3>
                 )}
                 {currentBanner.description && (
-                  <p className="text-xs md:text-sm text-muted-foreground mb-2 md:mb-4 line-clamp-2">
+                  <p className="text-[10px] sm:text-xs md:text-sm text-muted-foreground mb-1.5 sm:mb-2 md:mb-4 line-clamp-2 hidden xs:block">
                     {currentBanner.description}
                   </p>
                 )}
@@ -107,7 +107,7 @@ export const DashboardBannerCarousel = () => {
                     rel="noopener noreferrer"
                     className="inline-flex"
                   >
-                    <Button size="sm" variant="gradient" className="gap-1">
+                    <Button size="sm" variant="gradient" className="gap-1 text-xs sm:text-sm h-7 sm:h-8 px-2 sm:px-3">
                       {currentBanner.link_text || "Saiba mais"}
                       <ExternalLink className="w-3 h-3" />
                     </Button>
@@ -119,36 +119,36 @@ export const DashboardBannerCarousel = () => {
         </motion.div>
       </AnimatePresence>
 
-      {/* Navigation arrows */}
+      {/* Navigation arrows - Smaller on mobile */}
       {banners.length > 1 && (
         <>
           <Button
             variant="ghost"
             size="icon"
-            className="absolute left-2 top-1/2 -translate-y-1/2 bg-background/50 hover:bg-background/80 h-8 w-8 rounded-full"
+            className="absolute left-1 sm:left-2 top-1/2 -translate-y-1/2 bg-background/50 hover:bg-background/80 h-6 w-6 sm:h-8 sm:w-8 rounded-full"
             onClick={goToPrevious}
           >
-            <ChevronLeft className="w-4 h-4" />
+            <ChevronLeft className="w-3 h-3 sm:w-4 sm:h-4" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            className="absolute right-2 top-1/2 -translate-y-1/2 bg-background/50 hover:bg-background/80 h-8 w-8 rounded-full"
+            className="absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 bg-background/50 hover:bg-background/80 h-6 w-6 sm:h-8 sm:w-8 rounded-full"
             onClick={goToNext}
           >
-            <ChevronRight className="w-4 h-4" />
+            <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4" />
           </Button>
 
-          {/* Dots indicator */}
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+          {/* Dots indicator - Closer to bottom on mobile */}
+          <div className="absolute bottom-2 sm:bottom-3 left-1/2 -translate-x-1/2 flex gap-1 sm:gap-1.5">
             {banners.map((_, index) => (
               <button
                 key={index}
                 onClick={() => setCurrentIndex(index)}
-                className={`w-2 h-2 rounded-full transition-all ${
+                className={`h-1.5 sm:h-2 rounded-full transition-all ${
                   index === currentIndex 
-                    ? "bg-primary w-4" 
-                    : "bg-foreground/30 hover:bg-foreground/50"
+                    ? "bg-primary w-3 sm:w-4" 
+                    : "bg-foreground/30 hover:bg-foreground/50 w-1.5 sm:w-2"
                 }`}
               />
             ))}
