@@ -48,6 +48,7 @@ import {
   FileText,
   Crown,
   FolderOpen,
+  ChevronDown,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
@@ -57,6 +58,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+
+interface CampaignErrorLog {
+  index: number;
+  url: string;
+  error: string;
+  timestamp: string;
+}
 
 interface Campaign {
   id: string;
@@ -80,6 +88,7 @@ interface Campaign {
   success_count?: number;
   error_count?: number;
   avg_send_time_ms?: number;
+  errors_log?: CampaignErrorLog[];
 }
 
 interface Destination {
@@ -176,7 +185,12 @@ const CampaignsSection = () => {
     try {
       const { data, error } = await supabase.from("campaigns").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
       if (error) throw error;
-      setCampaigns(data || []);
+      // Cast the data to handle Json type for errors_log
+      const typedData = (data || []).map(c => ({
+        ...c,
+        errors_log: Array.isArray(c.errors_log) ? c.errors_log as unknown as CampaignErrorLog[] : undefined
+      }));
+      setCampaigns(typedData);
     } catch (error: any) {
       console.error("Error fetching campaigns:", error);
     } finally {
@@ -1259,15 +1273,57 @@ const CampaignsSection = () => {
                               </div>
                             )}
 
-                            {campaign.error_message && (
-                              <motion.div 
-                                className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm"
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: "auto" }}
-                              >
-                                <AlertCircle className="w-4 h-4 inline mr-2" />
-                                {campaign.error_message}
-                              </motion.div>
+                            {/* Error message and detailed errors log */}
+                            {(campaign.error_message || (campaign.error_count && campaign.error_count > 0)) && (
+                              <div className="space-y-2">
+                                {campaign.error_message && (
+                                  <motion.div 
+                                    className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm"
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: "auto" }}
+                                  >
+                                    <AlertCircle className="w-4 h-4 inline mr-2" />
+                                    {campaign.error_message}
+                                  </motion.div>
+                                )}
+                                
+                                {/* Expandable detailed errors */}
+                                {campaign.errors_log && Array.isArray(campaign.errors_log) && campaign.errors_log.length > 0 && (
+                                  <details className="group">
+                                    <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground flex items-center gap-2 py-2">
+                                      <ChevronDown className="w-4 h-4 transition-transform group-open:rotate-180" />
+                                      Ver detalhes dos {campaign.errors_log.length} erro(s)
+                                    </summary>
+                                    <motion.div 
+                                      className="mt-2 space-y-2 max-h-48 overflow-y-auto"
+                                      initial={{ opacity: 0 }}
+                                      animate={{ opacity: 1 }}
+                                    >
+                                      {(campaign.errors_log as Array<{ index: number; url: string; error: string; timestamp: string }>).map((err, idx) => (
+                                        <div 
+                                          key={idx}
+                                          className="p-2 rounded-lg bg-destructive/5 border border-destructive/20 text-xs space-y-1"
+                                        >
+                                          <div className="flex items-center justify-between">
+                                            <span className="font-medium text-destructive">
+                                              Mídia #{err.index + 1}
+                                            </span>
+                                            <span className="text-muted-foreground">
+                                              {new Date(err.timestamp).toLocaleTimeString("pt-BR")}
+                                            </span>
+                                          </div>
+                                          <p className="text-destructive/80 break-all">
+                                            <strong>Erro:</strong> {err.error}
+                                          </p>
+                                          <p className="text-muted-foreground truncate" title={err.url}>
+                                            <strong>URL:</strong> {err.url}
+                                          </p>
+                                        </div>
+                                      ))}
+                                    </motion.div>
+                                  </details>
+                                )}
+                              </div>
                             )}
                           </div>
 
