@@ -82,10 +82,15 @@ function findNextNode(
   return nodes.find(n => n.id === edge.target);
 }
 
-// Evaluate condition
-function evaluateCondition(node: FunnelNode, variables: Record<string, any>): boolean {
+// Evaluate condition - returns boolean or 'async' if needs database lookup
+function evaluateCondition(node: FunnelNode, variables: Record<string, any>): boolean | 'async' {
   const { variable, operator, value } = node.data;
   const actualValue = variables[variable];
+  
+  // Special payment status operators - need async DB lookup
+  if (operator === 'is_paid' || operator === 'is_pending') {
+    return 'async'; // Signal that we need async evaluation
+  }
   
   switch (operator) {
     case 'equals': return String(actualValue) === String(value);
@@ -97,6 +102,50 @@ function evaluateCondition(node: FunnelNode, variables: Record<string, any>): bo
     case 'empty': return actualValue === undefined || actualValue === null || actualValue === '';
     default: return false;
   }
+}
+
+// Async evaluation for payment status conditions
+async function evaluatePaymentCondition(
+  supabase: any,
+  node: FunnelNode, 
+  variables: Record<string, any>,
+  chatId: string,
+  funnelId: string
+): Promise<boolean> {
+  const { operator } = node.data;
+  
+  // Find the latest payment for this chat in this funnel
+  const { data: payment, error } = await supabase
+    .from('funnel_payments')
+    .select('status')
+    .eq('funnel_id', funnelId)
+    .eq('lead_chat_id', chatId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  
+  if (error) {
+    console.error('Error checking payment status:', error);
+    return false;
+  }
+  
+  if (!payment) {
+    console.log('No payment found for condition evaluation');
+    return operator === 'is_pending'; // No payment = pending
+  }
+  
+  const paymentStatus = payment.status;
+  console.log(`Payment condition check: status=${paymentStatus}, operator=${operator}`);
+  
+  if (operator === 'is_paid') {
+    return paymentStatus === 'approved' || paymentStatus === 'paid';
+  }
+  
+  if (operator === 'is_pending') {
+    return paymentStatus === 'pending' || paymentStatus === 'in_process';
+  }
+  
+  return false;
 }
 
 serve(async (req) => {
@@ -641,7 +690,22 @@ serve(async (req) => {
         }
 
         case 'condition': {
-          const result = evaluateCondition(currentNode, variables);
+          let result: boolean;
+          const conditionResult = evaluateCondition(currentNode, variables);
+          
+          if (conditionResult === 'async') {
+            // Need async evaluation for payment conditions
+            result = await evaluatePaymentCondition(
+              supabase, 
+              currentNode, 
+              variables, 
+              String(chatId), 
+              funnel.id
+            );
+          } else {
+            result = conditionResult;
+          }
+          
           const handle = result ? 'true' : 'false';
           
           await supabase.from("telegram_logs").insert({
@@ -649,7 +713,12 @@ serve(async (req) => {
             funnel_id: funnel.id,
             event_type: "condition_evaluated",
             node_id: currentNode.id,
-            payload: { result, variable: currentNode.data.variable, value: variables[currentNode.data.variable] },
+            payload: { 
+              result, 
+              operator: currentNode.data.operator,
+              variable: currentNode.data.variable, 
+              value: variables[currentNode.data.variable] 
+            },
           });
 
           currentNode = findNextNode(currentNode.id, edges, nodes, handle);
@@ -966,6 +1035,128 @@ serve(async (req) => {
           return new Response(JSON.stringify({ ok: true, waiting: "payment" }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
+        }
+
+        case 'delivery': {
+          // Delivery block - check payment status and deliver content
+          const deliveryType = currentNode.data.deliveryType || 'message';
+          const deliveryPackId = currentNode.data.deliveryPackId;
+          const deliveryMessage = replaceVariables(currentNode.data.deliveryMessage || '🎁 Aqui está sua entrega!', variables);
+          const deliveryLink = currentNode.data.deliveryLink;
+          
+          // Check if user has paid
+          const { data: payment, error: paymentError } = await supabase
+            .from('funnel_payments')
+            .select('*, funnel_products(*)')
+            .eq('funnel_id', funnel.id)
+            .eq('lead_chat_id', String(chatId))
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          
+          const isPaid = payment?.status === 'approved' || payment?.status === 'paid';
+          
+          if (!isPaid) {
+            console.log('Delivery block: Payment not confirmed, skipping delivery');
+            await callTelegramAPI(botToken, "sendMessage", {
+              chat_id: chatId,
+              text: "⚠️ <b>Pagamento não confirmado</b>\n\nPor favor, finalize o pagamento para receber sua entrega.",
+              parse_mode: "HTML",
+            });
+            
+            await supabase.from("telegram_logs").insert({
+              session_id: session.id,
+              funnel_id: funnel.id,
+              event_type: "delivery_blocked",
+              node_id: currentNode.id,
+              payload: { reason: 'payment_not_confirmed', payment_status: payment?.status },
+            });
+            
+            currentNode = findNextNode(currentNode.id, edges, nodes);
+            break;
+          }
+          
+          // Send delivery based on type
+          if (deliveryType === 'pack' && deliveryPackId) {
+            // Get pack from admin_media
+            const { data: pack } = await supabase
+              .from('admin_media')
+              .select('*')
+              .eq('id', deliveryPackId)
+              .single();
+            
+            if (pack && pack.media_files) {
+              await callTelegramAPI(botToken, "sendMessage", {
+                chat_id: chatId,
+                text: deliveryMessage,
+                parse_mode: "HTML",
+              });
+              
+              // Send media files
+              const mediaFiles = Array.isArray(pack.media_files) ? pack.media_files : [];
+              for (const file of mediaFiles.slice(0, 10)) { // Limit to 10 files
+                const fileUrl = file.url || file;
+                const fileType = file.type || (fileUrl.match(/\.(mp4|webm|mov)$/i) ? 'video' : 'photo');
+                
+                try {
+                  if (fileType === 'video') {
+                    await callTelegramAPI(botToken, "sendVideo", {
+                      chat_id: chatId,
+                      video: fileUrl,
+                    });
+                  } else {
+                    await callTelegramAPI(botToken, "sendPhoto", {
+                      chat_id: chatId,
+                      photo: fileUrl,
+                    });
+                  }
+                  await new Promise(resolve => setTimeout(resolve, 500)); // Rate limit
+                } catch (e) {
+                  console.error('Error sending media file:', e);
+                }
+              }
+            }
+          } else if (deliveryType === 'link' && deliveryLink) {
+            await callTelegramAPI(botToken, "sendMessage", {
+              chat_id: chatId,
+              text: `${deliveryMessage}\n\n🔗 <a href="${deliveryLink}">Clique aqui para acessar</a>`,
+              parse_mode: "HTML",
+              disable_web_page_preview: false,
+            });
+          } else {
+            // Just message
+            await callTelegramAPI(botToken, "sendMessage", {
+              chat_id: chatId,
+              text: deliveryMessage,
+              parse_mode: "HTML",
+            });
+          }
+          
+          // Mark as delivered
+          if (payment) {
+            await supabase
+              .from('funnel_payments')
+              .update({ 
+                delivery_status: 'delivered', 
+                delivered_at: new Date().toISOString() 
+              })
+              .eq('id', payment.id);
+          }
+          
+          await supabase.from("telegram_logs").insert({
+            session_id: session.id,
+            funnel_id: funnel.id,
+            event_type: "delivery_sent",
+            node_id: currentNode.id,
+            payload: { 
+              delivery_type: deliveryType, 
+              pack_id: deliveryPackId,
+              payment_id: payment?.id 
+            },
+          });
+          
+          currentNode = findNextNode(currentNode.id, edges, nodes);
+          break;
         }
 
         case 'end': {
