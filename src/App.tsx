@@ -84,7 +84,13 @@ const App = () => (
             <Route path="/integrations" element={<ProtectedRoute><IntegrationsPage /></ProtectedRoute>} />
             <Route path="/payments" element={<ProtectedRoute><PaymentsPage /></ProtectedRoute>} />
             <Route path="/my-purchases" element={<ProtectedRoute><MyPurchasesPage /></ProtectedRoute>} />
-            <Route path="/publication-automation" element={<ProtectedRoute><PublicationAutomationPage /></ProtectedRoute>} />
+            <Route path="/publication-automation" element={
+              <ProtectedRoute>
+                <FeatureProtectedRoute featureKey="automation_module_enabled">
+                  <PublicationAutomationPage />
+                </FeatureProtectedRoute>
+              </ProtectedRoute>
+            } />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

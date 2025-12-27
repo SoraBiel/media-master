@@ -38,6 +38,7 @@ import {
   Store,
   Percent,
   Bell,
+  Share2,
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend } from "recharts";
 import { Button } from "@/components/ui/button";
@@ -94,6 +95,7 @@ import { useToast } from "@/hooks/use-toast";
 import { AdminTemplatesPanel } from "@/components/admin/AdminTemplatesPanel";
 import { AdminNotificationsPanel } from "@/components/admin/AdminNotificationsPanel";
 import { AdminBannersPanel } from "@/components/admin/AdminBannersPanel";
+import AdminAutomationPanel from "@/components/admin/AdminAutomationPanel";
 import { useAdminSettings, getSettingLabel } from "@/hooks/useAdminSettings";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -1338,6 +1340,10 @@ const AdminDashboardPage = () => {
             <TabsTrigger value="notifications" className="flex items-center gap-1">
               <Bell className="h-4 w-4" />
               Notificações
+            </TabsTrigger>
+            <TabsTrigger value="automation" className="flex items-center gap-1">
+              <Share2 className="h-4 w-4" />
+              Automação
             </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center gap-1">
               <Settings className="h-4 w-4" />
@@ -3007,6 +3013,11 @@ const AdminDashboardPage = () => {
           <TabsContent value="notifications" className="space-y-6">
             <AdminBannersPanel />
             <AdminNotificationsPanel />
+          </TabsContent>
+
+          {/* Automation Tab */}
+          <TabsContent value="automation" className="space-y-6">
+            <AdminAutomationPanel />
           </TabsContent>
 
           {/* Settings Tab - All Feature Toggles */}
