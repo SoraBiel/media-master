@@ -419,10 +419,14 @@ export const TypebotConverter = ({ funnelId, onImport }: TypebotConverterProps) 
   };
 
   const normalizeTypebotData = (parsed: any): TypebotFlow => {
+    // Log keys for debugging
+    console.log('Typebot JSON keys:', Object.keys(parsed));
+    
     // Check different Typebot export formats
     
     // Format 1: Direct groups/edges at root
     if (parsed.groups && Array.isArray(parsed.groups)) {
+      console.log('Detected format: Direct groups at root');
       return {
         groups: parsed.groups,
         edges: parsed.edges || [],
@@ -432,6 +436,7 @@ export const TypebotConverter = ({ funnelId, onImport }: TypebotConverterProps) 
     
     // Format 2: Nested inside "typebot" object
     if (parsed.typebot?.groups && Array.isArray(parsed.typebot.groups)) {
+      console.log('Detected format: Nested typebot object');
       return {
         groups: parsed.typebot.groups,
         edges: parsed.typebot.edges || [],
@@ -441,6 +446,7 @@ export const TypebotConverter = ({ funnelId, onImport }: TypebotConverterProps) 
     
     // Format 3: Results export format (has "results" array)
     if (parsed.results && parsed.typebot) {
+      console.log('Detected format: Results export');
       return {
         groups: parsed.typebot.groups || [],
         edges: parsed.typebot.edges || [],
@@ -450,6 +456,7 @@ export const TypebotConverter = ({ funnelId, onImport }: TypebotConverterProps) 
     
     // Format 4: Workspace export (has "typebots" array)
     if (parsed.typebots && Array.isArray(parsed.typebots) && parsed.typebots[0]) {
+      console.log('Detected format: Workspace export');
       const firstBot = parsed.typebots[0];
       return {
         groups: firstBot.groups || [],
@@ -458,8 +465,9 @@ export const TypebotConverter = ({ funnelId, onImport }: TypebotConverterProps) 
       };
     }
     
-    // Format 5: Version 6 format
+    // Format 5: Version 6 format with events
     if (parsed.version && parsed.events && parsed.groups) {
+      console.log('Detected format: Version 6 with events');
       return {
         groups: parsed.groups,
         edges: parsed.edges || [],
@@ -467,7 +475,57 @@ export const TypebotConverter = ({ funnelId, onImport }: TypebotConverterProps) 
       };
     }
     
-    throw new Error('Formato não reconhecido. Tente exportar seu Typebot novamente usando "Export flow" nas configurações.');
+    // Format 6: Flows/blocks structure (some Typebot versions)
+    if (parsed.flows && Array.isArray(parsed.flows)) {
+      console.log('Detected format: Flows array');
+      const allGroups: TypebotGroup[] = [];
+      const allEdges: TypebotEdge[] = [];
+      parsed.flows.forEach((flow: any) => {
+        if (flow.groups) allGroups.push(...flow.groups);
+        if (flow.edges) allEdges.push(...flow.edges);
+      });
+      return { groups: allGroups, edges: allEdges, variables: [] };
+    }
+    
+    // Format 7: Blocks at root level (simplified export)
+    if (parsed.blocks && Array.isArray(parsed.blocks)) {
+      console.log('Detected format: Blocks at root');
+      return {
+        groups: [{
+          id: 'main',
+          title: 'Main',
+          blocks: parsed.blocks,
+          graphCoordinates: { x: 0, y: 0 },
+        }],
+        edges: parsed.edges || [],
+        variables: parsed.variables || [],
+      };
+    }
+    
+    // Format 8: Data wrapper (API response format)
+    if (parsed.data?.groups || parsed.data?.typebot?.groups) {
+      console.log('Detected format: Data wrapper');
+      const inner = parsed.data.typebot || parsed.data;
+      return {
+        groups: inner.groups || [],
+        edges: inner.edges || [],
+        variables: inner.variables || [],
+      };
+    }
+    
+    // Format 9: publicTypebot wrapper
+    if (parsed.publicTypebot?.groups) {
+      console.log('Detected format: publicTypebot wrapper');
+      return {
+        groups: parsed.publicTypebot.groups,
+        edges: parsed.publicTypebot.edges || [],
+        variables: parsed.publicTypebot.variables || [],
+      };
+    }
+    
+    // Show what keys we found for debugging
+    const keysFound = Object.keys(parsed).slice(0, 10).join(', ');
+    throw new Error(`Formato não reconhecido. Chaves encontradas: ${keysFound}. Cole o conteúdo do arquivo exportado do Typebot usando "Export flow".`);
   };
 
   const handleConvert = () => {
