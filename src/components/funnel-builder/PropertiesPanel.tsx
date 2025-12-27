@@ -1,6 +1,6 @@
 import { useCallback, useState, useEffect, useRef } from 'react';
 import { Node } from '@xyflow/react';
-import { Trash2, Plus, GripVertical, Upload, X, Image, Video } from 'lucide-react';
+import { Trash2, Plus, GripVertical, Upload, X, Image, Video, Package } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -882,6 +882,7 @@ const DeliveryBlockProperties = ({
 }) => {
   const [packs, setPacks] = useState<Array<{ id: string; name: string; file_count: number | null }>>([]);
   const [loadingPacks, setLoadingPacks] = useState(true);
+  const [selectedPackInfo, setSelectedPackInfo] = useState<{ name: string; file_count: number } | null>(null);
 
   useEffect(() => {
     const fetchPacks = async () => {
@@ -892,11 +893,26 @@ const DeliveryBlockProperties = ({
       
       if (!error && data) {
         setPacks(data);
+        // Set selected pack info if already selected
+        if (localData.deliveryPackId) {
+          const selected = data.find(p => p.id === localData.deliveryPackId);
+          if (selected) {
+            setSelectedPackInfo({ name: selected.name, file_count: selected.file_count || 0 });
+          }
+        }
       }
       setLoadingPacks(false);
     };
     fetchPacks();
-  }, []);
+  }, [localData.deliveryPackId]);
+
+  const handlePackChange = (packId: string) => {
+    handleChange('deliveryPackId', packId);
+    const selected = packs.find(p => p.id === packId);
+    if (selected) {
+      setSelectedPackInfo({ name: selected.name, file_count: selected.file_count || 0 });
+    }
+  };
 
   return (
     <>
@@ -927,21 +943,31 @@ const DeliveryBlockProperties = ({
               Nenhum pack disponível.
             </div>
           ) : (
-            <Select
-              value={localData.deliveryPackId || ''}
-              onValueChange={(v) => handleChange('deliveryPackId', v)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione um pack" />
-              </SelectTrigger>
-              <SelectContent>
-                {packs.map((pack) => (
-                  <SelectItem key={pack.id} value={pack.id}>
-                    {pack.name} ({pack.file_count || 0} arquivos)
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <>
+              <Select
+                value={localData.deliveryPackId || ''}
+                onValueChange={handlePackChange}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um pack" />
+                </SelectTrigger>
+                <SelectContent>
+                  {packs.map((pack) => (
+                    <SelectItem key={pack.id} value={pack.id}>
+                      {pack.name} ({pack.file_count || 0} arquivos)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedPackInfo && (
+                <div className="flex items-center gap-2 p-2 bg-primary/10 rounded-md border border-primary/20">
+                  <Package className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium text-primary">
+                    {selectedPackInfo.file_count} arquivos serão enviados
+                  </span>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}

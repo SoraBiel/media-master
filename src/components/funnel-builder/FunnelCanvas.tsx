@@ -19,13 +19,14 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Pencil, ScrollText, Webhook, Package, Settings, X, LayoutGrid, LayoutList } from 'lucide-react';
+import { Pencil, ScrollText, Webhook, Package, Settings, X, LayoutGrid, LayoutList, CreditCard } from 'lucide-react';
 
 import BlockNode from './BlockNode';
 import { BlockSidebar } from './BlockSidebar';
 import { PropertiesPanel } from './PropertiesPanel';
 import { FunnelToolbar } from './FunnelToolbar';
 import { FunnelLogsPanel } from './FunnelLogsPanel';
+import { FunnelPaymentsPanel } from './FunnelPaymentsPanel';
 import { WebhookConfig } from './WebhookConfig';
 import FunnelProductsTab from './FunnelProductsTab';
 import { FunnelSettingsTab } from './FunnelSettingsTab';
@@ -571,6 +572,10 @@ const FunnelCanvasInner = ({
               <Package className="h-4 w-4" />
               Produto
             </TabsTrigger>
+            <TabsTrigger value="payments" className="flex items-center gap-2">
+              <CreditCard className="h-4 w-4" />
+              Pagamentos
+            </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
               Configurações
@@ -670,8 +675,12 @@ const FunnelCanvasInner = ({
           <FunnelProductsTab funnelId={funnelId} />
         </TabsContent>
 
+        <TabsContent value="payments" className="flex-1 m-0 data-[state=inactive]:hidden">
+          <FunnelPaymentsPanel funnelId={funnelId} />
+        </TabsContent>
+
         <TabsContent value="settings" className="flex-1 m-0 data-[state=inactive]:hidden overflow-auto">
-          <FunnelSettingsTab 
+          <FunnelSettingsTab
             funnelId={funnelId} 
             onImportFunnel={(importedNodes, importedEdges) => {
               // Convert imported nodes to React Flow format and add
