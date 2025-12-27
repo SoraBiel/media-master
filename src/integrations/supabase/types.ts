@@ -1084,6 +1084,53 @@ export type Database = {
         }
         Relationships: []
       }
+      post_platform_logs: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          platform: string
+          platform_post_id: string | null
+          post_id: string
+          posted_at: string | null
+          retry_count: number | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          platform: string
+          platform_post_id?: string | null
+          post_id: string
+          posted_at?: string | null
+          retry_count?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          platform?: string
+          platform_post_id?: string | null
+          post_id?: string
+          posted_at?: string | null
+          retry_count?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_platform_logs_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "scheduled_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -1128,6 +1175,93 @@ export type Database = {
           onboarding_completed?: boolean | null
           phone?: string | null
           updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      scheduled_posts: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          media_urls: Json | null
+          platforms: string[]
+          scheduled_at: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          media_urls?: Json | null
+          platforms: string[]
+          scheduled_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          media_urls?: Json | null
+          platforms?: string[]
+          scheduled_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      social_accounts: {
+        Row: {
+          access_token: string | null
+          account_avatar_url: string | null
+          account_name: string | null
+          account_username: string | null
+          created_at: string
+          id: string
+          is_connected: boolean | null
+          last_used_at: string | null
+          platform: string
+          platform_user_id: string | null
+          refresh_token: string | null
+          token_expires_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token?: string | null
+          account_avatar_url?: string | null
+          account_name?: string | null
+          account_username?: string | null
+          created_at?: string
+          id?: string
+          is_connected?: boolean | null
+          last_used_at?: string | null
+          platform: string
+          platform_user_id?: string | null
+          refresh_token?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string | null
+          account_avatar_url?: string | null
+          account_name?: string | null
+          account_username?: string | null
+          created_at?: string
+          id?: string
+          is_connected?: boolean | null
+          last_used_at?: string | null
+          platform?: string
+          platform_user_id?: string | null
+          refresh_token?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
