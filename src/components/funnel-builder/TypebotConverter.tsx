@@ -239,7 +239,7 @@ export const TypebotConverter = ({ funnelId, onImport }: TypebotConverterProps) 
           data.choices = block.items.map((item: any, index: number) => ({
             id: item.id || `choice_${index}`,
             label: item.content || item.title || item.label || `Opção ${index + 1}`,
-            value: String(index + 1),
+            value: item.id || `choice_${index}`,
             imageUrl: item.pictureSrc || item.imageUrl || undefined,
           }));
         }
@@ -370,7 +370,7 @@ export const TypebotConverter = ({ funnelId, onImport }: TypebotConverterProps) 
             id: crypto.randomUUID(),
             source: sourceId,
             target: targetId,
-            sourceHandle: typebotEdge.from.itemId || 'default',
+            sourceHandle: 'default',
           });
         }
       }

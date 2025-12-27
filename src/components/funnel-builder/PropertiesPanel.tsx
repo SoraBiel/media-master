@@ -122,13 +122,7 @@ export const PropertiesPanel = ({
   }, [selectedNode, localData, onUpdateNode]);
 
   if (!selectedNode) {
-    return (
-      <div className="w-80 border-l border-border bg-card/50 p-4 flex items-center justify-center">
-        <p className="text-muted-foreground text-sm text-center">
-          Selecione um bloco para editar suas propriedades
-        </p>
-      </div>
-    );
+    return null;
   }
 
   const blockType = (localData as any).blockType as BlockType;
@@ -517,6 +511,8 @@ export const PropertiesPanel = ({
                   <SelectItem value="less">É menor que</SelectItem>
                   <SelectItem value="exists">Existe</SelectItem>
                   <SelectItem value="empty">Está vazio</SelectItem>
+                  <SelectItem value="is_paid">Pagamento confirmado</SelectItem>
+                  <SelectItem value="is_pending">Pagamento pendente</SelectItem>
                 </SelectContent>
               </Select>
             </div>
