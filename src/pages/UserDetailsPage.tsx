@@ -19,6 +19,9 @@ import {
   Save,
   X,
   Loader2,
+  Ban,
+  UserCheck,
+  Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -95,6 +98,8 @@ const UserDetailsPage = () => {
   const [newEmail, setNewEmail] = useState("");
   const [isUpdatingEmail, setIsUpdatingEmail] = useState(false);
   const [showEmailDialog, setShowEmailDialog] = useState(false);
+  const [isTogglingStatus, setIsTogglingStatus] = useState(false);
+  const [showSuspendDialog, setShowSuspendDialog] = useState(false);
 
   useEffect(() => {
     if (userId) {
@@ -223,6 +228,45 @@ const UserDetailsPage = () => {
     setShowEmailDialog(true);
   };
 
+  const handleToggleSuspension = async () => {
+    if (!profile) return;
+
+    setIsTogglingStatus(true);
+    try {
+      const newStatus = !profile.is_suspended;
+      
+      const { error } = await supabase
+        .from("profiles")
+        .update({ 
+          is_suspended: newStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq("user_id", profile.user_id);
+
+      if (error) throw error;
+
+      // Update local state
+      setProfile({ ...profile, is_suspended: newStatus });
+      setShowSuspendDialog(false);
+
+      toast({
+        title: newStatus ? "Usuário suspenso" : "Usuário reativado",
+        description: newStatus 
+          ? `${profile.full_name || profile.email} foi suspenso.`
+          : `${profile.full_name || profile.email} foi reativado.`,
+      });
+    } catch (error: any) {
+      console.error("Error toggling suspension:", error);
+      toast({
+        title: "Erro ao alterar status",
+        description: error.message || "Tente novamente mais tarde.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsTogglingStatus(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <DashboardLayout>
@@ -273,7 +317,7 @@ const UserDetailsPage = () => {
                   </div>
                   <div>
                     <h2 className="text-xl font-bold">{profile.full_name || "Sem nome"}</h2>
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
                       <Badge variant={profile.is_online ? "default" : "secondary"}>
                         {profile.is_online ? "Online" : "Offline"}
                       </Badge>
@@ -287,7 +331,30 @@ const UserDetailsPage = () => {
                   </div>
                 </div>
 
-                <div className="flex-1 grid grid-cols-2 md:grid-cols-5 gap-4">
+                {/* Suspend/Reactivate Button */}
+                <div className="md:ml-auto flex items-center">
+                  <Button
+                    variant={profile.is_suspended ? "default" : "destructive"}
+                    size="sm"
+                    onClick={() => setShowSuspendDialog(true)}
+                    className="gap-2"
+                  >
+                    {profile.is_suspended ? (
+                      <>
+                        <UserCheck className="w-4 h-4" />
+                        Reativar Usuário
+                      </>
+                    ) : (
+                      <>
+                        <Ban className="w-4 h-4" />
+                        Suspender Usuário
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="mt-6 grid grid-cols-2 md:grid-cols-5 gap-4">
                   <div className="p-3 rounded-lg bg-secondary group relative">
                     <div className="flex items-center gap-2 text-muted-foreground mb-1">
                       <Mail className="w-4 h-4" />
@@ -343,7 +410,6 @@ const UserDetailsPage = () => {
                     <p className="text-sm font-medium">{transactions.length}</p>
                   </div>
                 </div>
-              </div>
             </CardContent>
           </Card>
         </motion.div>
@@ -545,6 +611,63 @@ const UserDetailsPage = () => {
                   <>
                     <Save className="w-4 h-4 mr-2" />
                     Salvar
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Suspend/Reactivate Dialog */}
+        <Dialog open={showSuspendDialog} onOpenChange={setShowSuspendDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                {profile?.is_suspended ? (
+                  <>
+                    <UserCheck className="w-5 h-5 text-success" />
+                    Reativar Usuário
+                  </>
+                ) : (
+                  <>
+                    <Ban className="w-5 h-5 text-destructive" />
+                    Suspender Usuário
+                  </>
+                )}
+              </DialogTitle>
+              <DialogDescription>
+                {profile?.is_suspended
+                  ? `Tem certeza que deseja reativar o acesso de ${profile?.full_name || profile?.email}? O usuário poderá acessar a plataforma novamente.`
+                  : `Tem certeza que deseja suspender ${profile?.full_name || profile?.email}? O usuário não poderá acessar a plataforma enquanto estiver suspenso.`}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button 
+                variant="outline" 
+                onClick={() => setShowSuspendDialog(false)}
+                disabled={isTogglingStatus}
+              >
+                Cancelar
+              </Button>
+              <Button 
+                variant={profile?.is_suspended ? "default" : "destructive"}
+                onClick={handleToggleSuspension}
+                disabled={isTogglingStatus}
+              >
+                {isTogglingStatus ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Processando...
+                  </>
+                ) : profile?.is_suspended ? (
+                  <>
+                    <UserCheck className="w-4 h-4 mr-2" />
+                    Confirmar Reativação
+                  </>
+                ) : (
+                  <>
+                    <Ban className="w-4 h-4 mr-2" />
+                    Confirmar Suspensão
                   </>
                 )}
               </Button>
