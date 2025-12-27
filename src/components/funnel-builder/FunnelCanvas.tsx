@@ -671,7 +671,43 @@ const FunnelCanvasInner = ({
         </TabsContent>
 
         <TabsContent value="settings" className="flex-1 m-0 data-[state=inactive]:hidden overflow-auto">
-          <FunnelSettingsTab funnelId={funnelId} />
+          <FunnelSettingsTab 
+            funnelId={funnelId} 
+            onImportFunnel={(importedNodes, importedEdges) => {
+              // Convert imported nodes to React Flow format and add
+              const newFlowNodes = importedNodes.map((node) => ({
+                id: node.id,
+                type: 'block',
+                position: node.position,
+                data: {
+                  blockType: node.type,
+                  ...node.data,
+                },
+              }));
+              
+              setNodes((nds) => [...nds, ...newFlowNodes]);
+              setEdges((eds) => [
+                ...eds,
+                ...importedEdges.map((edge) => ({
+                  id: edge.id,
+                  source: edge.source,
+                  target: edge.target,
+                  sourceHandle: edge.sourceHandle || 'default',
+                  type: 'deletable' as const,
+                  animated: true,
+                  style: { stroke: 'hsl(var(--primary))' },
+                  data: { onDelete: handleDeleteEdge },
+                })),
+              ]);
+              
+              setHasUnsavedChanges(true);
+              setActiveTab('editor');
+              
+              setTimeout(() => {
+                fitView({ padding: 0.2, duration: 300 });
+              }, 100);
+            }}
+          />
         </TabsContent>
       </Tabs>
 
