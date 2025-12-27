@@ -17,7 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
 const PLATFORMS = [
-  { id: "twitter", name: "X (Twitter)", icon: Twitter, maxChars: 280 },
+  { id: "x", name: "X (Twitter)", icon: Twitter, maxChars: 280 },
   { id: "instagram", name: "Instagram", icon: Instagram, maxChars: 2200 },
   { id: "threads", name: "Threads", icon: () => <span className="font-bold text-sm">@</span>, maxChars: 500 },
   { id: "facebook", name: "Facebook", icon: Facebook, maxChars: 63206 },
@@ -155,11 +155,40 @@ const CreatePostTab = () => {
 
       if (logsError) throw logsError;
 
-      toast.success(
-        publishMode === "now" 
-          ? "Post enviado para processamento!" 
-          : "Post agendado com sucesso!"
-      );
+      // If publishing now, call the social-post edge function
+      if (publishMode === "now") {
+        const { data: postResult, error: postFnError } = await supabase.functions.invoke('social-post', {
+          body: {
+            post_id: post.id,
+            platforms: selectedPlatforms,
+            content,
+            media_urls: mediaUrls,
+          },
+        });
+
+        if (postFnError) {
+          console.error("Post function error:", postFnError);
+          toast.error("Erro ao publicar: " + postFnError.message);
+        } else if (postResult?.results) {
+          const results = postResult.results;
+          const successCount = Object.values(results).filter((r: any) => r.success).length;
+          const failCount = Object.values(results).filter((r: any) => !r.success).length;
+          
+          if (successCount > 0 && failCount === 0) {
+            toast.success(`Publicado com sucesso em ${successCount} plataforma(s)!`);
+          } else if (successCount > 0 && failCount > 0) {
+            toast.warning(`Publicado em ${successCount}, falhou em ${failCount} plataforma(s)`);
+          } else {
+            const errors = Object.entries(results)
+              .filter(([_, r]: [string, any]) => !r.success)
+              .map(([platform, r]: [string, any]) => `${platform}: ${r.error}`)
+              .join(', ');
+            toast.error(`Falha ao publicar: ${errors}`);
+          }
+        }
+      } else {
+        toast.success("Post agendado com sucesso!");
+      }
 
       // Reset form
       setContent("");
