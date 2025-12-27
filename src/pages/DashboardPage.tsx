@@ -24,7 +24,7 @@ import { usePlanExpiration } from "@/hooks/usePlanExpiration";
 import { useFunnelMetrics } from "@/hooks/useFunnelMetrics";
 import { PlanExpirationModal } from "@/components/PlanExpirationModal";
 import { FeatureBlockedOverlay } from "@/components/FeatureBlockedOverlay";
-import { NotificationsPanel } from "@/components/NotificationsPanel";
+
 import {
   Table,
   TableBody,
@@ -127,7 +127,7 @@ const DashboardPage = () => {
               onDateRangeChange={setDateRange}
               className="w-[220px]"
             />
-            <NotificationsPanel />
+            
             <Link to="/funnels/new">
               <Button variant="gradient" size="sm">
                 <Plus className="w-4 h-4 mr-1" />
