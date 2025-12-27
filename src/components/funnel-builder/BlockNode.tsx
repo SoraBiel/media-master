@@ -50,6 +50,7 @@ const BlockNode = ({ data, selected }: BlockNodeProps) => {
   const blockType = data.blockType as BlockType;
   const info = BLOCK_INFO[blockType];
   const Icon = ICONS[blockType] || MessageSquare;
+  const isCollapsed = data.isCollapsed as boolean;
   
   const getPreviewText = () => {
     if (data.label) return data.label;
@@ -71,6 +72,101 @@ const BlockNode = ({ data, selected }: BlockNodeProps) => {
   // Determine special styling for different block types
   const isStartOrEnd = blockType === 'start' || blockType === 'end';
   const isPaymentOrDelivery = blockType === 'payment' || blockType === 'delivery';
+
+  // Collapsed (compact) view
+  if (isCollapsed) {
+    return (
+      <div 
+        className={cn(
+          'group rounded-xl border-2 bg-card transition-all duration-300 shadow-md hover:shadow-lg',
+          selected 
+            ? 'border-primary ring-2 ring-primary/20' 
+            : 'border-border/60 hover:border-primary/40',
+        )}
+      >
+        {/* Input Handle */}
+        {showInput && (
+          <Handle
+            type="target"
+            position={Position.Top}
+            className={cn(
+              '!w-3 !h-3 !-top-1.5 !border-2 !border-background transition-all duration-200',
+              '!bg-gradient-to-br !from-primary !to-primary/80',
+              'hover:!scale-125',
+            )}
+          />
+        )}
+        
+        {/* Compact Header */}
+        <div className={cn(
+          'flex items-center gap-2 px-3 py-2 rounded-xl transition-all duration-200',
+          info?.color, 
+          'text-white'
+        )}>
+          <div className="flex items-center justify-center w-6 h-6 rounded-md bg-white/20">
+            <Icon className="w-3.5 h-3.5" />
+          </div>
+          <span className="text-xs font-medium truncate max-w-[100px]">{info?.label}</span>
+        </div>
+
+        {/* Output Handle(s) */}
+        {showOutput && !showConditionOutputs && !showChoiceOutputs && (
+          <Handle
+            type="source"
+            position={Position.Bottom}
+            id="default"
+            className={cn(
+              '!w-3 !h-3 !-bottom-1.5 !border-2 !border-background transition-all duration-200',
+              '!bg-gradient-to-br !from-primary !to-primary/80',
+              'hover:!scale-125',
+            )}
+          />
+        )}
+
+        {/* Condition outputs */}
+        {showConditionOutputs && (
+          <div className="relative h-5 border-t border-border/30 bg-muted/20 rounded-b-xl flex items-center justify-around px-2">
+            <Handle
+              type="source"
+              position={Position.Bottom}
+              id="true"
+              style={{ left: '30%' }}
+              className="!w-3 !h-3 !-bottom-1.5 !bg-emerald-500 !border-2 !border-background hover:!scale-125 transition-transform"
+            />
+            <span className="text-[8px] font-bold text-emerald-500">✓</span>
+            
+            <Handle
+              type="source"
+              position={Position.Bottom}
+              id="false"
+              style={{ left: '70%' }}
+              className="!w-3 !h-3 !-bottom-1.5 !bg-red-500 !border-2 !border-background hover:!scale-125 transition-transform"
+            />
+            <span className="text-[8px] font-bold text-red-500">✗</span>
+          </div>
+        )}
+
+        {/* Choice outputs */}
+        {showChoiceOutputs && (
+          <div className="relative h-5 border-t border-border/30 bg-muted/20 rounded-b-xl">
+            {(data.choices as any[])?.map((choice: any, index: number) => {
+              const position = ((index + 1) / ((data.choices as any[]).length + 1)) * 100;
+              return (
+                <Handle
+                  key={choice.id}
+                  type="source"
+                  position={Position.Bottom}
+                  id={choice.id}
+                  style={{ left: `${position}%` }}
+                  className="!w-3 !h-3 !-bottom-1.5 !bg-violet-500 !border-2 !border-background hover:!scale-125 transition-transform"
+                />
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div 

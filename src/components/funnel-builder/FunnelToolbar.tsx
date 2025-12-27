@@ -11,6 +11,8 @@ import {
   CloudOff,
   Loader2,
   RotateCcw,
+  Minimize2,
+  Maximize2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -53,10 +55,12 @@ interface FunnelToolbarProps {
   isActive: boolean;
   isSaving: boolean;
   hasUnsavedChanges: boolean;
+  isCollapsed: boolean;
   onSave: () => void;
   onExport: () => void;
   onImport: (data: any) => void;
   onToggleActive: () => void;
+  onToggleCollapse: () => void;
   onResetSessions: () => Promise<void>;
   sandboxNodes?: SandboxNode[];
   sandboxEdges?: SandboxEdge[];
@@ -68,10 +72,12 @@ export const FunnelToolbar = ({
   isActive,
   isSaving,
   hasUnsavedChanges,
+  isCollapsed,
   onSave,
   onExport,
   onImport,
   onToggleActive,
+  onToggleCollapse,
   onResetSessions,
   sandboxNodes = [],
   sandboxEdges = [],
@@ -169,6 +175,25 @@ export const FunnelToolbar = ({
         </div>
 
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onToggleCollapse}
+            title={isCollapsed ? 'Expandir blocos' : 'Recolher blocos'}
+          >
+            {isCollapsed ? (
+              <>
+                <Maximize2 className="w-4 h-4 mr-2" />
+                Expandir
+              </>
+            ) : (
+              <>
+                <Minimize2 className="w-4 h-4 mr-2" />
+                Recolher
+              </>
+            )}
+          </Button>
+
           <FunnelSandbox
             funnelName={funnelName}
             nodes={sandboxNodes}

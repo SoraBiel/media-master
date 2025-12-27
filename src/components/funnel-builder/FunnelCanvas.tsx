@@ -138,19 +138,21 @@ const FunnelCanvasInner = ({
   const [webhookDialogOpen, setWebhookDialogOpen] = useState(false);
   const didInitialFitRef = useRef(false);
   const [layoutDirection, setLayoutDirection] = useState<'horizontal' | 'vertical'>('horizontal');
+  const [isCollapsed, setIsCollapsed] = useState(false);
   
   // Convert to React Flow format
-  const convertToFlowNodes = (nodes: FunnelNode[]): Node[] => {
+  const convertToFlowNodes = useCallback((nodes: FunnelNode[]): Node[] => {
     return nodes.map((node) => ({
       id: node.id,
       type: 'block',
       position: node.position,
       data: {
         blockType: node.type,
+        isCollapsed,
         ...node.data,
       },
     }));
-  };
+  }, [isCollapsed]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(convertToFlowNodes(initialNodes));
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -183,11 +185,11 @@ const FunnelCanvasInner = ({
     setEdges(convertToFlowEdges(initialEdges));
   }, []);
 
-  // Update nodes when initialNodes change
+  // Update nodes when initialNodes change or collapse state changes
   useEffect(() => {
     setNodes(convertToFlowNodes(initialNodes));
     setEdges(convertToFlowEdges(initialEdges));
-  }, [initialNodes, initialEdges, setNodes, setEdges, convertToFlowEdges]);
+  }, [initialNodes, initialEdges, setNodes, setEdges, convertToFlowEdges, convertToFlowNodes, isCollapsed]);
 
   // Fit view only once (avoid re-centering after save)
   useEffect(() => {
@@ -548,10 +550,12 @@ const FunnelCanvasInner = ({
         isActive={isActive}
         isSaving={isSaving}
         hasUnsavedChanges={hasUnsavedChanges}
+        isCollapsed={isCollapsed}
         onSave={handleSave}
         onExport={onExport}
         onImport={onImport}
         onToggleActive={onToggleActive}
+        onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
         onResetSessions={handleResetSessions}
         sandboxNodes={sandboxNodes}
         sandboxEdges={sandboxEdges}
