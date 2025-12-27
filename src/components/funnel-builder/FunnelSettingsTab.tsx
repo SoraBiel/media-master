@@ -6,12 +6,15 @@ import { Button } from '@/components/ui/button';
 import { Loader2, Save, Bell, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { TypebotConverter } from './TypebotConverter';
+import { FunnelNode, FunnelEdge } from './types';
 
 interface FunnelSettingsTabProps {
   funnelId: string;
+  onImportFunnel?: (nodes: FunnelNode[], edges: FunnelEdge[]) => void;
 }
 
-export const FunnelSettingsTab = ({ funnelId }: FunnelSettingsTabProps) => {
+export const FunnelSettingsTab = ({ funnelId, onImportFunnel }: FunnelSettingsTabProps) => {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -82,7 +85,7 @@ export const FunnelSettingsTab = ({ funnelId }: FunnelSettingsTabProps) => {
       <div>
         <h2 className="text-lg font-semibold">Configurações do Funil</h2>
         <p className="text-sm text-muted-foreground">
-          Configure o comportamento do funil e lembretes de pagamento.
+          Configure o comportamento do funil e importe funis externos.
         </p>
       </div>
 
@@ -140,6 +143,9 @@ export const FunnelSettingsTab = ({ funnelId }: FunnelSettingsTabProps) => {
           )}
         </Button>
       </div>
+
+      {/* Typebot Converter */}
+      <TypebotConverter funnelId={funnelId} onImport={onImportFunnel} />
     </div>
   );
 };
