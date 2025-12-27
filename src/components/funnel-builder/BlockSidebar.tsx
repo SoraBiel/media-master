@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { 
   Play, 
   MessageSquare, 
@@ -16,10 +16,13 @@ import {
   CreditCard,
   GripVertical,
   Package,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { BlockType, BLOCK_INFO, BLOCK_CATEGORIES } from './types';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button } from '@/components/ui/button';
 import {
   Tooltip,
   TooltipContent,
@@ -170,6 +173,7 @@ const createDragImage = (blockType: BlockType): HTMLElement => {
 
 export const BlockSidebar = ({ onDragStart }: BlockSidebarProps) => {
   const dragPreviewRef = useRef<HTMLElement | null>(null);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const handleDragStart = (e: React.DragEvent, blockType: BlockType) => {
     // Create custom drag image
@@ -200,19 +204,87 @@ export const BlockSidebar = ({ onDragStart }: BlockSidebarProps) => {
     };
   }, []);
 
+  // Collapsed view
+  if (isCollapsed) {
+    return (
+      <div className="w-16 h-full min-h-0 border-r border-border bg-gradient-to-b from-card to-background flex flex-col flex-shrink-0">
+        {/* Header with expand button */}
+        <div className="p-2 border-b border-border bg-card/80 backdrop-blur-sm flex justify-center">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsCollapsed(false)}
+            className="w-10 h-10"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </Button>
+        </div>
+
+        {/* Collapsed Blocks */}
+        <ScrollArea className="flex-1">
+          <div className="p-2 space-y-1">
+            {Object.entries(BLOCK_CATEGORIES).map(([category, types]) => (
+              <div key={category} className="space-y-1">
+                {types.map((type) => {
+                  const info = BLOCK_INFO[type as BlockType];
+                  const Icon = ICONS[type as BlockType];
+
+                  return (
+                    <Tooltip key={type} delayDuration={100}>
+                      <TooltipTrigger asChild>
+                        <div
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, type as BlockType)}
+                          onDragEnd={handleDragEnd}
+                          className={cn(
+                            'w-12 h-12 rounded-xl flex items-center justify-center text-white',
+                            'cursor-grab active:cursor-grabbing',
+                            'transition-all duration-200 hover:scale-110 hover:shadow-lg',
+                            'active:scale-95',
+                            info.color
+                          )}
+                        >
+                          <Icon className="w-5 h-5" />
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="right">
+                        <p className="font-medium">{info.label}</p>
+                        <p className="text-xs text-muted-foreground">{info.description}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
+      </div>
+    );
+  }
+
   return (
     <div className="w-72 h-full min-h-0 border-r border-border bg-gradient-to-b from-card to-background flex flex-col flex-shrink-0">
       {/* Header */}
-      <div className="p-4 border-b border-border bg-card/80 backdrop-blur-sm">
-        <h3 className="font-semibold text-base flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-            <GripVertical className="w-4 h-4 text-primary" />
-          </div>
-          Blocos do Funil
-        </h3>
-        <p className="text-xs text-muted-foreground mt-1">
-          Arraste os blocos para o canvas
-        </p>
+      <div className="p-4 border-b border-border bg-card/80 backdrop-blur-sm flex items-start justify-between">
+        <div>
+          <h3 className="font-semibold text-base flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+              <GripVertical className="w-4 h-4 text-primary" />
+            </div>
+            Blocos do Funil
+          </h3>
+          <p className="text-xs text-muted-foreground mt-1">
+            Arraste os blocos para o canvas
+          </p>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setIsCollapsed(true)}
+          className="w-8 h-8 -mr-2 -mt-1"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </Button>
       </div>
 
       {/* Blocks List */}
