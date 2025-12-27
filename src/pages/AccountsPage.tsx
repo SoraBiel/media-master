@@ -53,6 +53,8 @@ interface BlackModel {
   price_cents: number;
   is_sold: boolean;
   image_url: string | null;
+  assets: unknown;
+  scripts: unknown;
 }
 
 type SortOption = "newest" | "price_asc" | "price_desc" | "followers_desc";
@@ -69,6 +71,7 @@ const TinderStyleModels = ({
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState<'left' | 'right' | null>(null);
+  const [showAssets, setShowAssets] = useState(false);
 
   const currentModel = models[currentIndex];
 
@@ -88,6 +91,32 @@ const TinderStyleModels = ({
       onBuy(currentModel);
     }
   };
+
+  // Parse assets safely
+  const getAssets = (model: BlackModel): { name: string; type: string; url?: string }[] => {
+    if (!model.assets) return [];
+    if (Array.isArray(model.assets)) {
+      return model.assets.filter((a): a is { name: string; type: string; url?: string } => 
+        typeof a === 'object' && a !== null && 'name' in a && 'type' in a
+      );
+    }
+    return [];
+  };
+
+  // Parse scripts safely
+  const getScripts = (model: BlackModel): { title: string; content: string }[] => {
+    if (!model.scripts) return [];
+    if (Array.isArray(model.scripts)) {
+      return model.scripts.filter((s): s is { title: string; content: string } => 
+        typeof s === 'object' && s !== null && 'title' in s && 'content' in s
+      );
+    }
+    return [];
+  };
+
+  const assets = currentModel ? getAssets(currentModel) : [];
+  const scripts = currentModel ? getScripts(currentModel) : [];
+  const totalItems = assets.length + scripts.length;
 
   if (!currentModel) return null;
 
@@ -193,6 +222,27 @@ const TinderStyleModels = ({
                 </p>
               )}
               
+              {/* Assets Preview Button */}
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setShowAssets(true)}
+                className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-orange-500/10 border border-purple-500/20 flex items-center justify-between group hover:border-purple-500/40 transition-all"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                    <Eye className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="text-left">
+                    <p className="font-medium text-foreground text-sm">Ver o que está incluso</p>
+                    <p className="text-xs text-muted-foreground">
+                      {totalItems > 0 ? `${totalItems} itens inclusos` : 'Assets, scripts e mais'}
+                    </p>
+                  </div>
+                </div>
+                <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-purple-500 group-hover:translate-x-1 transition-all" />
+              </motion.button>
+              
               {/* Features */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex items-center gap-2 text-sm">
@@ -222,6 +272,161 @@ const TinderStyleModels = ({
               </div>
             </div>
           </motion.div>
+        </AnimatePresence>
+
+        {/* Assets Preview Modal */}
+        <AnimatePresence>
+          {showAssets && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+              onClick={() => setShowAssets(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-card rounded-3xl w-full max-w-lg max-h-[80vh] overflow-hidden shadow-2xl border border-border"
+              >
+                {/* Modal Header */}
+                <div className="relative p-6 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500">
+                  <button 
+                    onClick={() => setShowAssets(false)}
+                    className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition-colors"
+                  >
+                    <X className="w-5 h-5 text-white" />
+                  </button>
+                  <h3 className="text-xl font-bold text-white">{currentModel.name}</h3>
+                  <p className="text-white/80 text-sm mt-1">Preview do conteúdo incluso</p>
+                </div>
+                
+                {/* Modal Content */}
+                <div className="p-6 overflow-y-auto max-h-[60vh] space-y-6">
+                  {/* Assets Section */}
+                  {assets.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Image className="w-5 h-5 text-purple-500" />
+                        <h4 className="font-semibold text-foreground">Assets Inclusos</h4>
+                        <Badge variant="secondary" className="ml-auto">{assets.length}</Badge>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        {assets.map((asset, idx) => (
+                          <motion.div
+                            key={idx}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: idx * 0.05 }}
+                            className="p-3 rounded-xl bg-secondary/50 border border-border hover:border-purple-500/30 transition-colors"
+                          >
+                            <div className="flex items-start gap-2">
+                              <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center flex-shrink-0">
+                                {asset.type === 'image' ? (
+                                  <Image className="w-4 h-4 text-purple-500" />
+                                ) : asset.type === 'video' ? (
+                                  <Video className="w-4 h-4 text-pink-500" />
+                                ) : (
+                                  <Zap className="w-4 h-4 text-orange-500" />
+                                )}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium text-foreground truncate">{asset.name}</p>
+                                <p className="text-xs text-muted-foreground capitalize">{asset.type}</p>
+                              </div>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Scripts Section */}
+                  {scripts.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <MessageSquare className="w-5 h-5 text-pink-500" />
+                        <h4 className="font-semibold text-foreground">Scripts de Funil</h4>
+                        <Badge variant="secondary" className="ml-auto">{scripts.length}</Badge>
+                      </div>
+                      <div className="space-y-2">
+                        {scripts.map((script, idx) => (
+                          <motion.div
+                            key={idx}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: (assets.length + idx) * 0.05 }}
+                            className="p-3 rounded-xl bg-secondary/50 border border-border"
+                          >
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-lg bg-pink-500/10 flex items-center justify-center flex-shrink-0">
+                                <MessageSquare className="w-4 h-4 text-pink-500" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-foreground">{script.title}</p>
+                                <p className="text-xs text-muted-foreground line-clamp-1">{script.content}</p>
+                              </div>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Default features if no custom assets/scripts */}
+                  {totalItems === 0 && (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-5 h-5 text-yellow-500" />
+                        <h4 className="font-semibold text-foreground">Conteúdo Premium</h4>
+                      </div>
+                      <div className="space-y-2">
+                        {[
+                          { icon: Image, label: 'Pack de fotos HD', desc: 'Imagens profissionais prontas' },
+                          { icon: Video, label: 'Vídeos promocionais', desc: 'Conteúdo para stories e reels' },
+                          { icon: MessageSquare, label: 'Scripts de vendas', desc: 'Roteiros testados e validados' },
+                          { icon: Zap, label: 'Funil completo', desc: 'Estrutura pronta para usar' },
+                          { icon: CheckCircle2, label: 'Checklist operacional', desc: 'Passo a passo detalhado' },
+                        ].map((item, idx) => (
+                          <motion.div
+                            key={idx}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: idx * 0.1 }}
+                            className="flex items-center gap-3 p-3 rounded-xl bg-secondary/50 border border-border"
+                          >
+                            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500/10 to-pink-500/10 flex items-center justify-center">
+                              <item.icon className="w-5 h-5 text-purple-500" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-foreground">{item.label}</p>
+                              <p className="text-xs text-muted-foreground">{item.desc}</p>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Modal Footer */}
+                <div className="p-6 border-t border-border bg-secondary/30">
+                  <Button 
+                    onClick={() => {
+                      setShowAssets(false);
+                      handleBuyDirect();
+                    }}
+                    className="w-full bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 text-white hover:opacity-90"
+                  >
+                    <ShoppingBag className="w-4 h-4 mr-2" />
+                    Comprar por {formatPrice(currentModel.price_cents)}
+                  </Button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
         </AnimatePresence>
 
         {/* Swipe indicators */}
