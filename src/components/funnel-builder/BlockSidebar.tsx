@@ -1,4 +1,5 @@
 import { useRef, useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Play, 
   MessageSquare, 
@@ -204,155 +205,151 @@ export const BlockSidebar = ({ onDragStart }: BlockSidebarProps) => {
     };
   }, []);
 
-  // Collapsed view
-  if (isCollapsed) {
-    return (
-      <div className="w-16 h-full min-h-0 border-r border-border bg-gradient-to-b from-card to-background flex flex-col flex-shrink-0">
-        {/* Header with expand button */}
-        <div className="p-2 border-b border-border bg-card/80 backdrop-blur-sm flex justify-center">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsCollapsed(false)}
-            className="w-10 h-10"
-          >
-            <ChevronRight className="w-5 h-5" />
-          </Button>
-        </div>
-
-        {/* Collapsed Blocks */}
-        <ScrollArea className="flex-1">
-          <div className="p-2 space-y-1">
-            {Object.entries(BLOCK_CATEGORIES).map(([category, types]) => (
-              <div key={category} className="space-y-1">
-                {types.map((type) => {
-                  const info = BLOCK_INFO[type as BlockType];
-                  const Icon = ICONS[type as BlockType];
-
-                  return (
-                    <Tooltip key={type} delayDuration={100}>
-                      <TooltipTrigger asChild>
-                        <div
-                          draggable
-                          onDragStart={(e) => handleDragStart(e, type as BlockType)}
-                          onDragEnd={handleDragEnd}
-                          className={cn(
-                            'w-12 h-12 rounded-xl flex items-center justify-center text-white',
-                            'cursor-grab active:cursor-grabbing',
-                            'transition-all duration-200 hover:scale-110 hover:shadow-lg',
-                            'active:scale-95',
-                            info.color
-                          )}
-                        >
-                          <Icon className="w-5 h-5" />
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent side="right">
-                        <p className="font-medium">{info.label}</p>
-                        <p className="text-xs text-muted-foreground">{info.description}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  );
-                })}
-              </div>
-            ))}
-          </div>
-        </ScrollArea>
-      </div>
-    );
-  }
-
   return (
-    <div className="w-72 h-full min-h-0 border-r border-border bg-gradient-to-b from-card to-background flex flex-col flex-shrink-0">
+    <motion.div
+      initial={false}
+      animate={{ width: isCollapsed ? 64 : 288 }}
+      transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+      className="h-full min-h-0 border-r border-border bg-gradient-to-b from-card to-background flex flex-col flex-shrink-0 overflow-hidden"
+    >
       {/* Header */}
-      <div className="p-4 border-b border-border bg-card/80 backdrop-blur-sm flex items-start justify-between">
-        <div>
-          <h3 className="font-semibold text-base flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-              <GripVertical className="w-4 h-4 text-primary" />
-            </div>
-            Blocos do Funil
-          </h3>
-          <p className="text-xs text-muted-foreground mt-1">
-            Arraste os blocos para o canvas
-          </p>
-        </div>
+      <div className="p-2 border-b border-border bg-card/80 backdrop-blur-sm flex items-center justify-between min-h-[60px]">
+        <AnimatePresence mode="wait">
+          {!isCollapsed && (
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.2 }}
+              className="flex-1 px-2"
+            >
+              <h3 className="font-semibold text-base flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <GripVertical className="w-4 h-4 text-primary" />
+                </div>
+                <span className="whitespace-nowrap">Blocos do Funil</span>
+              </h3>
+              <p className="text-xs text-muted-foreground mt-1 pl-10">
+                Arraste os blocos para o canvas
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => setIsCollapsed(true)}
-          className="w-8 h-8 -mr-2 -mt-1"
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className="w-10 h-10 flex-shrink-0"
         >
-          <ChevronLeft className="w-4 h-4" />
+          <motion.div
+            animate={{ rotate: isCollapsed ? 0 : 180 }}
+            transition={{ duration: 0.3 }}
+          >
+            <ChevronRight className="w-5 h-5" />
+          </motion.div>
         </Button>
       </div>
 
       {/* Blocks List */}
       <ScrollArea className="flex-1">
-        <div className="p-3 space-y-4">
+        <div className={cn("space-y-1", isCollapsed ? "p-2" : "p-3 space-y-4")}>
           {Object.entries(BLOCK_CATEGORIES).map(([category, types]) => {
             const config = CATEGORY_CONFIG[category];
             const CategoryIcon = config.icon;
             
             return (
-              <div key={category} className="space-y-2">
-                {/* Category Header */}
-                <div className={cn(
-                  "flex items-center gap-2 px-3 py-2 rounded-lg",
-                  "bg-gradient-to-r",
-                  config.gradient
-                )}>
-                  <CategoryIcon className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    {config.label}
-                  </span>
-                </div>
+              <div key={category} className="space-y-1">
+                {/* Category Header - only show when expanded */}
+                <AnimatePresence>
+                  {!isCollapsed && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className={cn(
+                        "flex items-center gap-2 px-3 py-2 rounded-lg mb-2",
+                        "bg-gradient-to-r",
+                        config.gradient
+                      )}
+                    >
+                      <CategoryIcon className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">
+                        {config.label}
+                      </span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 {/* Blocks */}
-                <div className="space-y-1.5 pl-1">
-                  {types.map((type) => {
+                <div className={cn("space-y-1.5", !isCollapsed && "pl-1")}>
+                  {types.map((type, index) => {
                     const info = BLOCK_INFO[type as BlockType];
                     const Icon = ICONS[type as BlockType];
 
                     return (
-                      <Tooltip key={type} delayDuration={300}>
+                      <Tooltip key={type} delayDuration={isCollapsed ? 100 : 300}>
                         <TooltipTrigger asChild>
-                          <div
+                          <motion.div
+                            layout
+                            initial={false}
+                            animate={{
+                              width: isCollapsed ? 48 : 'auto',
+                              height: isCollapsed ? 48 : 'auto',
+                            }}
+                            transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
                             draggable
-                            onDragStart={(e) => handleDragStart(e, type as BlockType)}
+                            onDragStart={(e) => handleDragStart(e as unknown as React.DragEvent, type as BlockType)}
                             onDragEnd={handleDragEnd}
                             className={cn(
-                              'group flex items-center gap-3 p-2.5 rounded-xl border border-transparent',
+                              'group flex items-center rounded-xl border border-transparent',
                               'cursor-grab active:cursor-grabbing',
-                              'bg-card hover:bg-muted/80 hover:border-border',
-                              'transition-all duration-200 hover:shadow-md hover:scale-[1.02]',
+                              'transition-colors duration-200',
+                              isCollapsed 
+                                ? cn('justify-center text-white hover:scale-110 hover:shadow-lg', info.color)
+                                : 'gap-3 p-2.5 bg-card hover:bg-muted/80 hover:border-border hover:shadow-md',
                               'active:scale-[0.98]'
                             )}
                           >
                             {/* Icon */}
                             <div className={cn(
-                              'w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-sm',
-                              'transition-transform group-hover:scale-110',
-                              info.color
+                              'flex items-center justify-center text-white shadow-sm transition-transform',
+                              isCollapsed 
+                                ? 'w-full h-full' 
+                                : 'w-10 h-10 rounded-xl group-hover:scale-110',
+                              !isCollapsed && info.color
                             )}>
                               <Icon className="w-5 h-5" />
                             </div>
 
-                            {/* Content */}
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-foreground truncate">
-                                {info.label}
-                              </p>
-                              <p className="text-[11px] text-muted-foreground truncate leading-tight">
-                                {info.description}
-                              </p>
-                            </div>
+                            {/* Content - only show when expanded */}
+                            <AnimatePresence>
+                              {!isCollapsed && (
+                                <motion.div
+                                  initial={{ opacity: 0, width: 0 }}
+                                  animate={{ opacity: 1, width: 'auto' }}
+                                  exit={{ opacity: 0, width: 0 }}
+                                  transition={{ duration: 0.2 }}
+                                  className="flex-1 min-w-0 overflow-hidden"
+                                >
+                                  <p className="text-sm font-medium text-foreground truncate">
+                                    {info.label}
+                                  </p>
+                                  <p className="text-[11px] text-muted-foreground truncate leading-tight">
+                                    {info.description}
+                                  </p>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
 
-                            {/* Drag indicator */}
-                            <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                              <GripVertical className="w-4 h-4 text-muted-foreground/50" />
-                            </div>
-                          </div>
+                            {/* Drag indicator - only show when expanded */}
+                            {!isCollapsed && (
+                              <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                <GripVertical className="w-4 h-4 text-muted-foreground/50" />
+                              </div>
+                            )}
+                          </motion.div>
                         </TooltipTrigger>
                         <TooltipContent side="right" className="max-w-[200px]">
                           <p className="font-medium">{info.label}</p>
@@ -368,12 +365,22 @@ export const BlockSidebar = ({ onDragStart }: BlockSidebarProps) => {
         </div>
       </ScrollArea>
 
-      {/* Footer hint */}
-      <div className="p-3 border-t border-border bg-muted/30">
-        <p className="text-[10px] text-muted-foreground text-center">
-          💡 Dica: Conecte os blocos para criar o fluxo
-        </p>
-      </div>
-    </div>
+      {/* Footer hint - only show when expanded */}
+      <AnimatePresence>
+        {!isCollapsed && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+            className="p-3 border-t border-border bg-muted/30"
+          >
+            <p className="text-[10px] text-muted-foreground text-center">
+              💡 Dica: Conecte os blocos para criar o fluxo
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 };
