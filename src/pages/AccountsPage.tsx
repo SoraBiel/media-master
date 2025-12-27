@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   Users, Heart, CheckCircle2, ShoppingCart, Search, X, SlidersHorizontal, 
-  RefreshCw, Video, Instagram, Zap, MessageSquare, Calendar, Image, ArrowRight, AlertTriangle
+  RefreshCw, Video, Instagram, Zap, MessageSquare, Calendar, Image, ArrowRight, AlertTriangle,
+  Flame, Crown, ThumbsUp, Eye, ShoppingBag, Sparkles, Star
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,6 +56,247 @@ interface BlackModel {
 }
 
 type SortOption = "newest" | "price_asc" | "price_desc" | "followers_desc";
+
+// Tinder-style component for Black Models
+const TinderStyleModels = ({ 
+  models, 
+  onBuy, 
+  formatPrice 
+}: { 
+  models: BlackModel[]; 
+  onBuy: (model: BlackModel) => void; 
+  formatPrice: (cents: number) => string;
+}) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [direction, setDirection] = useState<'left' | 'right' | null>(null);
+
+  const currentModel = models[currentIndex];
+
+  const handleSwipe = (dir: 'left' | 'right') => {
+    setDirection(dir);
+    if (dir === 'right' && currentModel) {
+      onBuy(currentModel);
+    }
+    setTimeout(() => {
+      setDirection(null);
+      setCurrentIndex((prev) => (prev + 1) % models.length);
+    }, 300);
+  };
+
+  const handleBuyDirect = () => {
+    if (currentModel) {
+      onBuy(currentModel);
+    }
+  };
+
+  if (!currentModel) return null;
+
+  return (
+    <div className="flex flex-col items-center gap-6">
+      {/* Card Counter */}
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <span className="font-medium text-foreground">{currentIndex + 1}</span>
+        <span>/</span>
+        <span>{models.length}</span>
+        <span className="ml-2">modelos disponíveis</span>
+      </div>
+
+      {/* Main Card Container */}
+      <div className="relative w-full max-w-md mx-auto">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentModel.id}
+            initial={{ scale: 0.95, opacity: 0, x: direction === 'left' ? -100 : direction === 'right' ? 100 : 0 }}
+            animate={{ scale: 1, opacity: 1, x: 0 }}
+            exit={{ 
+              scale: 0.95, 
+              opacity: 0, 
+              x: direction === 'left' ? -300 : direction === 'right' ? 300 : 0,
+              rotate: direction === 'left' ? -15 : direction === 'right' ? 15 : 0
+            }}
+            transition={{ duration: 0.3 }}
+            className="relative overflow-hidden rounded-3xl shadow-2xl"
+            style={{
+              background: 'linear-gradient(180deg, hsl(var(--card)) 0%, hsl(var(--card)) 100%)',
+            }}
+          >
+            {/* Glowing border effect */}
+            <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-pink-500/20 via-purple-500/20 to-orange-500/20 pointer-events-none" />
+            
+            {/* Image Section */}
+            <div className="relative h-80 bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400">
+              {currentModel.image_url ? (
+                <img 
+                  src={currentModel.image_url} 
+                  alt={currentModel.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <div className="text-center">
+                    <Flame className="w-20 h-20 text-white/80 mx-auto mb-2" />
+                    <p className="text-white/60 text-sm">Modelo Premium</p>
+                  </div>
+                </div>
+              )}
+              
+              {/* Gradient overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+              
+              {/* Top badges */}
+              <div className="absolute top-4 left-4 right-4 flex justify-between items-start">
+                <motion.div 
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs font-bold shadow-lg"
+                >
+                  <Flame className="w-3.5 h-3.5" />
+                  HOT
+                </motion.div>
+                
+                <motion.div 
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.1 }}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-sm text-white text-xs font-medium"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-yellow-400" />
+                  Funil Incluso
+                </motion.div>
+              </div>
+
+              {/* Price tag */}
+              <motion.div 
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.2 }}
+                className="absolute bottom-4 right-4 px-4 py-2 rounded-2xl bg-white text-black font-bold text-xl shadow-xl"
+              >
+                {formatPrice(currentModel.price_cents)}
+              </motion.div>
+
+              {/* Name and info */}
+              <div className="absolute bottom-4 left-4 right-24">
+                <h2 className="text-2xl font-bold text-white mb-1">{currentModel.name}</h2>
+                <div className="flex items-center gap-2 text-white/80 text-sm">
+                  <Crown className="w-4 h-4 text-yellow-400" />
+                  <span>{currentModel.niche || 'Estratégia Premium'}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Content Section */}
+            <div className="p-6 space-y-4">
+              {currentModel.bio && (
+                <p className="text-muted-foreground text-sm leading-relaxed line-clamp-2">
+                  {currentModel.bio}
+                </p>
+              )}
+              
+              {/* Features */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex items-center gap-2 text-sm">
+                  <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center">
+                    <CheckCircle2 className="w-4 h-4 text-green-500" />
+                  </div>
+                  <span className="text-foreground">Templates prontos</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center">
+                    <MessageSquare className="w-4 h-4 text-green-500" />
+                  </div>
+                  <span className="text-foreground">Roteiros de funil</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center">
+                    <Star className="w-4 h-4 text-green-500" />
+                  </div>
+                  <span className="text-foreground">Suporte dedicado</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center">
+                    <Zap className="w-4 h-4 text-green-500" />
+                  </div>
+                  <span className="text-foreground">Checklist operacional</span>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </AnimatePresence>
+
+        {/* Swipe indicators */}
+        <AnimatePresence>
+          {direction === 'left' && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.5 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.5 }}
+              className="absolute top-1/2 left-8 -translate-y-1/2 px-6 py-3 rounded-xl border-4 border-red-500 text-red-500 font-bold text-2xl rotate-[-20deg]"
+            >
+              PULAR
+            </motion.div>
+          )}
+          {direction === 'right' && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.5 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.5 }}
+              className="absolute top-1/2 right-8 -translate-y-1/2 px-6 py-3 rounded-xl border-4 border-green-500 text-green-500 font-bold text-2xl rotate-[20deg]"
+            >
+              COMPRAR!
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Action buttons */}
+      <div className="flex items-center gap-6">
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={() => handleSwipe('left')}
+          className="w-16 h-16 rounded-full bg-card border-2 border-red-500/30 flex items-center justify-center shadow-lg hover:bg-red-500/10 transition-colors"
+        >
+          <X className="w-8 h-8 text-red-500" />
+        </motion.button>
+
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={handleBuyDirect}
+          className="w-20 h-20 rounded-full bg-gradient-to-br from-yellow-400 via-orange-500 to-pink-500 flex items-center justify-center shadow-xl"
+        >
+          <ShoppingBag className="w-10 h-10 text-white" />
+        </motion.button>
+
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={() => handleSwipe('right')}
+          className="w-16 h-16 rounded-full bg-card border-2 border-green-500/30 flex items-center justify-center shadow-lg hover:bg-green-500/10 transition-colors"
+        >
+          <Heart className="w-8 h-8 text-green-500" />
+        </motion.button>
+      </div>
+
+      {/* Navigation dots */}
+      <div className="flex gap-2">
+        {models.map((_, idx) => (
+          <button
+            key={idx}
+            onClick={() => setCurrentIndex(idx)}
+            className={`w-2 h-2 rounded-full transition-all ${
+              idx === currentIndex 
+                ? 'w-6 bg-gradient-to-r from-pink-500 to-orange-500' 
+                : 'bg-muted-foreground/30 hover:bg-muted-foreground/50'
+            }`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+};
+
 
 const AccountsPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -458,7 +700,7 @@ const AccountsPage = () => {
             </Card>
           </TabsContent>
 
-          {/* Black Models Tab */}
+          {/* Black Models Tab - Tinder Style */}
           <TabsContent value="black" className="space-y-4">
             <Card className="border-warning/30 bg-warning/5">
               <CardContent className="p-4 flex items-start gap-3">
@@ -472,10 +714,6 @@ const AccountsPage = () => {
               </CardContent>
             </Card>
 
-            <div className="text-sm text-muted-foreground">
-              {filteredBlackModels.length} modelo{filteredBlackModels.length !== 1 ? "s" : ""} encontrado{filteredBlackModels.length !== 1 ? "s" : ""}
-            </div>
-
             {filteredBlackModels.length === 0 ? (
               <Card className="glass-card">
                 <CardContent className="p-12 text-center">
@@ -485,35 +723,11 @@ const AccountsPage = () => {
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredBlackModels.map((model, i) => (
-                  <motion.div key={model.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
-                    <Card className="glass-card h-full">
-                      <CardHeader>
-                        <div className="flex justify-between items-start">
-                          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                            <Zap className="w-6 h-6 text-white" />
-                          </div>
-                          <Badge variant="default">{formatPrice(model.price_cents)}</Badge>
-                        </div>
-                        <CardTitle className="mt-4">{model.name}</CardTitle>
-                        <CardDescription>{model.niche || "Estratégia"}</CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        {model.bio && <p className="text-sm text-muted-foreground">{model.bio}</p>}
-                        <ul className="text-sm space-y-2">
-                          <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-success" />Templates prontos</li>
-                          <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-success" />Roteiros de funil</li>
-                          <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-success" />Checklist operacional</li>
-                        </ul>
-                        <Button onClick={() => handleBuyModel(model)} variant="gradient" className="w-full">
-                          Comprar<ArrowRight className="w-4 h-4 ml-1" />
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                ))}
-              </div>
+              <TinderStyleModels 
+                models={filteredBlackModels} 
+                onBuy={handleBuyModel} 
+                formatPrice={formatPrice} 
+              />
             )}
           </TabsContent>
         </Tabs>
