@@ -739,6 +739,12 @@ function getDefaultDataForType(type: BlockType): BlockData {
         successMessage: '✅ Pagamento confirmado! Obrigado pela compra.',
         timeoutMinutes: 30,
       };
+    case 'delivery':
+      return { 
+        deliveryType: 'pack',
+        deliveryPackId: '',
+        deliveryMessage: '🎁 Aqui está sua entrega!',
+      };
     case 'end':
       return { label: 'Fim' };
     default:

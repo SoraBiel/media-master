@@ -13,6 +13,7 @@ export type BlockType =
   | 'action_webhook'
   | 'remarketing'
   | 'payment'
+  | 'delivery'
   | 'end';
 
 export interface BlockData {
@@ -81,6 +82,12 @@ export interface BlockData {
   successMessage?: string;
   timeoutMinutes?: number;
   
+  // Delivery block (packs)
+  deliveryPackId?: string;
+  deliveryMessage?: string;
+  deliveryType?: 'pack' | 'link' | 'message';
+  deliveryLink?: string;
+  
   // General
   label?: string;
 }
@@ -129,6 +136,7 @@ export const BLOCK_CATEGORIES = {
   actions: ['action_message', 'action_notify', 'action_webhook'],
   automation: ['remarketing'],
   payments: ['payment'],
+  delivery: ['delivery'],
 } as const;
 
 export const BLOCK_INFO: Record<BlockType, { 
@@ -220,6 +228,12 @@ export const BLOCK_INFO: Record<BlockType, {
     description: 'Gera PIX e aguarda pagamento',
     color: 'bg-green-500',
     category: 'payments',
+  },
+  delivery: {
+    label: 'Entrega',
+    description: 'Envia pack de mídia ao cliente',
+    color: 'bg-teal-500',
+    category: 'delivery',
   },
 };
 
