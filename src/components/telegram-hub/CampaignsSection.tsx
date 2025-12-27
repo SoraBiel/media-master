@@ -1084,58 +1084,203 @@ const CampaignsSection = () => {
 
           {filteredCampaigns.length > 0 ? (
             <div className="space-y-4">
-              {filteredCampaigns.map((campaign, index) => (
-                <motion.div key={campaign.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
-                  <Card className="glass-card">
-                    <CardContent className="p-6">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 space-y-4">
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-telegram/20"><Megaphone className="w-5 h-5 text-telegram" /></div>
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <h3 className="font-semibold">{campaign.name}</h3>
-                                {getStatusBadge(campaign.status)}
+              {filteredCampaigns.map((campaign, index) => {
+                const isRunning = campaign.status === "running";
+                const progress = campaign.progress || 0;
+                const successRate = campaign.total_count > 0 
+                  ? Math.round((campaign.success_count || 0) / Math.max(campaign.sent_count, 1) * 100)
+                  : 0;
+                
+                return (
+                  <motion.div 
+                    key={campaign.id} 
+                    initial={{ opacity: 0, y: 10 }} 
+                    animate={{ opacity: 1, y: 0 }} 
+                    transition={{ delay: index * 0.05 }}
+                    layout
+                  >
+                    <Card className={cn(
+                      "glass-card overflow-hidden",
+                      isRunning && "ring-2 ring-telegram/50"
+                    )}>
+                      {/* Animated progress bar at top */}
+                      {isRunning && (
+                        <div className="relative h-1 bg-muted overflow-hidden">
+                          <motion.div 
+                            className="absolute inset-y-0 left-0 bg-gradient-to-r from-telegram via-success to-telegram"
+                            initial={{ width: "0%" }}
+                            animate={{ width: `${progress}%` }}
+                            transition={{ duration: 0.5, ease: "easeOut" }}
+                          />
+                          <motion.div
+                            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+                            animate={{ x: ["-100%", "100%"] }}
+                            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                            style={{ width: "50%" }}
+                          />
+                        </div>
+                      )}
+                      
+                      <CardContent className="p-6">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 space-y-4">
+                            <div className="flex items-center gap-3">
+                              <motion.div 
+                                className={cn(
+                                  "p-2 rounded-lg",
+                                  isRunning ? "bg-telegram/20" : "bg-muted"
+                                )}
+                                animate={isRunning ? { scale: [1, 1.1, 1] } : {}}
+                                transition={{ duration: 1.5, repeat: Infinity }}
+                              >
+                                <Megaphone className={cn(
+                                  "w-5 h-5",
+                                  isRunning ? "text-telegram" : "text-muted-foreground"
+                                )} />
+                              </motion.div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <h3 className="font-semibold">{campaign.name}</h3>
+                                  {getStatusBadge(campaign.status)}
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                  Destino: {getDestinationName(campaign.destination_id)} • Delay: {campaign.delay_seconds}s
+                                </p>
                               </div>
-                              <p className="text-sm text-muted-foreground">Destino: {getDestinationName(campaign.destination_id)} • Delay: {campaign.delay_seconds}s</p>
                             </div>
+
+                            {campaign.status !== "queued" && (
+                              <div className="space-y-3">
+                                {/* Progress bar with animation */}
+                                <div className="space-y-2">
+                                  <div className="flex items-center justify-between text-sm">
+                                    <span className="flex items-center gap-2">
+                                      Progresso
+                                      {isRunning && (
+                                        <motion.span 
+                                          className="inline-flex items-center gap-1 text-telegram text-xs"
+                                          animate={{ opacity: [1, 0.5, 1] }}
+                                          transition={{ duration: 1, repeat: Infinity }}
+                                        >
+                                          <div className="w-1.5 h-1.5 rounded-full bg-telegram animate-pulse" />
+                                          Enviando...
+                                        </motion.span>
+                                      )}
+                                    </span>
+                                    <motion.span 
+                                      className="text-muted-foreground font-mono"
+                                      key={campaign.sent_count}
+                                      initial={{ scale: 1.2, color: "hsl(var(--telegram))" }}
+                                      animate={{ scale: 1, color: "hsl(var(--muted-foreground))" }}
+                                      transition={{ duration: 0.3 }}
+                                    >
+                                      {campaign.sent_count} / {campaign.total_count}
+                                    </motion.span>
+                                  </div>
+                                  <div className="relative">
+                                    <Progress value={progress} className="h-3" />
+                                    {/* Percentage overlay */}
+                                    <motion.div 
+                                      className="absolute inset-0 flex items-center justify-center"
+                                      initial={{ opacity: 0 }}
+                                      animate={{ opacity: progress > 10 ? 1 : 0 }}
+                                    >
+                                      <span className="text-[10px] font-bold text-primary-foreground drop-shadow-sm">
+                                        {progress}%
+                                      </span>
+                                    </motion.div>
+                                  </div>
+                                </div>
+                                
+                                {/* Stats grid with animations */}
+                                <div className="grid grid-cols-3 gap-3">
+                                  <motion.div 
+                                    className="p-3 rounded-lg bg-success/10 flex flex-col items-center"
+                                    animate={isRunning ? { scale: [1, 1.02, 1] } : {}}
+                                    transition={{ duration: 2, repeat: Infinity }}
+                                  >
+                                    <motion.span 
+                                      className="text-lg font-bold text-success"
+                                      key={campaign.success_count}
+                                      initial={{ scale: 1.3 }}
+                                      animate={{ scale: 1 }}
+                                    >
+                                      {campaign.success_count || 0}
+                                    </motion.span>
+                                    <span className="text-xs text-muted-foreground">Enviados</span>
+                                  </motion.div>
+                                  
+                                  <motion.div 
+                                    className={cn(
+                                      "p-3 rounded-lg flex flex-col items-center",
+                                      (campaign.error_count || 0) > 0 ? "bg-destructive/10" : "bg-muted"
+                                    )}
+                                  >
+                                    <motion.span 
+                                      className={cn(
+                                        "text-lg font-bold",
+                                        (campaign.error_count || 0) > 0 ? "text-destructive" : "text-muted-foreground"
+                                      )}
+                                      key={campaign.error_count}
+                                      initial={{ scale: 1.3 }}
+                                      animate={{ scale: 1 }}
+                                    >
+                                      {campaign.error_count || 0}
+                                    </motion.span>
+                                    <span className="text-xs text-muted-foreground">Erros</span>
+                                  </motion.div>
+                                  
+                                  <div className="p-3 rounded-lg bg-muted flex flex-col items-center">
+                                    <span className="text-lg font-bold text-muted-foreground">
+                                      {campaign.avg_send_time_ms ? `${(campaign.avg_send_time_ms / 1000).toFixed(1)}s` : "—"}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground">Tempo médio</span>
+                                  </div>
+                                </div>
+                                
+                                {/* Success rate indicator */}
+                                {campaign.sent_count > 0 && (
+                                  <div className="flex items-center gap-2 text-sm">
+                                    <span className="text-muted-foreground">Taxa de sucesso:</span>
+                                    <motion.div 
+                                      className={cn(
+                                        "px-2 py-0.5 rounded-full text-xs font-medium",
+                                        successRate >= 90 ? "bg-success/20 text-success" :
+                                        successRate >= 70 ? "bg-warning/20 text-warning" :
+                                        "bg-destructive/20 text-destructive"
+                                      )}
+                                      initial={{ scale: 0 }}
+                                      animate={{ scale: 1 }}
+                                    >
+                                      {successRate}%
+                                    </motion.div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {campaign.error_message && (
+                              <motion.div 
+                                className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm"
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: "auto" }}
+                              >
+                                <AlertCircle className="w-4 h-4 inline mr-2" />
+                                {campaign.error_message}
+                              </motion.div>
+                            )}
                           </div>
 
-                          {campaign.status !== "queued" && (
-                            <div className="space-y-2">
-                              <div className="flex items-center justify-between text-sm">
-                                <span>Progresso</span>
-                                <span className="text-muted-foreground">{campaign.sent_count} / {campaign.total_count}</span>
-                              </div>
-                              <Progress value={campaign.progress} className="h-2" />
-                            </div>
-                          )}
-
-                          {(campaign.status === "running" || campaign.status === "completed" || campaign.status === "failed") && (
-                            <div className="flex items-center gap-4 text-sm">
-                              <div className="flex items-center gap-1"><CheckCircle2 className="w-4 h-4 text-success" /><span>{campaign.success_count || 0} enviados</span></div>
-                              <div className="flex items-center gap-1"><AlertCircle className="w-4 h-4 text-destructive" /><span>{campaign.error_count || 0} erros</span></div>
-                              {campaign.avg_send_time_ms && <div className="flex items-center gap-1"><Clock className="w-4 h-4 text-muted-foreground" /><span>{campaign.avg_send_time_ms}ms/envio</span></div>}
-                            </div>
-                          )}
-
-                          {campaign.error_message && (
-                            <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
-                              <AlertCircle className="w-4 h-4 inline mr-2" />
-                              {campaign.error_message}
-                            </div>
-                          )}
+                          <div className="flex flex-col items-end gap-2">
+                            {getActionButtons(campaign)}
+                            <span className="text-xs text-muted-foreground">{formatDate(campaign.created_at)}</span>
+                          </div>
                         </div>
-
-                        <div className="flex flex-col items-end gap-2">
-                          {getActionButtons(campaign)}
-                          <span className="text-xs text-muted-foreground">{formatDate(campaign.created_at)}</span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                );
+              })}
             </div>
           ) : (
             <Card className="p-12 text-center">
