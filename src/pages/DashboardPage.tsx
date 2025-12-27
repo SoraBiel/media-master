@@ -24,7 +24,8 @@ import { usePlanExpiration } from "@/hooks/usePlanExpiration";
 import { useFunnelMetrics } from "@/hooks/useFunnelMetrics";
 import { PlanExpirationModal } from "@/components/PlanExpirationModal";
 import { FeatureBlockedOverlay } from "@/components/FeatureBlockedOverlay";
-
+import { NotificationsPanel } from "@/components/NotificationsPanel";
+import { DashboardBannerCarousel } from "@/components/DashboardBannerCarousel";
 import {
   Table,
   TableBody,
@@ -111,6 +112,9 @@ const DashboardPage = () => {
       )}
 
       <div className="space-y-6">
+        {/* Banner Carousel */}
+        <DashboardBannerCarousel />
+
         {/* Clean Header */}
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
@@ -127,7 +131,7 @@ const DashboardPage = () => {
               onDateRangeChange={setDateRange}
               className="w-[220px]"
             />
-            
+            <NotificationsPanel />
             <Link to="/funnels/new">
               <Button variant="gradient" size="sm">
                 <Plus className="w-4 h-4 mr-1" />

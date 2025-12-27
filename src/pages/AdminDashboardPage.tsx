@@ -93,6 +93,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { AdminTemplatesPanel } from "@/components/admin/AdminTemplatesPanel";
 import { AdminNotificationsPanel } from "@/components/admin/AdminNotificationsPanel";
+import { AdminBannersPanel } from "@/components/admin/AdminBannersPanel";
 import { useAdminSettings, getSettingLabel } from "@/hooks/useAdminSettings";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -3003,7 +3004,8 @@ const AdminDashboardPage = () => {
           </TabsContent>
 
           {/* Notifications Tab */}
-          <TabsContent value="notifications" className="space-y-4">
+          <TabsContent value="notifications" className="space-y-6">
+            <AdminBannersPanel />
             <AdminNotificationsPanel />
           </TabsContent>
 
