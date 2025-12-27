@@ -11,6 +11,7 @@ export interface AdminSettings {
   media_library_enabled: boolean;
   whatsapp_enabled: boolean;
   telegram_groups_enabled: boolean;
+  automation_module_enabled: boolean;
 }
 
 export interface SettingsHistoryEntry {
@@ -32,6 +33,7 @@ const defaultSettings: AdminSettings = {
   media_library_enabled: true,
   whatsapp_enabled: true,
   telegram_groups_enabled: true,
+  automation_module_enabled: true,
 };
 
 const settingLabels: Record<keyof AdminSettings, string> = {
@@ -43,6 +45,7 @@ const settingLabels: Record<keyof AdminSettings, string> = {
   media_library_enabled: "Biblioteca de Mídias",
   whatsapp_enabled: "WhatsApp",
   telegram_groups_enabled: "Grupos Telegram",
+  automation_module_enabled: "Automação de Publicações",
 };
 
 export const getSettingLabel = (key: string): string => {
