@@ -2180,18 +2180,39 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
                 );
               })()}
 
-              <Button 
-                className="w-full"
-                onClick={handleBulkRemarketing} 
-                disabled={(!bulkRemarketingMessage && (bulkMediaType === 'none' || !bulkMediaUrl)) || sendingBulkRemarketing || uploadingBulkMedia}
-              >
-                {sendingBulkRemarketing ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4 mr-2" />
+              <div className="flex gap-2">
+                <Button 
+                  className="flex-1"
+                  onClick={handleBulkRemarketing} 
+                  disabled={(!bulkRemarketingMessage && (bulkMediaType === 'none' || !bulkMediaUrl)) || sendingBulkRemarketing || uploadingBulkMedia}
+                >
+                  {sendingBulkRemarketing ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4 mr-2" />
+                  )}
+                  Enviar Agora
+                </Button>
+                
+                {bulkRemarketingMessage && bulkRemarketingType === 'unpaid' && (
+                  <Button 
+                    variant="outline"
+                    onClick={() => {
+                      setAutoRemarketingMessage(bulkRemarketingMessage);
+                      setAutoRemarketingMinutes(bulkRemarketingMinutes);
+                      setAutoRemarketingEnabled(true);
+                      toast({
+                        title: 'Configuração copiada!',
+                        description: 'Vá para a aba "Automático" e clique em Salvar',
+                      });
+                    }}
+                    title="Usar essa mensagem para remarketing automático"
+                  >
+                    <Zap className="h-4 w-4 mr-2" />
+                    Usar no Auto
+                  </Button>
                 )}
-                Enviar Remarketing Agora
-              </Button>
+              </div>
             </TabsContent>
 
             {/* Tab de remarketing automático */}
