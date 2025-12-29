@@ -52,8 +52,8 @@ export const BulkMediaUploader = ({
   onFilesUploaded,
   onFilesSelected,
   bucket = "media-packs",
-  concurrency = 25,
-  maxRetries = 3,
+  concurrency = 40, // Increased for max speed
+  maxRetries = 2, // Reduced for speed
   showManageControls = false,
   showPreview = false,
   existingFiles = [],
@@ -224,10 +224,7 @@ export const BulkMediaUploader = ({
     try {
       const { error: uploadError } = await supabase.storage
         .from(bucket)
-        .upload(fileName, file, {
-          cacheControl: '3600',
-          upsert: false,
-        });
+        .upload(fileName, file, { upsert: true }); // Faster with upsert
 
       if (uploadError) {
         throw uploadError;
@@ -270,10 +267,10 @@ export const BulkMediaUploader = ({
     let failed = results.filter(r => r.failed !== null).map(r => r.failed!);
     let bytesUploaded = uploaded.reduce((acc, f) => acc + f.size, 0);
 
-    // Auto-retry failed files up to maxRetries
+    // Quick retry for failed files
     let retryAttempt = 1;
     while (failed.length > 0 && retryAttempt <= maxRetries && !cancelRef.current) {
-      await new Promise(resolve => setTimeout(resolve, 500 * retryAttempt));
+      await new Promise(resolve => setTimeout(resolve, 300 * retryAttempt)); // Faster retry
       
       const retryResults = await Promise.all(
         failed.map(f => uploadSingleFile(f.file, retryAttempt))
