@@ -43,102 +43,24 @@ const CheckoutPage = () => {
   const productId = searchParams.get("id") || "";
   const planSlug = searchParams.get("plan") || "";
 
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [pixData, setPixData] = useState<PixData | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<"pending" | "paid" | "failed">("pending");
   const [productInfo, setProductInfo] = useState<any>(null);
   const [copied, setCopied] = useState(false);
   const [isValidCheckout, setIsValidCheckout] = useState(true);
+  const [autoGenerating, setAutoGenerating] = useState(false);
 
   // Determine if this is a subscription (BuckPay) or product (Mercado Pago)
   const isSubscription = productType === "subscription";
   const isProduct = ["tiktok_account", "model", "telegram_group", "instagram_account"].includes(productType);
 
-  // Validate checkout params and fetch product info
-  useEffect(() => {
-    const fetchProductInfo = async () => {
-      const hasValidParams = 
-        (productType === "subscription" && planSlug) ||
-        (productType === "tiktok_account" && productId) ||
-        (productType === "instagram_account" && productId) ||
-        (productType === "model" && productId) ||
-        (productType === "telegram_group" && productId);
-
-      if (!hasValidParams) {
-        setIsValidCheckout(false);
-        toast({
-          title: "Checkout inválido",
-          description: "Selecione um produto para continuar",
-          variant: "destructive",
-        });
-        navigate("/billing");
-        return;
-      }
-
-      if (productType === "subscription" && planSlug) {
-        const validSlugs = ["free", "basic", "pro", "agency"] as const;
-        if (validSlugs.includes(planSlug as any)) {
-          const { data } = await supabase
-            .from("plans")
-            .select("*")
-            .eq("slug", planSlug as "free" | "basic" | "pro" | "agency")
-            .single();
-          setProductInfo(data);
-        }
-      } else if (productType === "tiktok_account" && productId) {
-        const { data } = await supabase
-          .from("tiktok_accounts")
-          .select("*")
-          .eq("id", productId)
-          .single();
-        setProductInfo(data);
-      } else if (productType === "instagram_account" && productId) {
-        const { data } = await supabase
-          .from("instagram_accounts")
-          .select("*")
-          .eq("id", productId)
-          .single();
-        setProductInfo(data);
-      } else if (productType === "model" && productId) {
-        const { data } = await supabase
-          .from("models_for_sale")
-          .select("*")
-          .eq("id", productId)
-          .single();
-        setProductInfo(data);
-      } else if (productType === "telegram_group" && productId) {
-        const { data } = await supabase
-          .from("telegram_groups")
-          .select("*")
-          .eq("id", productId)
-          .single();
-        setProductInfo(data);
-      }
-    };
-
-    fetchProductInfo();
-  }, [productType, productId, planSlug, navigate, toast]);
-
-  const handleGeneratePix = async () => {
-    if (!profile?.full_name || !profile?.email) {
-      toast({
-        title: "Erro",
-        description: "Complete seu perfil para continuar",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!profile?.phone) {
-      toast({
-        title: "Telefone obrigatório",
-        description: "Atualize seu perfil com um número de telefone para continuar",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsLoading(true);
+  // Auto-generate PIX when profile and product are ready
+  const generatePixPayment = async (productData: any) => {
+    if (!profile?.full_name || !profile?.email || !profile?.phone) return;
+    if (pixData || autoGenerating) return;
+    
+    setAutoGenerating(true);
 
     try {
       let response;
@@ -152,7 +74,7 @@ const CheckoutPage = () => {
             buyer: {
               name: profile.full_name,
               email: profile.email,
-              phone: profile.phone || undefined,
+              phone: profile.phone,
             },
           },
         });
@@ -164,7 +86,7 @@ const CheckoutPage = () => {
             buyer: {
               name: profile.full_name,
               email: profile.email,
-              phone: profile.phone || undefined,
+              phone: profile.phone,
             },
           },
         });
@@ -202,8 +124,111 @@ const CheckoutPage = () => {
         variant: "destructive",
       });
     } finally {
+      setAutoGenerating(false);
       setIsLoading(false);
     }
+  };
+
+  // Validate checkout params and fetch product info
+  useEffect(() => {
+    const fetchProductInfo = async () => {
+      const hasValidParams = 
+        (productType === "subscription" && planSlug) ||
+        (productType === "tiktok_account" && productId) ||
+        (productType === "instagram_account" && productId) ||
+        (productType === "model" && productId) ||
+        (productType === "telegram_group" && productId);
+
+      if (!hasValidParams) {
+        setIsValidCheckout(false);
+        setIsLoading(false);
+        toast({
+          title: "Checkout inválido",
+          description: "Selecione um produto para continuar",
+          variant: "destructive",
+        });
+        navigate("/billing");
+        return;
+      }
+
+      let productData = null;
+
+      if (productType === "subscription" && planSlug) {
+        const validSlugs = ["free", "basic", "pro", "agency"] as const;
+        if (validSlugs.includes(planSlug as any)) {
+          const { data } = await supabase
+            .from("plans")
+            .select("*")
+            .eq("slug", planSlug as "free" | "basic" | "pro" | "agency")
+            .single();
+          productData = data;
+          setProductInfo(data);
+        }
+      } else if (productType === "tiktok_account" && productId) {
+        const { data } = await supabase
+          .from("tiktok_accounts")
+          .select("*")
+          .eq("id", productId)
+          .single();
+        productData = data;
+        setProductInfo(data);
+      } else if (productType === "instagram_account" && productId) {
+        const { data } = await supabase
+          .from("instagram_accounts")
+          .select("*")
+          .eq("id", productId)
+          .single();
+        productData = data;
+        setProductInfo(data);
+      } else if (productType === "model" && productId) {
+        const { data } = await supabase
+          .from("models_for_sale")
+          .select("*")
+          .eq("id", productId)
+          .single();
+        productData = data;
+        setProductInfo(data);
+      } else if (productType === "telegram_group" && productId) {
+        const { data } = await supabase
+          .from("telegram_groups")
+          .select("*")
+          .eq("id", productId)
+          .single();
+        productData = data;
+        setProductInfo(data);
+      }
+
+      // Auto-generate PIX if user has complete profile
+      if (productData && profile?.full_name && profile?.email && profile?.phone) {
+        generatePixPayment(productData);
+      } else {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProductInfo();
+  }, [productType, productId, planSlug, navigate, toast, profile]);
+
+  const handleGeneratePix = async () => {
+    if (!profile?.full_name || !profile?.email) {
+      toast({
+        title: "Erro",
+        description: "Complete seu perfil para continuar",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!profile?.phone) {
+      toast({
+        title: "Telefone obrigatório",
+        description: "Atualize seu perfil com um número de telefone para continuar",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    generatePixPayment(productInfo);
   };
 
   const startPolling = (externalId: string) => {
@@ -485,8 +510,32 @@ const CheckoutPage = () => {
             </motion.div>
           )}
 
-          {/* User Info & Payment */}
-          {!pixData && profile && (
+          {/* Loading State - Generating PIX */}
+          {(isLoading || autoGenerating) && !pixData && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="rounded-3xl bg-card border border-border/50 shadow-xl overflow-hidden"
+            >
+              <div className="p-8 text-center space-y-4">
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+                  className="w-16 h-16 mx-auto rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-lg shadow-primary/25"
+                >
+                  <CreditCard className="w-8 h-8 text-white" />
+                </motion.div>
+                <div>
+                  <h3 className="font-semibold text-lg">Gerando PIX...</h3>
+                  <p className="text-sm text-muted-foreground mt-1">Aguarde, estamos preparando seu pagamento</p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* User Info & Payment - Only show if not loading and no PIX yet */}
+          {!pixData && profile && !isLoading && !autoGenerating && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -537,20 +586,10 @@ const CheckoutPage = () => {
               <div className="p-6 pt-0">
                 <Button
                   onClick={handleGeneratePix}
-                  disabled={isLoading || !profile.phone}
+                  disabled={isLoading || autoGenerating || !profile.phone}
                   className="w-full h-14 text-lg font-semibold rounded-2xl bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg shadow-primary/25 transition-all"
                 >
-                  {isLoading ? (
-                    <span className="flex items-center gap-2">
-                      <motion.div
-                        animate={{ rotate: 360 }}
-                        transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-                      >
-                        <CreditCard className="w-5 h-5" />
-                      </motion.div>
-                      Gerando PIX...
-                    </span>
-                  ) : productInfo?.price_cents === 0 ? (
+                  {productInfo?.price_cents === 0 ? (
                     "Ativar Plano Grátis"
                   ) : (
                     <span className="flex items-center gap-2">
