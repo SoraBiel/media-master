@@ -1316,27 +1316,18 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
           {autoRemarketingEnabled && (
             <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30">
               <Zap className="h-3 w-3 mr-1" />
-              Auto Remarketing
+              Auto Ativo
             </Badge>
           )}
         </div>
         <div className="flex gap-2">
-          <Button 
-            variant={autoRemarketingEnabled ? "default" : "outline"}
-            size="sm" 
-            onClick={() => setAutoRemarketingDialogOpen(true)}
-            className={autoRemarketingEnabled ? "bg-green-600 hover:bg-green-700" : ""}
-          >
-            <Zap className="h-4 w-4 mr-2" />
-            {autoRemarketingEnabled ? 'Automático Ativo' : 'Remarketing Auto'}
-          </Button>
           <Button 
             variant="outline" 
             size="sm" 
             onClick={() => setBulkRemarketingDialogOpen(true)}
           >
             <Users className="h-4 w-4 mr-2" />
-            Em Massa
+            Remarketing
           </Button>
           <Button variant="outline" size="sm" onClick={fetchPayments} disabled={isLoading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
@@ -1912,389 +1903,390 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
 
       {/* Dialog para remarketing em massa */}
       <Dialog open={bulkRemarketingDialogOpen} onOpenChange={setBulkRemarketingDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Users className="h-5 w-5" />
-              Remarketing em Massa
+              Remarketing
             </DialogTitle>
             <DialogDescription>
-              Envie mensagens de remarketing para múltiplos leads de uma vez
+              Envie mensagens de remarketing manualmente ou configure o envio automático
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Tipo de Lead</Label>
-              <Select value={bulkRemarketingType} onValueChange={(v) => setBulkRemarketingType(v as 'paid' | 'unpaid')}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="unpaid">
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-amber-500" />
-                      Não Pagos ({unpaidCount})
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="paid">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                      Pagos ({paidCount})
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className="flex items-center gap-2">
-                <Timer className="h-4 w-4" />
-                Tempo mínimo (minutos)
-              </Label>
-              <p className="text-xs text-muted-foreground mb-2">
-                Apenas leads criados há mais de X minutos receberão a mensagem
-              </p>
-              <Input
-                type="number"
-                min={1}
-                max={1440}
-                value={bulkRemarketingMinutes}
-                onChange={(e) => setBulkRemarketingMinutes(parseInt(e.target.value) || 5)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="bulkRemarketingMessage">Mensagem (legenda se enviar mídia)</Label>
-              <Textarea
-                id="bulkRemarketingMessage"
-                placeholder={
-                  bulkRemarketingType === 'unpaid' 
-                    ? "💰 Oi! Vi que você ainda não finalizou seu pagamento..."
-                    : "🎁 Oi! Temos uma oferta especial para você..."
-                }
-                value={bulkRemarketingMessage}
-                onChange={(e) => setBulkRemarketingMessage(e.target.value)}
-                rows={3}
-              />
-            </div>
-
-            {/* Tipo de Mídia */}
-            <div>
-              <Label>Mídia (opcional)</Label>
-              <div className="flex gap-2 mt-2">
-                <Button
-                  size="sm"
-                  variant={bulkMediaType === 'none' ? 'default' : 'outline'}
-                  onClick={() => { setBulkMediaType('none'); setBulkMediaUrl(''); }}
-                  className="flex-1"
-                >
-                  Texto
-                </Button>
-                <Button
-                  size="sm"
-                  variant={bulkMediaType === 'image' ? 'default' : 'outline'}
-                  onClick={() => setBulkMediaType('image')}
-                  className="flex-1"
-                >
-                  <Image className="h-4 w-4 mr-1" />
-                  Imagem
-                </Button>
-                <Button
-                  size="sm"
-                  variant={bulkMediaType === 'video' ? 'default' : 'outline'}
-                  onClick={() => setBulkMediaType('video')}
-                  className="flex-1"
-                >
-                  <Video className="h-4 w-4 mr-1" />
-                  Vídeo
-                </Button>
-                <Button
-                  size="sm"
-                  variant={bulkMediaType === 'audio' ? 'default' : 'outline'}
-                  onClick={() => setBulkMediaType('audio')}
-                  className="flex-1"
-                >
-                  <Music className="h-4 w-4 mr-1" />
-                  Áudio
-                </Button>
-              </div>
-            </div>
-
-            {/* Upload de Mídia */}
-            {bulkMediaType !== 'none' && (
-              <>
-                <div>
-                  <Label>Fazer upload do PC</Label>
-                  <div 
-                    className={`mt-2 border-2 border-dashed rounded-lg p-3 text-center transition-colors cursor-pointer ${
-                      bulkMediaDragging 
-                        ? 'border-primary bg-primary/5' 
-                        : 'border-muted-foreground/25 hover:border-primary/50'
-                    }`}
-                    onDrop={handleBulkMediaDrop}
-                    onDragOver={handleBulkMediaDragOver}
-                    onDragLeave={handleBulkMediaDragLeave}
-                    onClick={() => bulkMediaInputRef.current?.click()}
-                  >
-                    <input
-                      ref={bulkMediaInputRef}
-                      type="file"
-                      accept={
-                        bulkMediaType === 'image' ? 'image/*' :
-                        bulkMediaType === 'video' ? 'video/*' :
-                        'audio/*'
-                      }
-                      onChange={handleBulkMediaUpload}
-                      className="hidden"
-                    />
-                    {uploadingBulkMedia ? (
-                      <div className="flex flex-col items-center gap-2">
-                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                        <p className="text-xs text-muted-foreground">Enviando...</p>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center gap-1">
-                        <Upload className="h-6 w-6 text-muted-foreground" />
-                        <p className="text-xs text-muted-foreground">
-                          Arraste ou clique para selecionar
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-background px-2 text-muted-foreground">ou cole uma URL</span>
-                  </div>
-                </div>
-
-                <div>
-                  <Label>
-                    URL {bulkMediaType === 'image' ? 'da Imagem' : bulkMediaType === 'video' ? 'do Vídeo' : 'do Áudio'}
-                  </Label>
-                  <Input
-                    placeholder={
-                      bulkMediaType === 'image' ? 'https://exemplo.com/imagem.jpg' :
-                      bulkMediaType === 'video' ? 'https://exemplo.com/video.mp4' :
-                      'https://exemplo.com/audio.mp3'
-                    }
-                    value={bulkMediaUrl}
-                    onChange={(e) => setBulkMediaUrl(e.target.value)}
-                  />
-                </div>
-
-                {/* Preview */}
-                {bulkMediaUrl && (
-                  <div className="border rounded-lg p-2">
-                    {bulkMediaType === 'image' && (
-                      <img 
-                        src={bulkMediaUrl} 
-                        alt="Preview" 
-                        className="max-h-24 mx-auto rounded object-contain"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = 'none';
-                        }}
-                      />
-                    )}
-                    {bulkMediaType === 'video' && (
-                      <video 
-                        src={bulkMediaUrl} 
-                        controls 
-                        className="max-h-24 w-full rounded object-contain"
-                        onError={(e) => {
-                          (e.target as HTMLVideoElement).style.display = 'none';
-                        }}
-                      />
-                    )}
-                    {bulkMediaType === 'audio' && (
-                      <audio 
-                        src={bulkMediaUrl} 
-                        controls 
-                        className="w-full"
-                        onError={(e) => {
-                          (e.target as HTMLAudioElement).style.display = 'none';
-                        }}
-                      />
-                    )}
-                  </div>
+          
+          <Tabs defaultValue="manual" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-4">
+              <TabsTrigger value="manual" className="flex items-center gap-2">
+                <Send className="h-4 w-4" />
+                Envio Manual
+              </TabsTrigger>
+              <TabsTrigger value="auto" className="flex items-center gap-2">
+                <Zap className="h-4 w-4" />
+                Automático
+                {autoRemarketingEnabled && (
+                  <Badge variant="outline" className="ml-1 bg-green-500/20 text-green-600 border-green-500/30 text-xs px-1">
+                    ON
+                  </Badge>
                 )}
-              </>
-            )}
+              </TabsTrigger>
+            </TabsList>
 
-            {/* Preview de leads impactados */}
-            {(() => {
-              const now = new Date();
-              const cutoffTime = new Date(now.getTime() - bulkRemarketingMinutes * 60 * 1000);
-              const targetPayments = payments.filter(p => {
-                const matchesType = bulkRemarketingType === 'unpaid' 
-                  ? p.status !== 'paid' 
-                  : p.status === 'paid';
-                const hasChat = !!p.lead_chat_id;
-                const isOldEnough = new Date(p.created_at) <= cutoffTime;
-                return matchesType && hasChat && isOldEnough;
-              });
-              const impactedCount = targetPayments.length;
-              const totalOfType = bulkRemarketingType === 'unpaid' ? unpaidCount : paidCount;
-              
-              return (
-                <div className={`p-4 rounded-lg border-2 ${impactedCount > 0 ? 'bg-primary/5 border-primary/30' : 'bg-muted border-muted-foreground/20'}`}>
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="font-semibold text-sm">Leads a serem impactados:</p>
-                    <Badge variant={impactedCount > 0 ? 'default' : 'secondary'} className="text-lg px-3 py-1">
-                      {impactedCount} / {totalOfType}
-                    </Badge>
-                  </div>
-                  
-                  {/* Progress bar */}
-                  <div className="w-full h-2 bg-muted rounded-full overflow-hidden mb-2">
+            {/* Tab de envio manual */}
+            <TabsContent value="manual" className="space-y-4 mt-0">
+              <div>
+                <Label>Tipo de Lead</Label>
+                <Select value={bulkRemarketingType} onValueChange={(v) => setBulkRemarketingType(v as 'paid' | 'unpaid')}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unpaid">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-amber-500" />
+                        Não Pagos ({unpaidCount})
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="paid">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        Pagos ({paidCount})
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="flex items-center gap-2">
+                  <Timer className="h-4 w-4" />
+                  Tempo mínimo (minutos)
+                </Label>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Apenas leads criados há mais de X minutos receberão a mensagem
+                </p>
+                <Input
+                  type="number"
+                  min={1}
+                  max={1440}
+                  value={bulkRemarketingMinutes}
+                  onChange={(e) => setBulkRemarketingMinutes(parseInt(e.target.value) || 5)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="bulkRemarketingMessage">Mensagem (legenda se enviar mídia)</Label>
+                <Textarea
+                  id="bulkRemarketingMessage"
+                  placeholder={
+                    bulkRemarketingType === 'unpaid' 
+                      ? "💰 Oi! Vi que você ainda não finalizou seu pagamento..."
+                      : "🎁 Oi! Temos uma oferta especial para você..."
+                  }
+                  value={bulkRemarketingMessage}
+                  onChange={(e) => setBulkRemarketingMessage(e.target.value)}
+                  rows={3}
+                />
+              </div>
+
+              {/* Tipo de Mídia */}
+              <div>
+                <Label>Mídia (opcional)</Label>
+                <div className="flex gap-2 mt-2">
+                  <Button
+                    size="sm"
+                    variant={bulkMediaType === 'none' ? 'default' : 'outline'}
+                    onClick={() => { setBulkMediaType('none'); setBulkMediaUrl(''); }}
+                    className="flex-1"
+                  >
+                    Texto
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={bulkMediaType === 'image' ? 'default' : 'outline'}
+                    onClick={() => setBulkMediaType('image')}
+                    className="flex-1"
+                  >
+                    <Image className="h-4 w-4 mr-1" />
+                    Imagem
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={bulkMediaType === 'video' ? 'default' : 'outline'}
+                    onClick={() => setBulkMediaType('video')}
+                    className="flex-1"
+                  >
+                    <Video className="h-4 w-4 mr-1" />
+                    Vídeo
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={bulkMediaType === 'audio' ? 'default' : 'outline'}
+                    onClick={() => setBulkMediaType('audio')}
+                    className="flex-1"
+                  >
+                    <Music className="h-4 w-4 mr-1" />
+                    Áudio
+                  </Button>
+                </div>
+              </div>
+
+              {/* Upload de Mídia */}
+              {bulkMediaType !== 'none' && (
+                <>
+                  <div>
+                    <Label>Fazer upload do PC</Label>
                     <div 
-                      className={`h-full rounded-full transition-all ${impactedCount > 0 ? 'bg-primary' : 'bg-muted-foreground/30'}`}
-                      style={{ width: totalOfType > 0 ? `${(impactedCount / totalOfType) * 100}%` : '0%' }}
+                      className={`mt-2 border-2 border-dashed rounded-lg p-3 text-center transition-colors cursor-pointer ${
+                        bulkMediaDragging 
+                          ? 'border-primary bg-primary/5' 
+                          : 'border-muted-foreground/25 hover:border-primary/50'
+                      }`}
+                      onDrop={handleBulkMediaDrop}
+                      onDragOver={handleBulkMediaDragOver}
+                      onDragLeave={handleBulkMediaDragLeave}
+                      onClick={() => bulkMediaInputRef.current?.click()}
+                    >
+                      <input
+                        ref={bulkMediaInputRef}
+                        type="file"
+                        accept={
+                          bulkMediaType === 'image' ? 'image/*' :
+                          bulkMediaType === 'video' ? 'video/*' :
+                          'audio/*'
+                        }
+                        onChange={handleBulkMediaUpload}
+                        className="hidden"
+                      />
+                      {uploadingBulkMedia ? (
+                        <div className="flex flex-col items-center gap-2">
+                          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                          <p className="text-xs text-muted-foreground">Enviando...</p>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center gap-1">
+                          <Upload className="h-6 w-6 text-muted-foreground" />
+                          <p className="text-xs text-muted-foreground">
+                            Arraste ou clique para selecionar
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-background px-2 text-muted-foreground">ou cole uma URL</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label>
+                      URL {bulkMediaType === 'image' ? 'da Imagem' : bulkMediaType === 'video' ? 'do Vídeo' : 'do Áudio'}
+                    </Label>
+                    <Input
+                      placeholder={
+                        bulkMediaType === 'image' ? 'https://exemplo.com/imagem.jpg' :
+                        bulkMediaType === 'video' ? 'https://exemplo.com/video.mp4' :
+                        'https://exemplo.com/audio.mp3'
+                      }
+                      value={bulkMediaUrl}
+                      onChange={(e) => setBulkMediaUrl(e.target.value)}
                     />
                   </div>
-                  
-                  <p className="text-xs text-muted-foreground">
-                    {impactedCount > 0 
-                      ? `${impactedCount} lead${impactedCount !== 1 ? 's' : ''} ${bulkRemarketingType === 'unpaid' ? 'não pago' : 'pago'}${impactedCount !== 1 ? 's' : ''} criado${impactedCount !== 1 ? 's' : ''} há mais de ${bulkRemarketingMinutes} minutos`
-                      : `Nenhum lead encontrado com esses critérios`
-                    }
-                    {bulkMediaType !== 'none' && bulkMediaUrl && (
-                      <span className="block mt-1">
-                        📎 Com {bulkMediaType === 'image' ? 'imagem' : bulkMediaType === 'video' ? 'vídeo' : 'áudio'} anexado
-                      </span>
-                    )}
-                  </p>
-                </div>
-              );
-            })()}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setBulkRemarketingDialogOpen(false)}>
-              Cancelar
-            </Button>
-            <Button 
-              onClick={handleBulkRemarketing} 
-              disabled={(!bulkRemarketingMessage && (bulkMediaType === 'none' || !bulkMediaUrl)) || sendingBulkRemarketing || uploadingBulkMedia}
-            >
-              {sendingBulkRemarketing ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4 mr-2" />
-              )}
-              Enviar Remarketing
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
-      {/* Dialog para configurar remarketing automático */}
-      <Dialog open={autoRemarketingDialogOpen} onOpenChange={setAutoRemarketingDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Zap className="h-5 w-5 text-amber-500" />
-              Remarketing Automático
-            </DialogTitle>
-            <DialogDescription>
-              Configure o envio automático de mensagens de remarketing para leads não pagos
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            {/* Toggle de ativar/desativar */}
-            <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/50">
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-full ${autoRemarketingEnabled ? 'bg-green-500/20' : 'bg-muted'}`}>
-                  <Zap className={`h-5 w-5 ${autoRemarketingEnabled ? 'text-green-500' : 'text-muted-foreground'}`} />
-                </div>
-                <div>
-                  <p className="font-medium">Remarketing Automático</p>
-                  <p className="text-xs text-muted-foreground">
-                    {autoRemarketingEnabled ? 'Ativo' : 'Desativado'}
-                  </p>
-                </div>
-              </div>
-              <Button
-                variant={autoRemarketingEnabled ? "default" : "outline"}
-                size="sm"
-                onClick={() => setAutoRemarketingEnabled(!autoRemarketingEnabled)}
-                className={autoRemarketingEnabled ? "bg-green-600 hover:bg-green-700" : ""}
+                  {/* Preview */}
+                  {bulkMediaUrl && (
+                    <div className="border rounded-lg p-2">
+                      {bulkMediaType === 'image' && (
+                        <img 
+                          src={bulkMediaUrl} 
+                          alt="Preview" 
+                          className="max-h-24 mx-auto rounded object-contain"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      )}
+                      {bulkMediaType === 'video' && (
+                        <video 
+                          src={bulkMediaUrl} 
+                          controls 
+                          className="max-h-24 w-full rounded object-contain"
+                          onError={(e) => {
+                            (e.target as HTMLVideoElement).style.display = 'none';
+                          }}
+                        />
+                      )}
+                      {bulkMediaType === 'audio' && (
+                        <audio 
+                          src={bulkMediaUrl} 
+                          controls 
+                          className="w-full"
+                          onError={(e) => {
+                            (e.target as HTMLAudioElement).style.display = 'none';
+                          }}
+                        />
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Preview de leads impactados */}
+              {(() => {
+                const now = new Date();
+                const cutoffTime = new Date(now.getTime() - bulkRemarketingMinutes * 60 * 1000);
+                const targetPayments = payments.filter(p => {
+                  const matchesType = bulkRemarketingType === 'unpaid' 
+                    ? p.status !== 'paid' 
+                    : p.status === 'paid';
+                  const hasChat = !!p.lead_chat_id;
+                  const isOldEnough = new Date(p.created_at) <= cutoffTime;
+                  return matchesType && hasChat && isOldEnough;
+                });
+                const impactedCount = targetPayments.length;
+                const totalOfType = bulkRemarketingType === 'unpaid' ? unpaidCount : paidCount;
+                
+                return (
+                  <div className={`p-4 rounded-lg border-2 ${impactedCount > 0 ? 'bg-primary/5 border-primary/30' : 'bg-muted border-muted-foreground/20'}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="font-semibold text-sm">Leads a serem impactados:</p>
+                      <Badge variant={impactedCount > 0 ? 'default' : 'secondary'} className="text-lg px-3 py-1">
+                        {impactedCount} / {totalOfType}
+                      </Badge>
+                    </div>
+                    
+                    {/* Progress bar */}
+                    <div className="w-full h-2 bg-muted rounded-full overflow-hidden mb-2">
+                      <div 
+                        className={`h-full rounded-full transition-all ${impactedCount > 0 ? 'bg-primary' : 'bg-muted-foreground/30'}`}
+                        style={{ width: totalOfType > 0 ? `${(impactedCount / totalOfType) * 100}%` : '0%' }}
+                      />
+                    </div>
+                    
+                    <p className="text-xs text-muted-foreground">
+                      {impactedCount > 0 
+                        ? `${impactedCount} lead${impactedCount !== 1 ? 's' : ''} ${bulkRemarketingType === 'unpaid' ? 'não pago' : 'pago'}${impactedCount !== 1 ? 's' : ''} criado${impactedCount !== 1 ? 's' : ''} há mais de ${bulkRemarketingMinutes} minutos`
+                        : `Nenhum lead encontrado com esses critérios`
+                      }
+                      {bulkMediaType !== 'none' && bulkMediaUrl && (
+                        <span className="block mt-1">
+                          📎 Com {bulkMediaType === 'image' ? 'imagem' : bulkMediaType === 'video' ? 'vídeo' : 'áudio'} anexado
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                );
+              })()}
+
+              <Button 
+                className="w-full"
+                onClick={handleBulkRemarketing} 
+                disabled={(!bulkRemarketingMessage && (bulkMediaType === 'none' || !bulkMediaUrl)) || sendingBulkRemarketing || uploadingBulkMedia}
               >
-                {autoRemarketingEnabled ? 'Ativado' : 'Ativar'}
+                {sendingBulkRemarketing ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4 mr-2" />
+                )}
+                Enviar Remarketing Agora
               </Button>
-            </div>
+            </TabsContent>
 
-            {autoRemarketingEnabled && (
-              <>
-                <div>
-                  <Label className="flex items-center gap-2">
-                    <Timer className="h-4 w-4" />
-                    Tempo de espera (minutos)
-                  </Label>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Tempo após criação do pagamento para enviar o remarketing
-                  </p>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={1440}
-                    value={autoRemarketingMinutes}
-                    onChange={(e) => setAutoRemarketingMinutes(parseInt(e.target.value) || 5)}
-                  />
+            {/* Tab de remarketing automático */}
+            <TabsContent value="auto" className="space-y-4 mt-0">
+              {/* Toggle de ativar/desativar */}
+              <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/50">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-full ${autoRemarketingEnabled ? 'bg-green-500/20' : 'bg-muted'}`}>
+                    <Zap className={`h-5 w-5 ${autoRemarketingEnabled ? 'text-green-500' : 'text-muted-foreground'}`} />
+                  </div>
+                  <div>
+                    <p className="font-medium">Remarketing Automático</p>
+                    <p className="text-xs text-muted-foreground">
+                      {autoRemarketingEnabled ? 'Ativo - enviando automaticamente' : 'Desativado'}
+                    </p>
+                  </div>
                 </div>
-
-                <div>
-                  <Label htmlFor="autoRemarketingMessage">Mensagem de remarketing</Label>
-                  <Textarea
-                    id="autoRemarketingMessage"
-                    placeholder="💰 Oi! Vi que você ainda não finalizou seu pagamento. Posso ajudar?"
-                    value={autoRemarketingMessage}
-                    onChange={(e) => setAutoRemarketingMessage(e.target.value)}
-                    rows={3}
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Variáveis: {'{nome}'}, {'{produto}'}, {'{valor}'}
-                  </p>
-                </div>
-
-                <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
-                  <p className="text-sm text-amber-600 flex items-start gap-2">
-                    <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                    <span>
-                      O remarketing automático é executado em background pelo sistema e enviará mensagens 
-                      automaticamente para leads não pagos após {autoRemarketingMinutes} minutos.
-                    </span>
-                  </p>
-                </div>
-              </>
-            )}
-
-            {!autoRemarketingEnabled && (
-              <div className="p-4 rounded-lg bg-muted text-center">
-                <Zap className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">
-                  Ative o remarketing automático para recuperar vendas perdidas automaticamente
-                </p>
+                <Button
+                  variant={autoRemarketingEnabled ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setAutoRemarketingEnabled(!autoRemarketingEnabled)}
+                  className={autoRemarketingEnabled ? "bg-green-600 hover:bg-green-700" : ""}
+                >
+                  {autoRemarketingEnabled ? 'Ativado' : 'Ativar'}
+                </Button>
               </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAutoRemarketingDialogOpen(false)}>
-              Cancelar
-            </Button>
-            <Button 
-              onClick={handleSaveAutoRemarketing} 
-              disabled={savingAutoRemarketing || (autoRemarketingEnabled && !autoRemarketingMessage)}
-            >
-              {savingAutoRemarketing ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Settings className="h-4 w-4 mr-2" />
+
+              {autoRemarketingEnabled && (
+                <>
+                  <div>
+                    <Label className="flex items-center gap-2">
+                      <Timer className="h-4 w-4" />
+                      Tempo de espera (minutos)
+                    </Label>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      Tempo após criação do pagamento para enviar o remarketing
+                    </p>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={1440}
+                      value={autoRemarketingMinutes}
+                      onChange={(e) => setAutoRemarketingMinutes(parseInt(e.target.value) || 5)}
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="autoRemarketingMessage">Mensagem de remarketing</Label>
+                    <Textarea
+                      id="autoRemarketingMessage"
+                      placeholder="💰 Oi! Vi que você ainda não finalizou seu pagamento. Posso ajudar?"
+                      value={autoRemarketingMessage}
+                      onChange={(e) => setAutoRemarketingMessage(e.target.value)}
+                      rows={3}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Variáveis: {'{nome}'}, {'{produto}'}, {'{valor}'}
+                    </p>
+                  </div>
+
+                  <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                    <p className="text-sm text-amber-600 flex items-start gap-2">
+                      <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                      <span>
+                        O sistema enviará mensagens automaticamente para leads não pagos após {autoRemarketingMinutes} minutos.
+                      </span>
+                    </p>
+                  </div>
+                </>
               )}
-              Salvar Configurações
-            </Button>
-          </DialogFooter>
+
+              {!autoRemarketingEnabled && (
+                <div className="p-6 rounded-lg bg-muted text-center">
+                  <Zap className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+                  <p className="font-medium mb-1">Remarketing Automático</p>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Ative para recuperar vendas perdidas automaticamente
+                  </p>
+                </div>
+              )}
+
+              <Button 
+                className="w-full"
+                onClick={handleSaveAutoRemarketing} 
+                disabled={savingAutoRemarketing || (autoRemarketingEnabled && !autoRemarketingMessage)}
+              >
+                {savingAutoRemarketing ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Settings className="h-4 w-4 mr-2" />
+                )}
+                Salvar Configurações
+              </Button>
+            </TabsContent>
+          </Tabs>
         </DialogContent>
       </Dialog>
     </div>
