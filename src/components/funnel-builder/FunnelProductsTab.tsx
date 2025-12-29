@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,9 +11,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMercadoPagoIntegration } from "@/hooks/useMercadoPagoIntegration";
-import { Loader2, Plus, Trash2, Package, Link2, AlertCircle, ExternalLink, QrCode, Copy, Check, Users } from "lucide-react";
+import { Loader2, Plus, Trash2, Package, Link2, AlertCircle, ExternalLink, QrCode, Copy, Check, Users, FolderOpen, Image } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface FunnelProduct {
   id: string;
@@ -32,6 +33,15 @@ interface FunnelProduct {
   group_invite_link: string | null;
   is_active: boolean;
   created_at: string;
+}
+
+interface MediaPack {
+  id: string;
+  name: string;
+  description: string | null;
+  file_count: number | null;
+  image_url: string | null;
+  min_plan: string;
 }
 
 interface FunnelProductsTabProps {
@@ -54,7 +64,8 @@ const FunnelProductsTab = ({ funnelId }: FunnelProductsTabProps) => {
     delivery_content: '',
     delivery_message: '',
     group_chat_id: '',
-    group_invite_link: ''
+    group_invite_link: '',
+    media_pack_id: ''
   });
 
   // Fetch products for this funnel
@@ -73,6 +84,20 @@ const FunnelProductsTab = ({ funnelId }: FunnelProductsTabProps) => {
     enabled: !!funnelId
   });
 
+  // Fetch available media packs
+  const { data: mediaPacks } = useQuery({
+    queryKey: ['admin-media-packs'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('admin_media')
+        .select('id, name, description, file_count, image_url, min_plan')
+        .order('name');
+      
+      if (error) throw error;
+      return data as MediaPack[];
+    }
+  });
+
   // Create product
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -84,6 +109,11 @@ const FunnelProductsTab = ({ funnelId }: FunnelProductsTabProps) => {
         throw new Error("Preço inválido");
       }
 
+      // For media_pack delivery type, store pack_id in delivery_content
+      const deliveryContent = formData.delivery_type === 'media_pack' 
+        ? formData.media_pack_id 
+        : formData.delivery_content || null;
+
       const { data, error } = await supabase
         .from('funnel_products')
         .insert({
@@ -94,7 +124,7 @@ const FunnelProductsTab = ({ funnelId }: FunnelProductsTabProps) => {
           price_cents: priceCents,
           product_type: formData.product_type,
           delivery_type: formData.delivery_type,
-          delivery_content: formData.delivery_content || null,
+          delivery_content: deliveryContent,
           delivery_message: formData.delivery_message || null,
           group_chat_id: formData.delivery_type === 'group' ? formData.group_chat_id || null : null,
           group_invite_link: formData.delivery_type === 'group' ? formData.group_invite_link || null : null
@@ -117,7 +147,8 @@ const FunnelProductsTab = ({ funnelId }: FunnelProductsTabProps) => {
         delivery_content: '',
         delivery_message: '',
         group_chat_id: '',
-        group_invite_link: ''
+        group_invite_link: '',
+        media_pack_id: ''
       });
       toast({
         title: "Produto criado",
@@ -164,6 +195,22 @@ const FunnelProductsTab = ({ funnelId }: FunnelProductsTabProps) => {
       style: 'currency',
       currency: 'BRL'
     }).format(cents / 100);
+  };
+
+  const getDeliveryLabel = (type: string) => {
+    switch (type) {
+      case 'link': return 'Link';
+      case 'message': return 'Mensagem';
+      case 'both': return 'Link + Mensagem';
+      case 'group': return 'Grupo';
+      case 'media_pack': return 'Pack de Mídia';
+      default: return type;
+    }
+  };
+
+  const getSelectedPackName = (packId: string) => {
+    const pack = mediaPacks?.find(p => p.id === packId);
+    return pack?.name || 'Pack não encontrado';
   };
 
   if (isLoadingIntegration) {
@@ -218,7 +265,7 @@ const FunnelProductsTab = ({ funnelId }: FunnelProductsTabProps) => {
               Novo Produto
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-md max-h-[90vh]">
             <DialogHeader>
               <DialogTitle>Criar Produto</DialogTitle>
               <DialogDescription>
@@ -226,146 +273,264 @@ const FunnelProductsTab = ({ funnelId }: FunnelProductsTabProps) => {
               </DialogDescription>
             </DialogHeader>
             
-            <form 
-              className="space-y-4"
-              onSubmit={(e) => {
-                e.preventDefault();
-                createMutation.mutate();
-              }}
-            >
-              <div className="space-y-2">
-                <Label>Nome do Produto</Label>
-                <Input 
-                  placeholder="Ex: Curso Completo de Marketing"
-                  value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Descrição (opcional)</Label>
-                <Textarea 
-                  placeholder="Descreva seu produto..."
-                  value={formData.description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                  rows={2}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
+            <ScrollArea className="max-h-[60vh] pr-4">
+              <form 
+                className="space-y-4"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  createMutation.mutate();
+                }}
+              >
                 <div className="space-y-2">
-                  <Label>Valor (R$)</Label>
+                  <Label>Nome do Produto</Label>
                   <Input 
-                    placeholder="99,90"
-                    value={formData.price}
-                    onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
+                    placeholder="Ex: Curso Completo de Marketing"
+                    value={formData.name}
+                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                     required
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Tipo</Label>
+                  <Label>Descrição (opcional)</Label>
+                  <Textarea 
+                    placeholder="Descreva seu produto..."
+                    value={formData.description}
+                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                    rows={2}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Valor (R$)</Label>
+                    <Input 
+                      placeholder="99,90"
+                      value={formData.price}
+                      onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Tipo</Label>
+                    <Select 
+                      value={formData.product_type}
+                      onValueChange={(value) => setFormData(prev => ({ ...prev, product_type: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="digital">Produto Digital</SelectItem>
+                        <SelectItem value="service">Serviço</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Tipo de Entrega</Label>
                   <Select 
-                    value={formData.product_type}
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, product_type: value }))}
+                    value={formData.delivery_type}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, delivery_type: value, media_pack_id: '' }))}
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="digital">Produto Digital</SelectItem>
-                      <SelectItem value="service">Serviço</SelectItem>
+                      <SelectItem value="link">
+                        <div className="flex items-center gap-2">
+                          <Link2 className="w-4 h-4" />
+                          Enviar Link
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="message">
+                        <div className="flex items-center gap-2">
+                          <Package className="w-4 h-4" />
+                          Mensagem Personalizada
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="both">
+                        <div className="flex items-center gap-2">
+                          <Package className="w-4 h-4" />
+                          Link + Mensagem
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="group">
+                        <div className="flex items-center gap-2">
+                          <Users className="w-4 h-4" />
+                          Acesso a Grupo (Telegram)
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="media_pack">
+                        <div className="flex items-center gap-2">
+                          <FolderOpen className="w-4 h-4" />
+                          Pack de Mídia
+                        </div>
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
 
-              <div className="space-y-2">
-                <Label>Tipo de Entrega</Label>
-                <Select 
-                  value={formData.delivery_type}
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, delivery_type: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="link">Enviar Link</SelectItem>
-                    <SelectItem value="message">Mensagem Personalizada</SelectItem>
-                    <SelectItem value="both">Link + Mensagem</SelectItem>
-                    <SelectItem value="group">Acesso a Grupo (Telegram)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {(formData.delivery_type === 'link' || formData.delivery_type === 'both') && (
-                <div className="space-y-2">
-                  <Label>Link de Entrega</Label>
-                  <Input 
-                    placeholder="https://..."
-                    value={formData.delivery_content}
-                    onChange={(e) => setFormData(prev => ({ ...prev, delivery_content: e.target.value }))}
-                  />
-                </div>
-              )}
-
-              {(formData.delivery_type === 'message' || formData.delivery_type === 'both') && (
-                <div className="space-y-2">
-                  <Label>Mensagem de Entrega</Label>
-                  <Textarea 
-                    placeholder="Obrigado pela compra! Aqui está seu acesso..."
-                    value={formData.delivery_message}
-                    onChange={(e) => setFormData(prev => ({ ...prev, delivery_message: e.target.value }))}
-                    rows={3}
-                  />
-                </div>
-              )}
-
-              {formData.delivery_type === 'group' && (
-                <div className="space-y-4 p-3 bg-muted/50 rounded-lg">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Users className="w-4 h-4" />
-                    <span>Configuração do Grupo</span>
-                  </div>
+                {(formData.delivery_type === 'link' || formData.delivery_type === 'both') && (
                   <div className="space-y-2">
-                    <Label>ID do Grupo/Canal</Label>
+                    <Label>Link de Entrega</Label>
                     <Input 
-                      placeholder="-1001234567890"
-                      value={formData.group_chat_id}
-                      onChange={(e) => setFormData(prev => ({ ...prev, group_chat_id: e.target.value }))}
+                      placeholder="https://..."
+                      value={formData.delivery_content}
+                      onChange={(e) => setFormData(prev => ({ ...prev, delivery_content: e.target.value }))}
                     />
-                    <p className="text-xs text-muted-foreground">
-                      O ID do grupo deve começar com -100. O bot precisa ser admin do grupo.
-                    </p>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Link de Convite (opcional)</Label>
-                    <Input 
-                      placeholder="https://t.me/+AbCdEfGhIjK"
-                      value={formData.group_invite_link}
-                      onChange={(e) => setFormData(prev => ({ ...prev, group_invite_link: e.target.value }))}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Se fornecido, o link será enviado ao cliente após aprovação.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              <Button 
-                type="submit" 
-                className="w-full"
-                disabled={createMutation.isPending}
-              >
-                {createMutation.isPending ? (
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                ) : (
-                  <Plus className="w-4 h-4 mr-2" />
                 )}
-                Criar Produto
-              </Button>
-            </form>
+
+                {(formData.delivery_type === 'message' || formData.delivery_type === 'both') && (
+                  <div className="space-y-2">
+                    <Label>Mensagem de Entrega</Label>
+                    <Textarea 
+                      placeholder="Obrigado pela compra! Aqui está seu acesso..."
+                      value={formData.delivery_message}
+                      onChange={(e) => setFormData(prev => ({ ...prev, delivery_message: e.target.value }))}
+                      rows={3}
+                    />
+                  </div>
+                )}
+
+                {formData.delivery_type === 'group' && (
+                  <div className="space-y-4 p-3 bg-muted/50 rounded-lg">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Users className="w-4 h-4" />
+                      <span>Configuração do Grupo</span>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>ID do Grupo/Canal</Label>
+                      <Input 
+                        placeholder="-1001234567890"
+                        value={formData.group_chat_id}
+                        onChange={(e) => setFormData(prev => ({ ...prev, group_chat_id: e.target.value }))}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        O ID do grupo deve começar com -100. O bot precisa ser admin do grupo.
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Link de Convite (opcional)</Label>
+                      <Input 
+                        placeholder="https://t.me/+AbCdEfGhIjK"
+                        value={formData.group_invite_link}
+                        onChange={(e) => setFormData(prev => ({ ...prev, group_invite_link: e.target.value }))}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Se fornecido, o link será enviado ao cliente após aprovação.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {formData.delivery_type === 'media_pack' && (
+                  <div className="space-y-3 p-3 bg-muted/50 rounded-lg">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <FolderOpen className="w-4 h-4" />
+                      <span>Selecione o Pack de Mídia</span>
+                    </div>
+                    
+                    {mediaPacks && mediaPacks.length > 0 ? (
+                      <div className="space-y-2">
+                        <Select 
+                          value={formData.media_pack_id}
+                          onValueChange={(value) => setFormData(prev => ({ ...prev, media_pack_id: value }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Escolha um pack..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {mediaPacks.map((pack) => (
+                              <SelectItem key={pack.id} value={pack.id}>
+                                <div className="flex items-center gap-2">
+                                  {pack.image_url ? (
+                                    <img src={pack.image_url} alt="" className="w-6 h-6 rounded object-cover" />
+                                  ) : (
+                                    <div className="w-6 h-6 rounded bg-muted flex items-center justify-center">
+                                      <Image className="w-3 h-3" />
+                                    </div>
+                                  )}
+                                  <span>{pack.name}</span>
+                                  {pack.file_count && (
+                                    <Badge variant="secondary" className="text-xs">
+                                      {pack.file_count} arquivos
+                                    </Badge>
+                                  )}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+
+                        {formData.media_pack_id && (
+                          <div className="p-3 bg-primary/5 rounded-lg border border-primary/20">
+                            {(() => {
+                              const selectedPack = mediaPacks.find(p => p.id === formData.media_pack_id);
+                              if (!selectedPack) return null;
+                              return (
+                                <div className="flex items-center gap-3">
+                                  {selectedPack.image_url ? (
+                                    <img src={selectedPack.image_url} alt="" className="w-12 h-12 rounded-lg object-cover" />
+                                  ) : (
+                                    <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
+                                      <FolderOpen className="w-6 h-6 text-muted-foreground" />
+                                    </div>
+                                  )}
+                                  <div>
+                                    <p className="font-medium text-sm">{selectedPack.name}</p>
+                                    {selectedPack.description && (
+                                      <p className="text-xs text-muted-foreground line-clamp-1">{selectedPack.description}</p>
+                                    )}
+                                    {selectedPack.file_count && (
+                                      <p className="text-xs text-primary">{selectedPack.file_count} arquivos incluídos</p>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-center py-4">
+                        <p className="text-sm text-muted-foreground">Nenhum pack de mídia disponível</p>
+                        <p className="text-xs text-muted-foreground mt-1">Entre em contato com o admin para adicionar packs</p>
+                      </div>
+                    )}
+
+                    <div className="space-y-2">
+                      <Label>Mensagem de Entrega (opcional)</Label>
+                      <Textarea 
+                        placeholder="Aqui estão suas mídias exclusivas! 🎁"
+                        value={formData.delivery_message}
+                        onChange={(e) => setFormData(prev => ({ ...prev, delivery_message: e.target.value }))}
+                        rows={2}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Esta mensagem será enviada junto com as mídias do pack
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                <Button 
+                  type="submit" 
+                  className="w-full"
+                  disabled={createMutation.isPending || (formData.delivery_type === 'media_pack' && !formData.media_pack_id)}
+                >
+                  {createMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <Plus className="w-4 h-4 mr-2" />
+                  )}
+                  Criar Produto
+                </Button>
+              </form>
+            </ScrollArea>
           </DialogContent>
         </Dialog>
       </div>
@@ -396,11 +561,15 @@ const FunnelProductsTab = ({ funnelId }: FunnelProductsTabProps) => {
                         <Badge variant="secondary">
                           {product.product_type === 'digital' ? 'Digital' : 'Serviço'}
                         </Badge>
-                        <Badge variant="outline">
-                          {product.delivery_type === 'link' ? 'Link' : 
-                           product.delivery_type === 'message' ? 'Mensagem' : 
-                           product.delivery_type === 'group' ? 'Grupo' : 'Link + Mensagem'}
+                        <Badge variant="outline" className="flex items-center gap-1">
+                          {product.delivery_type === 'media_pack' && <FolderOpen className="w-3 h-3" />}
+                          {getDeliveryLabel(product.delivery_type)}
                         </Badge>
+                        {product.delivery_type === 'media_pack' && product.delivery_content && (
+                          <Badge variant="default" className="bg-primary/20 text-primary text-xs">
+                            {getSelectedPackName(product.delivery_content)}
+                          </Badge>
+                        )}
                       </div>
                     </div>
                   </div>
