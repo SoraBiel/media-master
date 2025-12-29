@@ -23,6 +23,7 @@ export interface BlockData {
   mediaUrl?: string;
   imageUrl?: string;
   videoUrl?: string;
+  audioUrl?: string;
   caption?: string;
   
   // Question block

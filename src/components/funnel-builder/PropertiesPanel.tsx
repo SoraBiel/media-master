@@ -1,6 +1,6 @@
 import { useCallback, useState, useEffect, useRef } from 'react';
 import { Node } from '@xyflow/react';
-import { Trash2, Plus, GripVertical, Upload, X, Image, Video, Package } from 'lucide-react';
+import { Trash2, Plus, GripVertical, Upload, X, Image, Video, Music, Package } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -31,11 +31,13 @@ export const PropertiesPanel = ({
   const [localData, setLocalData] = useState<BlockData>({});
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [uploadingAudio, setUploadingAudio] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const debounceRef = useRef<NodeJS.Timeout>();
   const nodeIdRef = useRef<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
+  const audioInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   // Get current user id
@@ -344,6 +346,96 @@ export const PropertiesPanel = ({
                     value={localData.videoUrl || ''}
                     onChange={(e) => handleChange('videoUrl', e.target.value)}
                     placeholder="Ou cole a URL do vídeo..."
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Audio Section */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Music className="w-4 h-4" />
+                Áudio (opcional)
+              </Label>
+              {localData.audioUrl ? (
+                <div className="relative">
+                  <audio 
+                    src={localData.audioUrl} 
+                    className="w-full rounded-md border"
+                    controls
+                  />
+                  <Button
+                    size="icon"
+                    variant="destructive"
+                    className="absolute top-1 right-1 h-6 w-6"
+                    onClick={() => {
+                      handleChange('audioUrl', undefined);
+                    }}
+                  >
+                    <X className="w-3 h-3" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <input
+                    type="file"
+                    ref={audioInputRef}
+                    accept="audio/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file || !userId) {
+                        if (!userId) toast({ title: 'Usuário não autenticado', variant: 'destructive' });
+                        return;
+                      }
+
+                      setUploadingAudio(true);
+                      try {
+                        const fileExt = file.name.split('.').pop();
+                        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+                        const filePath = `${userId}/${fileName}`;
+
+                        const { error: uploadError } = await supabase.storage
+                          .from('user-media')
+                          .upload(filePath, file);
+
+                        if (uploadError) throw uploadError;
+
+                        const { data: { publicUrl } } = supabase.storage
+                          .from('user-media')
+                          .getPublicUrl(filePath);
+
+                        handleChange('audioUrl', publicUrl);
+                        toast({ title: 'Áudio enviado com sucesso!' });
+                      } catch (error: any) {
+                        toast({
+                          title: 'Erro ao enviar áudio',
+                          description: error.message,
+                          variant: 'destructive'
+                        });
+                      } finally {
+                        setUploadingAudio(false);
+                        if (audioInputRef.current) audioInputRef.current.value = '';
+                      }
+                    }}
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      disabled={uploadingAudio}
+                      onClick={() => audioInputRef.current?.click()}
+                    >
+                      <Upload className="w-4 h-4 mr-2" />
+                      {uploadingAudio ? 'Enviando...' : 'Upload do PC'}
+                    </Button>
+                  </div>
+                  <Input
+                    value={localData.audioUrl || ''}
+                    onChange={(e) => handleChange('audioUrl', e.target.value)}
+                    placeholder="Ou cole a URL do áudio..."
                   />
                 </div>
               )}

@@ -58,6 +58,62 @@ async function callTelegramAPI(botToken: string, method: string, params?: Record
   return data;
 }
 
+async function sendTelegramPhotoWithFallback(
+  botToken: string,
+  chatId: string | number,
+  photoUrl: string,
+  caption?: string,
+) {
+  // 1) Try by URL (fast path)
+  const res = await callTelegramAPI(botToken, 'sendPhoto', {
+    chat_id: chatId,
+    photo: photoUrl,
+    ...(caption ? { caption, parse_mode: 'HTML' } : {}),
+  });
+
+  if (res?.ok) return res;
+
+  console.warn('sendPhoto by URL failed, trying FormData upload:', res?.description || res);
+
+  // 2) Fallback: fetch the file and upload as multipart (more reliable)
+  const fileRes = await fetch(photoUrl);
+  if (!fileRes.ok) {
+    throw new Error(`Failed to fetch photoUrl for upload (status ${fileRes.status})`);
+  }
+
+  const contentType = fileRes.headers.get('content-type') || 'application/octet-stream';
+  const arrayBuffer = await fileRes.arrayBuffer();
+  const blob = new Blob([arrayBuffer], { type: contentType });
+
+  const ext = contentType.includes('png')
+    ? 'png'
+    : contentType.includes('jpeg') || contentType.includes('jpg')
+      ? 'jpg'
+      : 'bin';
+
+  const formData = new FormData();
+  formData.append('chat_id', String(chatId));
+  formData.append('photo', blob, `image.${ext}`);
+  if (caption) {
+    formData.append('caption', caption);
+    formData.append('parse_mode', 'HTML');
+  }
+
+  const tgRes = await fetch(`${TELEGRAM_API_BASE}${botToken}/sendPhoto`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  const tgJson = await tgRes.json();
+  console.log('Telegram API sendPhoto (upload):', JSON.stringify(tgJson).slice(0, 200));
+
+  if (!tgJson?.ok) {
+    throw new Error(tgJson?.description || 'Telegram API error');
+  }
+
+  return tgJson;
+}
+
 // Replace variables in text
 function replaceVariables(text: string, variables: Record<string, any>): string {
   return text.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
@@ -583,54 +639,102 @@ serve(async (req) => {
         case 'message':
         case 'action_message': {
           const text = replaceVariables(currentNode.data.text || '', variables);
-          
-          // Support both old format (mediaType/mediaUrl) and new format (imageUrl/videoUrl)
-          const imageUrl = currentNode.data.imageUrl;
-          const videoUrl = currentNode.data.videoUrl;
-          const legacyMediaType = currentNode.data.mediaType;
-          const legacyMediaUrl = currentNode.data.mediaUrl;
-          
-          // Check for image (new format first, then legacy)
-          if (imageUrl) {
-            await callTelegramAPI(botToken, "sendPhoto", {
-              chat_id: chatId,
-              photo: imageUrl,
-              caption: text || undefined,
-              parse_mode: "HTML",
-            });
-          } 
-          // Check for video (new format first, then legacy)
-          else if (videoUrl) {
-            await callTelegramAPI(botToken, "sendVideo", {
-              chat_id: chatId,
-              video: videoUrl,
-              caption: text || undefined,
-              parse_mode: "HTML",
-            });
-          }
-          // Legacy format support
-          else if (legacyMediaType === 'image' && legacyMediaUrl) {
-            await callTelegramAPI(botToken, "sendPhoto", {
-              chat_id: chatId,
-              photo: legacyMediaUrl,
-              caption: text || undefined,
-              parse_mode: "HTML",
-            });
-          } else if (legacyMediaType === 'video' && legacyMediaUrl) {
-            await callTelegramAPI(botToken, "sendVideo", {
-              chat_id: chatId,
-              video: legacyMediaUrl,
-              caption: text || undefined,
-              parse_mode: "HTML",
-            });
-          } 
-          // Text only
-          else if (text) {
-            await callTelegramAPI(botToken, "sendMessage", {
-              chat_id: chatId,
-              text: text,
-              parse_mode: "HTML",
-            });
+
+          // Support both old format (mediaType/mediaUrl) and new format (imageUrl/videoUrl/audioUrl)
+          const imageUrl: string | undefined = currentNode.data.imageUrl;
+          const videoUrl: string | undefined = currentNode.data.videoUrl;
+          const audioUrl: string | undefined = currentNode.data.audioUrl;
+
+          const legacyMediaType: string | undefined = currentNode.data.mediaType;
+          const legacyMediaUrl: string | undefined = currentNode.data.mediaUrl;
+
+          try {
+            // Send image + video together (album) when both are present
+            if (imageUrl && videoUrl) {
+              const media: any[] = [
+                {
+                  type: 'photo',
+                  media: imageUrl,
+                  ...(text ? { caption: text, parse_mode: 'HTML' } : {}),
+                },
+                { type: 'video', media: videoUrl },
+              ];
+
+              const albumRes = await callTelegramAPI(botToken, 'sendMediaGroup', {
+                chat_id: chatId,
+                media,
+              });
+
+              if (!albumRes?.ok) {
+                console.warn('sendMediaGroup failed, falling back to separate sends:', albumRes?.description || albumRes);
+                await sendTelegramPhotoWithFallback(botToken, chatId, imageUrl, text || undefined);
+                await callTelegramAPI(botToken, 'sendVideo', {
+                  chat_id: chatId,
+                  video: videoUrl,
+                });
+              }
+            }
+            // Single image
+            else if (imageUrl) {
+              await sendTelegramPhotoWithFallback(botToken, chatId, imageUrl, text || undefined);
+            }
+            // Single video
+            else if (videoUrl) {
+              const videoRes = await callTelegramAPI(botToken, "sendVideo", {
+                chat_id: chatId,
+                video: videoUrl,
+                ...(text ? { caption: text, parse_mode: "HTML" } : {}),
+              });
+
+              if (!videoRes?.ok) {
+                throw new Error(videoRes?.description || 'Telegram sendVideo failed');
+              }
+            }
+            // Single audio
+            else if (audioUrl) {
+              const audioRes = await callTelegramAPI(botToken, "sendAudio", {
+                chat_id: chatId,
+                audio: audioUrl,
+                ...(text ? { caption: text, parse_mode: "HTML" } : {}),
+              });
+
+              if (!audioRes?.ok) {
+                throw new Error(audioRes?.description || 'Telegram sendAudio failed');
+              }
+            }
+            // Legacy format support
+            else if (legacyMediaType === 'image' && legacyMediaUrl) {
+              await sendTelegramPhotoWithFallback(botToken, chatId, legacyMediaUrl, text || undefined);
+            } else if (legacyMediaType === 'video' && legacyMediaUrl) {
+              const legacyVideoRes = await callTelegramAPI(botToken, "sendVideo", {
+                chat_id: chatId,
+                video: legacyMediaUrl,
+                ...(text ? { caption: text, parse_mode: "HTML" } : {}),
+              });
+
+              if (!legacyVideoRes?.ok) {
+                throw new Error(legacyVideoRes?.description || 'Telegram sendVideo failed');
+              }
+            }
+            // Text only
+            else if (text) {
+              await callTelegramAPI(botToken, "sendMessage", {
+                chat_id: chatId,
+                text: text,
+                parse_mode: "HTML",
+              });
+            }
+          } catch (e) {
+            console.error('Failed to send message block:', e);
+
+            // Last resort: at least deliver text if we have it
+            if (text) {
+              await callTelegramAPI(botToken, "sendMessage", {
+                chat_id: chatId,
+                text,
+                parse_mode: "HTML",
+              });
+            }
           }
 
           currentNode = findNextNode(currentNode.id, edges, nodes);
