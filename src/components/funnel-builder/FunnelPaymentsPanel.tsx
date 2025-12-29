@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { Switch } from '@/components/ui/switch';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { 
@@ -2180,39 +2181,82 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
                 );
               })()}
 
-              <div className="flex gap-2">
-                <Button 
-                  className="flex-1"
-                  onClick={handleBulkRemarketing} 
-                  disabled={(!bulkRemarketingMessage && (bulkMediaType === 'none' || !bulkMediaUrl)) || sendingBulkRemarketing || uploadingBulkMedia}
-                >
-                  {sendingBulkRemarketing ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4 mr-2" />
-                  )}
-                  Enviar Agora
-                </Button>
-                
-                {bulkRemarketingMessage && bulkRemarketingType === 'unpaid' && (
-                  <Button 
-                    variant="outline"
-                    onClick={() => {
-                      setAutoRemarketingMessage(bulkRemarketingMessage);
-                      setAutoRemarketingMinutes(bulkRemarketingMinutes);
-                      setAutoRemarketingEnabled(true);
-                      toast({
-                        title: 'Configuração copiada!',
-                        description: 'Vá para a aba "Automático" e clique em Salvar',
-                      });
+              {/* Toggle para ativar remarketing automático com essas configurações */}
+              {bulkRemarketingType === 'unpaid' && (
+                <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/50">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-full ${autoRemarketingEnabled ? 'bg-green-500/20' : 'bg-muted'}`}>
+                      <Zap className={`h-5 w-5 ${autoRemarketingEnabled ? 'text-green-500' : 'text-muted-foreground'}`} />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">Ativar Remarketing Automático</p>
+                      <p className="text-xs text-muted-foreground">
+                        {autoRemarketingEnabled 
+                          ? 'Usando essas configurações automaticamente' 
+                          : 'Enviar automaticamente para novos leads'}
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={autoRemarketingEnabled}
+                    onCheckedChange={async (checked) => {
+                      if (checked && !bulkRemarketingMessage) {
+                        toast({
+                          title: 'Mensagem obrigatória',
+                          description: 'Preencha a mensagem antes de ativar o automático',
+                          variant: 'destructive',
+                        });
+                        return;
+                      }
+                      
+                      // Salva automaticamente as configurações
+                      try {
+                        const { error } = await supabase
+                          .from('funnels')
+                          .update({
+                            auto_remarketing_enabled: checked,
+                            auto_remarketing_message: bulkRemarketingMessage,
+                            payment_reminder_minutes: bulkRemarketingMinutes,
+                          })
+                          .eq('id', funnelId);
+                        
+                        if (error) throw error;
+                        
+                        setAutoRemarketingEnabled(checked);
+                        setAutoRemarketingMessage(bulkRemarketingMessage);
+                        setAutoRemarketingMinutes(bulkRemarketingMinutes);
+                        
+                        toast({
+                          title: checked ? 'Remarketing automático ativado!' : 'Remarketing automático desativado',
+                          description: checked 
+                            ? `Mensagens serão enviadas após ${bulkRemarketingMinutes} minutos`
+                            : 'O envio automático foi desabilitado',
+                        });
+                      } catch (err) {
+                        console.error('Error saving auto remarketing:', err);
+                        toast({
+                          title: 'Erro ao salvar',
+                          description: 'Não foi possível salvar as configurações',
+                          variant: 'destructive',
+                        });
+                      }
                     }}
-                    title="Usar essa mensagem para remarketing automático"
-                  >
-                    <Zap className="h-4 w-4 mr-2" />
-                    Usar no Auto
-                  </Button>
+                  />
+                </div>
+              )}
+
+              <Button 
+                className="w-full"
+                onClick={handleBulkRemarketing} 
+                disabled={(!bulkRemarketingMessage && (bulkMediaType === 'none' || !bulkMediaUrl)) || sendingBulkRemarketing || uploadingBulkMedia}
+              >
+                {sendingBulkRemarketing ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4 mr-2" />
                 )}
-              </div>
+                Enviar Agora
+              </Button>
             </TabsContent>
 
             {/* Tab de remarketing automático */}
