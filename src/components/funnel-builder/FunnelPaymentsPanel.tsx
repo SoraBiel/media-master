@@ -21,6 +21,7 @@ import {
   Zap,
   FileAudio,
   Upload,
+  HelpCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -1916,19 +1917,21 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
           </DialogHeader>
           
           <Tabs defaultValue="manual" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-4">
-              <TabsTrigger value="manual" className="flex items-center gap-2">
-                <Send className="h-4 w-4" />
-                Envio Manual
+            <TabsList className="grid w-full grid-cols-3 mb-4">
+              <TabsTrigger value="manual" className="flex items-center gap-1.5 text-xs">
+                <Send className="h-3.5 w-3.5" />
+                Enviar
               </TabsTrigger>
-              <TabsTrigger value="auto" className="flex items-center gap-2">
-                <Zap className="h-4 w-4" />
-                Automático
+              <TabsTrigger value="auto" className="flex items-center gap-1.5 text-xs">
+                <Zap className="h-3.5 w-3.5" />
+                Auto
                 {autoRemarketingEnabled && (
-                  <Badge variant="outline" className="ml-1 bg-green-500/20 text-green-600 border-green-500/30 text-xs px-1">
-                    ON
-                  </Badge>
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
                 )}
+              </TabsTrigger>
+              <TabsTrigger value="help" className="flex items-center gap-1.5 text-xs">
+                <HelpCircle className="h-3.5 w-3.5" />
+                Ajuda
               </TabsTrigger>
             </TabsList>
 
@@ -2282,6 +2285,158 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
                 )}
                 Salvar Configurações
               </Button>
+            </TabsContent>
+
+            {/* Tab de Ajuda */}
+            <TabsContent value="help" className="space-y-4 mt-0">
+              <ScrollArea className="h-[400px] pr-4">
+                <div className="space-y-4">
+                  {/* O que é Remarketing */}
+                  <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-full bg-primary/10">
+                        <MessageSquare className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-sm mb-1">O que é Remarketing?</h4>
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                          É quando você envia uma mensagem para alguém que <strong>quase comprou</strong> mas não finalizou. 
+                          Sabe quando você coloca algo no carrinho e desiste? O remarketing é a lojinha te mandando: 
+                          "Ei, esqueceu isso aqui!" 📱
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Público */}
+                  <div className="p-4 rounded-lg bg-muted/50 border">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-full bg-muted">
+                        <Users className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-sm mb-1">Público (Não Pagos / Pagos)</h4>
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                          <strong>Não Pagos:</strong> Pessoas que receberam o link de pagamento mas ainda não pagaram. 
+                          Você pode mandar uma mensagem tipo: "Oi! Falta só finalizar o pagamento 💰"
+                        </p>
+                        <p className="text-xs text-muted-foreground leading-relaxed mt-2">
+                          <strong>Pagos:</strong> Pessoas que já compraram. 
+                          Você pode mandar ofertas especiais ou agradecer: "Obrigado pela compra! 🎁"
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Tempo mínimo */}
+                  <div className="p-4 rounded-lg bg-muted/50 border">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-full bg-muted">
+                        <Timer className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-sm mb-1">Após (minutos)</h4>
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                          Quanto tempo esperar antes de mandar a mensagem. 
+                          Se colocar <strong>5 minutos</strong>, só vai mandar para quem recebeu o PIX há mais de 5 minutos.
+                        </p>
+                        <p className="text-xs text-muted-foreground leading-relaxed mt-2">
+                          💡 <strong>Dica:</strong> Não mande muito rápido (parece desespero) nem muito devagar (a pessoa esquece).
+                          Entre 5 e 30 minutos costuma funcionar bem!
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Mensagem */}
+                  <div className="p-4 rounded-lg bg-muted/50 border">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-full bg-muted">
+                        <MessageSquare className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-sm mb-1">Mensagem</h4>
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                          O texto que vai ser enviado. Use as <strong>variáveis</strong> para personalizar:
+                        </p>
+                        <ul className="text-xs text-muted-foreground mt-2 space-y-1">
+                          <li>• <code className="bg-muted px-1 rounded">{'{nome}'}</code> = Nome da pessoa</li>
+                          <li>• <code className="bg-muted px-1 rounded">{'{produto}'}</code> = Nome do produto</li>
+                          <li>• <code className="bg-muted px-1 rounded">{'{valor}'}</code> = Valor do produto</li>
+                        </ul>
+                        <p className="text-xs text-muted-foreground leading-relaxed mt-2">
+                          Exemplo: "Oi {'{nome}'}, seu {'{produto}'} de {'{valor}'} ainda está esperando você! 🔥"
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Mídia */}
+                  <div className="p-4 rounded-lg bg-muted/50 border">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-full bg-muted">
+                        <Image className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-sm mb-1">Mídia (Imagem/Vídeo/Áudio)</h4>
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                          Você pode enviar junto com a mensagem uma <strong>imagem</strong>, <strong>vídeo</strong> ou <strong>áudio</strong>.
+                          Basta arrastar o arquivo ou clicar para selecionar do seu computador.
+                        </p>
+                        <p className="text-xs text-muted-foreground leading-relaxed mt-2">
+                          💡 <strong>Dica:</strong> Um vídeo curto explicando o produto ou um áudio personalizado 
+                          tem muito mais impacto que só texto!
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Automático */}
+                  <div className="p-4 rounded-lg bg-green-500/5 border border-green-500/20">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-full bg-green-500/10">
+                        <Zap className="h-5 w-5 text-green-500" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-sm mb-1">Enviar Automaticamente</h4>
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                          Se você ativar essa opção, o sistema vai <strong>enviar sozinho</strong> para cada novo lead 
+                          que não pagar dentro do tempo que você configurou.
+                        </p>
+                        <p className="text-xs text-muted-foreground leading-relaxed mt-2">
+                          ✨ <strong>Funciona 24h por dia, 7 dias por semana!</strong> Você não precisa fazer nada, 
+                          é só configurar uma vez e deixar rodando.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Exemplo prático */}
+                  <div className="p-4 rounded-lg bg-amber-500/5 border border-amber-500/20">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-full bg-amber-500/10">
+                        <AlertCircle className="h-5 w-5 text-amber-500" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-sm mb-1">Exemplo na Prática</h4>
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                          João recebeu o PIX às 14:00 mas não pagou.
+                        </p>
+                        <p className="text-xs text-muted-foreground leading-relaxed mt-1">
+                          Às 14:10 (10 minutos depois), o sistema manda automaticamente:
+                        </p>
+                        <p className="text-xs bg-muted p-2 rounded mt-2 italic">
+                          "Oi João! Vi que você ainda não finalizou o pagamento do Curso Premium.
+                          Está com alguma dúvida? Posso te ajudar! 😊"
+                        </p>
+                        <p className="text-xs text-muted-foreground leading-relaxed mt-2">
+                          João vê a mensagem, lembra do produto e finaliza o pagamento! 🎉
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </ScrollArea>
             </TabsContent>
           </Tabs>
         </DialogContent>
