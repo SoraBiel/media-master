@@ -39,6 +39,7 @@ import {
   Percent,
   Bell,
   Share2,
+  Edit2,
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend } from "recharts";
 import { Button } from "@/components/ui/button";
@@ -318,6 +319,8 @@ const AdminDashboardPage = () => {
   const [telegramGroupDialogOpen, setTelegramGroupDialogOpen] = useState(false);
   const [modelDialogOpen, setModelDialogOpen] = useState(false);
   const [mediaDialogOpen, setMediaDialogOpen] = useState(false);
+  const [editMediaDialogOpen, setEditMediaDialogOpen] = useState(false);
+  const [selectedMedia, setSelectedMedia] = useState<AdminMedia | null>(null);
   const [planDialogOpen, setPlanDialogOpen] = useState(false);
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
   const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);
@@ -1396,6 +1399,53 @@ const AdminDashboardPage = () => {
     }
   };
 
+  const handleEditMedia = (media: AdminMedia) => {
+    setSelectedMedia(media);
+    const existingFiles = Array.isArray(media.media_files) 
+      ? media.media_files.map((f: any) => ({
+          name: f.name || 'file',
+          url: f.url,
+          type: f.type || 'application/octet-stream',
+          size: f.size || 0,
+        }))
+      : [];
+    setBulkUploadedFiles(existingFiles);
+    setBulkFilesCount(existingFiles.length);
+    setEditMediaDialogOpen(true);
+  };
+
+  const handleSaveEditedMedia = async () => {
+    if (!selectedMedia) return;
+    
+    setIsUploadingMedia(true);
+    try {
+      const { error } = await supabase
+        .from("admin_media")
+        .update({
+          media_files: bulkUploadedFiles.map(f => ({ url: f.url, name: f.name, type: f.type, size: f.size })),
+          file_count: bulkUploadedFiles.length,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", selectedMedia.id);
+
+      if (error) throw error;
+
+      toast({ 
+        title: "Pacote atualizado!", 
+        description: `${selectedMedia.name} agora tem ${bulkUploadedFiles.length.toLocaleString()} arquivos.` 
+      });
+      setEditMediaDialogOpen(false);
+      setSelectedMedia(null);
+      setBulkUploadedFiles([]);
+      setBulkFilesCount(0);
+      fetchAdminMedia();
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    } finally {
+      setIsUploadingMedia(false);
+    }
+  };
+
   const handleChangePlan = async () => {
     if (!selectedUser || !selectedPlan) return;
     try {
@@ -2347,6 +2397,7 @@ const AdminDashboardPage = () => {
                           bucket="media-packs"
                           concurrency={25}
                           showManageControls={true}
+                          showPreview={true}
                         />
                       </div>
                       {bulkUploadedFiles.length > 0 && (
@@ -2375,6 +2426,59 @@ const AdminDashboardPage = () => {
                   </div>
                 </DialogContent>
               </Dialog>
+
+              {/* Edit Media Dialog */}
+              <Dialog open={editMediaDialogOpen} onOpenChange={(open) => {
+                setEditMediaDialogOpen(open);
+                if (!open) {
+                  setSelectedMedia(null);
+                  setBulkUploadedFiles([]);
+                  setBulkFilesCount(0);
+                }
+              }}>
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Editar Pacote: {selectedMedia?.name}</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="p-3 bg-muted/50 rounded-lg">
+                      <p className="text-sm">
+                        <strong>Arquivos atuais:</strong> {bulkUploadedFiles.length.toLocaleString()}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Você pode adicionar mais arquivos ou remover os existentes abaixo.
+                      </p>
+                    </div>
+                    
+                    <BulkMediaUploader
+                      onFilesUploaded={(files) => {
+                        setBulkUploadedFiles(prev => [...prev, ...files]);
+                      }}
+                      onFilesSelected={() => {}}
+                      bucket="media-packs"
+                      concurrency={25}
+                      showManageControls={true}
+                      showPreview={true}
+                      existingFiles={bulkUploadedFiles}
+                    />
+                    
+                    <Button 
+                      onClick={handleSaveEditedMedia} 
+                      className="w-full telegram-gradient text-white"
+                      disabled={isUploadingMedia}
+                    >
+                      {isUploadingMedia ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                          Salvando...
+                        </>
+                      ) : (
+                        `Salvar Alterações (${bulkUploadedFiles.length.toLocaleString()} arquivos)`
+                      )}
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
 
             <div className="glass-card overflow-hidden">
@@ -2398,9 +2502,20 @@ const AdminDashboardPage = () => {
                       <TableCell>{media.file_count} arquivos</TableCell>
                       <TableCell className="text-muted-foreground">{formatDate(media.created_at)}</TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="icon" onClick={() => handleDeleteMedia(media.id)}>
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon"><MoreVertical className="w-4 h-4" /></Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleEditMedia(media)}>
+                              <Edit2 className="w-4 h-4 mr-2" />Editar / Adicionar Mídias
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleDeleteMedia(media.id)} className="text-destructive">
+                              <Trash2 className="w-4 h-4 mr-2" />Excluir
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))}
