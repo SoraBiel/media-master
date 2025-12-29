@@ -1,6 +1,6 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, DragEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Upload, X, CheckCircle2, AlertCircle, Loader2, Pause, Play, FolderOpen, Clock, RotateCcw } from "lucide-react";
+import { Upload, X, CheckCircle2, AlertCircle, Loader2, Pause, Play, FolderOpen, Clock, RotateCcw, Trash2, Edit2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,6 +10,7 @@ interface UploadedFile {
   url: string;
   type: string;
   size: number;
+  storagePath?: string;
 }
 
 interface FailedFile {
@@ -24,6 +25,7 @@ interface BulkMediaUploaderProps {
   bucket?: string;
   concurrency?: number;
   maxRetries?: number;
+  showManageControls?: boolean;
 }
 
 interface UploadProgress {
@@ -44,13 +46,15 @@ export const BulkMediaUploader = ({
   onFilesUploaded,
   onFilesSelected,
   bucket = "media-packs",
-  concurrency = 15,
+  concurrency = 25,
   maxRetries = 3,
+  showManageControls = false,
 }: BulkMediaUploaderProps) => {
   const [files, setFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const [progress, setProgress] = useState<UploadProgress>({
     total: 0,
     completed: 0,
@@ -67,8 +71,10 @@ export const BulkMediaUploader = ({
   const [failedFiles, setFailedFiles] = useState<FailedFile[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
   const [totalSize, setTotalSize] = useState(0);
+  const [selectedForDelete, setSelectedForDelete] = useState<Set<number>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
   const pauseRef = useRef(false);
   const cancelRef = useRef(false);
 
@@ -92,8 +98,8 @@ export const BulkMediaUploader = ({
     return `${hours}h ${mins}m`;
   };
 
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = Array.from(e.target.files || []);
+  const processFileList = useCallback((fileList: FileList | File[]) => {
+    const selectedFiles = Array.from(fileList);
     if (selectedFiles.length > 0) {
       setFiles(selectedFiles);
       onFilesSelected(selectedFiles.length);
@@ -104,8 +110,92 @@ export const BulkMediaUploader = ({
       setFailedFiles([]);
       setErrors([]);
       setStats({ startTime: 0, bytesUploaded: 0, filesPerSecond: 0, estimatedSecondsRemaining: 0 });
+      setSelectedForDelete(new Set());
     }
   }, [onFilesSelected]);
+
+  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      processFileList(e.target.files);
+    }
+  }, [processFileList]);
+
+  // Drag and Drop handlers
+  const handleDragEnter = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.currentTarget === dropZoneRef.current) {
+      setIsDragging(false);
+    }
+  }, []);
+
+  const handleDragOver = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDrop = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const items = e.dataTransfer.items;
+    const droppedFiles: File[] = [];
+
+    const processEntry = async (entry: FileSystemEntry): Promise<void> => {
+      if (entry.isFile) {
+        const fileEntry = entry as FileSystemFileEntry;
+        return new Promise((resolve) => {
+          fileEntry.file((file) => {
+            droppedFiles.push(file);
+            resolve();
+          });
+        });
+      } else if (entry.isDirectory) {
+        const dirEntry = entry as FileSystemDirectoryEntry;
+        const reader = dirEntry.createReader();
+        return new Promise((resolve) => {
+          const readEntries = () => {
+            reader.readEntries(async (entries) => {
+              if (entries.length === 0) {
+                resolve();
+                return;
+              }
+              for (const childEntry of entries) {
+                await processEntry(childEntry);
+              }
+              readEntries();
+            });
+          };
+          readEntries();
+        });
+      }
+    };
+
+    const processItems = async () => {
+      const entries: FileSystemEntry[] = [];
+      for (let i = 0; i < items.length; i++) {
+        const entry = items[i].webkitGetAsEntry();
+        if (entry) entries.push(entry);
+      }
+      
+      for (const entry of entries) {
+        await processEntry(entry);
+      }
+      
+      if (droppedFiles.length > 0) {
+        processFileList(droppedFiles);
+      }
+    };
+
+    processItems();
+  }, [processFileList]);
 
   const uploadSingleFile = async (file: File, retryCount = 0): Promise<{ result: UploadedFile | null; failed: FailedFile | null }> => {
     const fileExt = file.name.split('.').pop();
@@ -131,6 +221,7 @@ export const BulkMediaUploader = ({
           url: urlData.publicUrl,
           type: file.type,
           size: file.size,
+          storagePath: fileName,
         },
         failed: null,
       };
@@ -162,7 +253,7 @@ export const BulkMediaUploader = ({
     // Auto-retry failed files up to maxRetries
     let retryAttempt = 1;
     while (failed.length > 0 && retryAttempt <= maxRetries && !cancelRef.current) {
-      await new Promise(resolve => setTimeout(resolve, 500 * retryAttempt)); // Exponential backoff
+      await new Promise(resolve => setTimeout(resolve, 500 * retryAttempt));
       
       const retryResults = await Promise.all(
         failed.map(f => uploadSingleFile(f.file, retryAttempt))
@@ -213,9 +304,7 @@ export const BulkMediaUploader = ({
 
       const { uploaded, failed, bytesUploaded } = await uploadBatchWithRetry(
         batch,
-        (up, fail, bytes) => {
-          // Real-time progress update
-        }
+        () => {}
       );
       
       completed += uploaded.length;
@@ -228,7 +317,6 @@ export const BulkMediaUploader = ({
       allUploaded.push(...uploaded);
       allFailed.push(...failed);
       
-      // Calculate speed and ETA
       const elapsedSeconds = (Date.now() - startTime) / 1000;
       const filesPerSecond = completed / elapsedSeconds;
       const remainingFiles = files.length - completed - allFailed.length;
@@ -344,9 +432,48 @@ export const BulkMediaUploader = ({
     setTotalSize(0);
     setProgress({ total: 0, completed: 0, failed: 0, currentBatch: 0 });
     setStats({ startTime: 0, bytesUploaded: 0, filesPerSecond: 0, estimatedSecondsRemaining: 0 });
+    setSelectedForDelete(new Set());
     onFilesSelected(0);
     if (fileInputRef.current) fileInputRef.current.value = "";
     if (folderInputRef.current) folderInputRef.current.value = "";
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedForDelete.size === 0) return;
+
+    const filesToDelete = Array.from(selectedForDelete).map(i => uploadedFiles[i]);
+    
+    // Delete from storage
+    for (const file of filesToDelete) {
+      if (file.storagePath) {
+        await supabase.storage.from(bucket).remove([file.storagePath]);
+      }
+    }
+
+    const newUploadedFiles = uploadedFiles.filter((_, i) => !selectedForDelete.has(i));
+    setUploadedFiles(newUploadedFiles);
+    setSelectedForDelete(new Set());
+    onFilesUploaded(newUploadedFiles);
+  };
+
+  const handleDeleteSingle = async (index: number) => {
+    const file = uploadedFiles[index];
+    if (file.storagePath) {
+      await supabase.storage.from(bucket).remove([file.storagePath]);
+    }
+    const newUploadedFiles = uploadedFiles.filter((_, i) => i !== index);
+    setUploadedFiles(newUploadedFiles);
+    onFilesUploaded(newUploadedFiles);
+  };
+
+  const toggleSelectForDelete = (index: number) => {
+    const newSelected = new Set(selectedForDelete);
+    if (newSelected.has(index)) {
+      newSelected.delete(index);
+    } else {
+      newSelected.add(index);
+    }
+    setSelectedForDelete(newSelected);
   };
 
   const progressPercent = progress.total > 0 
@@ -357,8 +484,23 @@ export const BulkMediaUploader = ({
 
   return (
     <div className="space-y-4">
-      {/* File Selection */}
-      <div className="flex gap-2">
+      {/* Drag & Drop Zone */}
+      <div
+        ref={dropZoneRef}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+        className={`
+          relative border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 cursor-pointer
+          ${isDragging 
+            ? 'border-primary bg-primary/10 scale-[1.02]' 
+            : 'border-border hover:border-primary/50 hover:bg-muted/50'
+          }
+          ${isUploading ? 'pointer-events-none opacity-50' : ''}
+        `}
+        onClick={() => !isUploading && fileInputRef.current?.click()}
+      >
         <input
           ref={fileInputRef}
           type="file"
@@ -378,31 +520,48 @@ export const BulkMediaUploader = ({
           className="hidden"
         />
         
+        <div className="flex flex-col items-center gap-3">
+          <div className={`p-4 rounded-full ${isDragging ? 'bg-primary/20' : 'bg-muted'}`}>
+            <Upload className={`w-8 h-8 ${isDragging ? 'text-primary' : 'text-muted-foreground'}`} />
+          </div>
+          <div>
+            <p className="font-medium">
+              {isDragging ? 'Solte os arquivos aqui!' : 'Arraste arquivos ou pastas aqui'}
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">
+              ou clique para selecionar
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Alternative Buttons */}
+      <div className="flex gap-2">
         <Button
           type="button"
           variant="outline"
-          onClick={() => fileInputRef.current?.click()}
+          onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
           disabled={isUploading}
           className="flex-1"
         >
           <Upload className="w-4 h-4 mr-2" />
-          Selecionar Arquivos
+          Arquivos
         </Button>
         
         <Button
           type="button"
           variant="outline"
-          onClick={() => folderInputRef.current?.click()}
+          onClick={(e) => { e.stopPropagation(); folderInputRef.current?.click(); }}
           disabled={isUploading}
           className="flex-1"
         >
           <FolderOpen className="w-4 h-4 mr-2" />
-          Selecionar Pasta
+          Pasta
         </Button>
       </div>
 
       {/* File Count & Size */}
-      {files.length > 0 && !isUploading && (
+      {files.length > 0 && !isUploading && uploadedFiles.length === 0 && (
         <div className="flex flex-col gap-2 p-3 bg-muted/50 rounded-lg">
           <div className="flex items-center justify-between">
             <div>
@@ -425,7 +584,7 @@ export const BulkMediaUploader = ({
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            Sem limite de tamanho. Retry automático ({maxRetries}x) para falhas.
+            Concorrência: {concurrency} • Sem limite de tamanho • Retry automático ({maxRetries}x)
           </p>
         </div>
       )}
@@ -507,37 +666,90 @@ export const BulkMediaUploader = ({
 
             <div className="text-xs text-muted-foreground text-center">
               {progressPercent}% completo • Lote {progress.currentBatch} de {Math.ceil(progress.total / concurrency)}
-              {" • "} Auto-retry: {maxRetries}x
+              {" • "} Concorrência: {concurrency} • Auto-retry: {maxRetries}x
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Completion Status */}
+      {/* Completion Status with Manage Controls */}
       {!isUploading && uploadedFiles.length > 0 && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-4 bg-green-500/10 border border-green-500/30 rounded-xl"
+          className="space-y-3"
         >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-green-500" />
-              <span className="font-medium text-green-500">Upload Concluído!</span>
+          <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-xl">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-green-500" />
+                <span className="font-medium text-green-500">Upload Concluído!</span>
+              </div>
+              <div className="flex gap-2">
+                {failedFiles.length > 0 && (
+                  <Button size="sm" variant="outline" onClick={retryFailedFiles}>
+                    <RotateCcw className="w-4 h-4 mr-1" />
+                    Retentar {failedFiles.length} falha(s)
+                  </Button>
+                )}
+                {showManageControls && selectedForDelete.size > 0 && (
+                  <Button size="sm" variant="destructive" onClick={handleDeleteSelected}>
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    Apagar {selectedForDelete.size}
+                  </Button>
+                )}
+              </div>
             </div>
-            {failedFiles.length > 0 && (
-              <Button size="sm" variant="outline" onClick={retryFailedFiles}>
-                <RotateCcw className="w-4 h-4 mr-1" />
-                Retentar {failedFiles.length} falha(s)
-              </Button>
-            )}
+            <p className="text-sm text-muted-foreground mt-1">
+              {uploadedFiles.length.toLocaleString()} arquivos enviados ({formatBytes(stats.bytesUploaded)})
+              {failedFiles.length > 0 && (
+                <span className="text-red-500"> • {failedFiles.length} falha(s)</span>
+              )}
+            </p>
           </div>
-          <p className="text-sm text-muted-foreground mt-1">
-            {uploadedFiles.length.toLocaleString()} arquivos enviados ({formatBytes(stats.bytesUploaded)})
-            {failedFiles.length > 0 && (
-              <span className="text-red-500"> • {failedFiles.length} falha(s)</span>
-            )}
-          </p>
+
+          {/* File Management Grid */}
+          {showManageControls && uploadedFiles.length > 0 && (
+            <div className="border border-border rounded-lg p-3 max-h-[300px] overflow-y-auto">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium">Arquivos enviados</span>
+                <Button size="sm" variant="ghost" onClick={clearFiles}>
+                  <X className="w-4 h-4 mr-1" />
+                  Limpar tudo
+                </Button>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                {uploadedFiles.slice(0, 50).map((file, index) => (
+                  <div 
+                    key={index} 
+                    className={`
+                      relative group p-2 rounded-lg border text-xs truncate cursor-pointer
+                      ${selectedForDelete.has(index) 
+                        ? 'border-red-500 bg-red-500/10' 
+                        : 'border-border hover:border-primary/50'
+                      }
+                    `}
+                    onClick={() => toggleSelectForDelete(index)}
+                  >
+                    <span className="truncate block pr-6">{file.name}</span>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="absolute right-1 top-1 h-5 w-5 opacity-0 group-hover:opacity-100"
+                      onClick={(e) => { e.stopPropagation(); handleDeleteSingle(index); }}
+                    >
+                      <Trash2 className="w-3 h-3 text-red-500" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              {uploadedFiles.length > 50 && (
+                <p className="text-xs text-muted-foreground mt-2 text-center">
+                  +{uploadedFiles.length - 50} arquivos não exibidos
+                </p>
+              )}
+            </div>
+          )}
         </motion.div>
       )}
 
