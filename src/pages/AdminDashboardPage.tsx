@@ -3748,6 +3748,54 @@ const AdminDashboardPage = () => {
             <DialogFooter><Button onClick={handleUpdateResellerModel}>Salvar</Button></DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Edit Admin Model Dialog */}
+        <Dialog open={editModelDialogOpen} onOpenChange={setEditModelDialogOpen}>
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Editar Modelo Black</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div><Label>Nome</Label><Input value={modelForm.name} onChange={(e) => setModelForm({ ...modelForm, name: e.target.value })} placeholder="Nome do modelo" /></div>
+              <div><Label>Bio</Label><Textarea value={modelForm.bio} onChange={(e) => setModelForm({ ...modelForm, bio: e.target.value })} placeholder="Descrição..." /></div>
+              <div><Label>Nicho</Label><Input value={modelForm.niche} onChange={(e) => setModelForm({ ...modelForm, niche: e.target.value })} placeholder="Estratégia, Vendas, etc." /></div>
+              <div><Label>Preço (R$)</Label><Input type="number" step="0.01" value={modelForm.price} onChange={(e) => setModelForm({ ...modelForm, price: e.target.value })} placeholder="499.90" /></div>
+              <div>
+                <Label>Foto do Modelo</Label>
+                <input type="file" ref={modelImageInputRef} accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) setModelImageFile(file); }} />
+                <div className="mt-2">
+                  {modelImageFile ? (
+                    <div className="flex items-center gap-2 p-2 bg-secondary/50 rounded-lg">
+                      <Image className="w-4 h-4" />
+                      <span className="text-sm flex-1 truncate">{modelImageFile.name}</span>
+                      <Button variant="ghost" size="sm" onClick={() => setModelImageFile(null)}><Trash2 className="w-4 h-4" /></Button>
+                    </div>
+                  ) : selectedEditModel?.image_url ? (
+                    <div className="flex items-center gap-2 p-2 bg-secondary/50 rounded-lg">
+                      <img src={selectedEditModel.image_url} alt="Preview" className="w-10 h-10 rounded object-cover" />
+                      <span className="text-sm flex-1">Imagem atual</span>
+                      <Button variant="outline" size="sm" onClick={() => modelImageInputRef.current?.click()}>Trocar</Button>
+                    </div>
+                  ) : (
+                    <Button variant="outline" className="w-full" onClick={() => modelImageInputRef.current?.click()}>
+                      <Upload className="w-4 h-4 mr-2" />Selecionar Foto
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <div className="border-t pt-4 mt-4">
+                <h4 className="font-semibold mb-3 flex items-center gap-2"><Shield className="w-4 h-4" />Dados para Entrega</h4>
+                <div className="space-y-3">
+                  <div><Label>Link de Acesso</Label><Input value={modelForm.deliverable_link} onChange={(e) => setModelForm({ ...modelForm, deliverable_link: e.target.value })} placeholder="https://drive.google.com/..." /></div>
+                  <div><Label>Notas/Instruções</Label><Textarea value={modelForm.deliverable_notes} onChange={(e) => setModelForm({ ...modelForm, deliverable_notes: e.target.value })} placeholder="Instruções para o comprador..." /></div>
+                </div>
+              </div>
+              <Button onClick={handleUpdateModel} className="w-full telegram-gradient text-white" disabled={isUploadingModel}>
+                {isUploadingModel ? <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />Salvando...</> : "Salvar Alterações"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
