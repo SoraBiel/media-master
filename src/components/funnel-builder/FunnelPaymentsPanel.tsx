@@ -2045,20 +2045,52 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
               </>
             )}
 
-            <div className="bg-muted p-3 rounded-lg text-sm">
-              <p className="font-medium mb-1">Resumo:</p>
-              <p className="text-muted-foreground">
-                {bulkRemarketingType === 'unpaid' 
-                  ? `Enviará para leads NÃO PAGOS criados há mais de ${bulkRemarketingMinutes} minutos`
-                  : `Enviará para leads PAGOS criados há mais de ${bulkRemarketingMinutes} minutos`
-                }
-                {bulkMediaType !== 'none' && bulkMediaUrl && (
-                  <span className="block mt-1">
-                    📎 Com {bulkMediaType === 'image' ? 'imagem' : bulkMediaType === 'video' ? 'vídeo' : 'áudio'} anexado
-                  </span>
-                )}
-              </p>
-            </div>
+            {/* Preview de leads impactados */}
+            {(() => {
+              const now = new Date();
+              const cutoffTime = new Date(now.getTime() - bulkRemarketingMinutes * 60 * 1000);
+              const targetPayments = payments.filter(p => {
+                const matchesType = bulkRemarketingType === 'unpaid' 
+                  ? p.status !== 'paid' 
+                  : p.status === 'paid';
+                const hasChat = !!p.lead_chat_id;
+                const isOldEnough = new Date(p.created_at) <= cutoffTime;
+                return matchesType && hasChat && isOldEnough;
+              });
+              const impactedCount = targetPayments.length;
+              const totalOfType = bulkRemarketingType === 'unpaid' ? unpaidCount : paidCount;
+              
+              return (
+                <div className={`p-4 rounded-lg border-2 ${impactedCount > 0 ? 'bg-primary/5 border-primary/30' : 'bg-muted border-muted-foreground/20'}`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="font-semibold text-sm">Leads a serem impactados:</p>
+                    <Badge variant={impactedCount > 0 ? 'default' : 'secondary'} className="text-lg px-3 py-1">
+                      {impactedCount} / {totalOfType}
+                    </Badge>
+                  </div>
+                  
+                  {/* Progress bar */}
+                  <div className="w-full h-2 bg-muted rounded-full overflow-hidden mb-2">
+                    <div 
+                      className={`h-full rounded-full transition-all ${impactedCount > 0 ? 'bg-primary' : 'bg-muted-foreground/30'}`}
+                      style={{ width: totalOfType > 0 ? `${(impactedCount / totalOfType) * 100}%` : '0%' }}
+                    />
+                  </div>
+                  
+                  <p className="text-xs text-muted-foreground">
+                    {impactedCount > 0 
+                      ? `${impactedCount} lead${impactedCount !== 1 ? 's' : ''} ${bulkRemarketingType === 'unpaid' ? 'não pago' : 'pago'}${impactedCount !== 1 ? 's' : ''} criado${impactedCount !== 1 ? 's' : ''} há mais de ${bulkRemarketingMinutes} minutos`
+                      : `Nenhum lead encontrado com esses critérios`
+                    }
+                    {bulkMediaType !== 'none' && bulkMediaUrl && (
+                      <span className="block mt-1">
+                        📎 Com {bulkMediaType === 'image' ? 'imagem' : bulkMediaType === 'video' ? 'vídeo' : 'áudio'} anexado
+                      </span>
+                    )}
+                  </p>
+                </div>
+              );
+            })()}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setBulkRemarketingDialogOpen(false)}>
