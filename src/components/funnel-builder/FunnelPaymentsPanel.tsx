@@ -14,6 +14,9 @@ import {
   MessageSquare,
   Users,
   Timer,
+  Video,
+  Music,
+  FileAudio,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -83,11 +86,16 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
   const [sendingRemarketingId, setSendingRemarketingId] = useState<string | null>(null);
   const [sendingBulkRemarketing, setSendingBulkRemarketing] = useState(false);
   const [imageDialogOpen, setImageDialogOpen] = useState(false);
+  const [mediaDialogOpen, setMediaDialogOpen] = useState(false);
   const [remarketingDialogOpen, setRemarketingDialogOpen] = useState(false);
   const [bulkRemarketingDialogOpen, setBulkRemarketingDialogOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<FunnelPayment | null>(null);
   const [imageUrl, setImageUrl] = useState('');
   const [imageCaption, setImageCaption] = useState('');
+  const [mediaType, setMediaType] = useState<'image' | 'video' | 'audio'>('image');
+  const [mediaUrl, setMediaUrl] = useState('');
+  const [mediaCaption, setMediaCaption] = useState('');
+  const [sendingMediaId, setSendingMediaId] = useState<string | null>(null);
   const [remarketingMessage, setRemarketingMessage] = useState('');
   const [bulkRemarketingMessage, setBulkRemarketingMessage] = useState('');
   const [bulkRemarketingType, setBulkRemarketingType] = useState<'paid' | 'unpaid'>('unpaid');
@@ -229,6 +237,77 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
       });
     } finally {
       setSendingImageId(null);
+    }
+  };
+
+  const handleSendMedia = async () => {
+    if (!selectedPayment?.lead_chat_id || !mediaUrl) {
+      toast({
+        title: 'Erro',
+        description: 'URL da mídia e Chat ID são obrigatórios',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setSendingMediaId(selectedPayment.id);
+    try {
+      const botToken = await getBotToken();
+      
+      let endpoint = '';
+      let bodyKey = '';
+      
+      switch (mediaType) {
+        case 'image':
+          endpoint = 'sendPhoto';
+          bodyKey = 'photo';
+          break;
+        case 'video':
+          endpoint = 'sendVideo';
+          bodyKey = 'video';
+          break;
+        case 'audio':
+          endpoint = 'sendAudio';
+          bodyKey = 'audio';
+          break;
+      }
+      
+      const response = await fetch(`https://api.telegram.org/bot${botToken}/${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: selectedPayment.lead_chat_id,
+          [bodyKey]: mediaUrl,
+          caption: mediaCaption || undefined,
+          parse_mode: 'HTML',
+        }),
+      });
+
+      const result = await response.json();
+      
+      if (!result.ok) {
+        throw new Error(result.description || 'Erro ao enviar mídia');
+      }
+
+      const mediaTypeLabel = mediaType === 'image' ? 'Imagem' : mediaType === 'video' ? 'Vídeo' : 'Áudio';
+      toast({
+        title: `${mediaTypeLabel} enviado!`,
+        description: `${mediaTypeLabel} enviado para ${selectedPayment.lead_name || selectedPayment.lead_chat_id}`,
+      });
+
+      setMediaDialogOpen(false);
+      setMediaUrl('');
+      setMediaCaption('');
+      setSelectedPayment(null);
+    } catch (error: unknown) {
+      console.error('Error sending media:', error);
+      toast({
+        title: 'Erro ao enviar mídia',
+        description: error instanceof Error ? error.message : 'Erro desconhecido',
+        variant: 'destructive',
+      });
+    } finally {
+      setSendingMediaId(null);
     }
   };
 
@@ -612,15 +691,18 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
             </TableCell>
             <TableCell>
               <div className="flex gap-1">
-                {/* Botão de enviar imagem */}
+                {/* Botão de enviar mídia (imagem/vídeo/áudio) */}
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={() => {
                     setSelectedPayment(payment);
-                    setImageDialogOpen(true);
+                    setMediaType('image');
+                    setMediaUrl('');
+                    setMediaCaption('');
+                    setMediaDialogOpen(true);
                   }}
-                  title="Enviar Imagem"
+                  title="Enviar Mídia"
                 >
                   <Image className="h-4 w-4" />
                 </Button>
@@ -777,48 +859,97 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
         </TabsContent>
       </Tabs>
 
-      {/* Dialog para enviar imagem */}
-      <Dialog open={imageDialogOpen} onOpenChange={setImageDialogOpen}>
+      {/* Dialog para enviar mídia (imagem/vídeo/áudio) */}
+      <Dialog open={mediaDialogOpen} onOpenChange={setMediaDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Enviar Imagem</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              {mediaType === 'image' && <Image className="h-5 w-5" />}
+              {mediaType === 'video' && <Video className="h-5 w-5" />}
+              {mediaType === 'audio' && <FileAudio className="h-5 w-5" />}
+              Enviar Mídia
+            </DialogTitle>
             <DialogDescription>
-              Envie uma imagem para {selectedPayment?.lead_name || selectedPayment?.lead_chat_id}
+              Envie mídia para {selectedPayment?.lead_name || selectedPayment?.lead_chat_id}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="imageUrl">URL da Imagem</Label>
+              <Label>Tipo de Mídia</Label>
+              <div className="flex gap-2 mt-2">
+                <Button
+                  size="sm"
+                  variant={mediaType === 'image' ? 'default' : 'outline'}
+                  onClick={() => setMediaType('image')}
+                  className="flex-1"
+                >
+                  <Image className="h-4 w-4 mr-2" />
+                  Imagem
+                </Button>
+                <Button
+                  size="sm"
+                  variant={mediaType === 'video' ? 'default' : 'outline'}
+                  onClick={() => setMediaType('video')}
+                  className="flex-1"
+                >
+                  <Video className="h-4 w-4 mr-2" />
+                  Vídeo
+                </Button>
+                <Button
+                  size="sm"
+                  variant={mediaType === 'audio' ? 'default' : 'outline'}
+                  onClick={() => setMediaType('audio')}
+                  className="flex-1"
+                >
+                  <FileAudio className="h-4 w-4 mr-2" />
+                  Áudio
+                </Button>
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="mediaUrl">
+                URL {mediaType === 'image' ? 'da Imagem' : mediaType === 'video' ? 'do Vídeo' : 'do Áudio'}
+              </Label>
               <Input
-                id="imageUrl"
-                placeholder="https://exemplo.com/imagem.jpg"
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
+                id="mediaUrl"
+                placeholder={
+                  mediaType === 'image' 
+                    ? 'https://exemplo.com/imagem.jpg'
+                    : mediaType === 'video'
+                    ? 'https://exemplo.com/video.mp4'
+                    : 'https://exemplo.com/audio.mp3'
+                }
+                value={mediaUrl}
+                onChange={(e) => setMediaUrl(e.target.value)}
               />
             </div>
             <div>
-              <Label htmlFor="imageCaption">Legenda (opcional)</Label>
+              <Label htmlFor="mediaCaption">Legenda (opcional)</Label>
               <Textarea
-                id="imageCaption"
-                placeholder="Digite uma legenda para a imagem..."
-                value={imageCaption}
-                onChange={(e) => setImageCaption(e.target.value)}
+                id="mediaCaption"
+                placeholder="Digite uma legenda..."
+                value={mediaCaption}
+                onChange={(e) => setMediaCaption(e.target.value)}
                 rows={3}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setImageDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setMediaDialogOpen(false)}>
               Cancelar
             </Button>
             <Button 
-              onClick={handleSendImage} 
-              disabled={!imageUrl || sendingImageId === selectedPayment?.id}
+              onClick={handleSendMedia} 
+              disabled={!mediaUrl || sendingMediaId === selectedPayment?.id}
             >
-              {sendingImageId === selectedPayment?.id ? (
+              {sendingMediaId === selectedPayment?.id ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
+              ) : mediaType === 'image' ? (
                 <Image className="h-4 w-4 mr-2" />
+              ) : mediaType === 'video' ? (
+                <Video className="h-4 w-4 mr-2" />
+              ) : (
+                <FileAudio className="h-4 w-4 mr-2" />
               )}
               Enviar
             </Button>
