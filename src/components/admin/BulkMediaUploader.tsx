@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { useBackgroundUpload } from "@/contexts/BackgroundUploadContext";
+import { useToast } from "@/hooks/use-toast";
 
 interface UploadedFile {
   name: string;
@@ -32,6 +33,7 @@ interface BulkMediaUploaderProps {
   enableBackgroundUpload?: boolean;
   backgroundUploadPackName?: string;
   onBackgroundUploadStarted?: () => void;
+  autoSaveMediaId?: string; // When set, auto-saves to admin_media table after upload
 }
 
 interface UploadProgress {
@@ -60,8 +62,10 @@ export const BulkMediaUploader = ({
   enableBackgroundUpload = false,
   backgroundUploadPackName = "Pacote de Mídia",
   onBackgroundUploadStarted,
+  autoSaveMediaId,
 }: BulkMediaUploaderProps) => {
   const { startBackgroundUpload } = useBackgroundUpload();
+  const { toast } = useToast();
   const [files, setFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -599,14 +603,18 @@ export const BulkMediaUploader = ({
                   size="sm" 
                   onClick={() => {
                     const uploadId = `upload-${Date.now()}`;
+                    const currentExistingFiles = [...uploadedFiles];
+                    
                     startBackgroundUpload({
                       id: uploadId,
                       packName: backgroundUploadPackName,
                       files,
                       bucket,
                       concurrency,
-                      onComplete: (uploadedFiles) => {
-                        onFilesUploaded(uploadedFiles);
+                      autoSaveMediaId: autoSaveMediaId,
+                      existingFiles: currentExistingFiles,
+                      onComplete: (newUploadedFiles) => {
+                        onFilesUploaded(newUploadedFiles);
                       }
                     });
                     clearFiles();
