@@ -69,6 +69,8 @@ interface FunnelPayment {
   created_at: string;
   paid_at: string | null;
   delivered_at: string | null;
+  reminded_at: string | null;
+  remarketing_count?: number;
   product?: {
     name: string;
     delivery_type: string;
@@ -98,9 +100,15 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
   const [mediaCaption, setMediaCaption] = useState('');
   const [sendingMediaId, setSendingMediaId] = useState<string | null>(null);
   const [remarketingMessage, setRemarketingMessage] = useState('');
+  const [remarketingMediaType, setRemarketingMediaType] = useState<'none' | 'image' | 'video' | 'audio'>('none');
+  const [remarketingMediaUrl, setRemarketingMediaUrl] = useState('');
+  const [uploadingRemarketingMedia, setUploadingRemarketingMedia] = useState(false);
+  const [remarketingMediaDragging, setRemarketingMediaDragging] = useState(false);
+  const remarketingMediaInputRef = useRef<HTMLInputElement>(null);
   const [bulkRemarketingMessage, setBulkRemarketingMessage] = useState('');
   const [bulkRemarketingType, setBulkRemarketingType] = useState<'paid' | 'unpaid'>('unpaid');
   const [bulkRemarketingMinutes, setBulkRemarketingMinutes] = useState(5);
+  const [remarketingCounts, setRemarketingCounts] = useState<Record<string, number>>({});
   const [bulkMediaType, setBulkMediaType] = useState<'none' | 'image' | 'video' | 'audio'>('none');
   const [bulkMediaUrl, setBulkMediaUrl] = useState('');
   const [uploadingBulkMedia, setUploadingBulkMedia] = useState(false);
@@ -130,6 +138,7 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
           created_at,
           paid_at,
           delivered_at,
+          reminded_at,
           funnel_products!funnel_payments_product_id_fkey (
             name,
             delivery_type
@@ -158,8 +167,32 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
     }
   };
 
+  const fetchRemarketingCounts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('telegram_logs')
+        .select('payload')
+        .eq('funnel_id', funnelId)
+        .eq('event_type', 'remarketing_sent');
+
+      if (error) throw error;
+
+      const counts: Record<string, number> = {};
+      (data || []).forEach((log) => {
+        const payload = log.payload as { payment_id?: string } | null;
+        if (payload?.payment_id) {
+          counts[payload.payment_id] = (counts[payload.payment_id] || 0) + 1;
+        }
+      });
+      setRemarketingCounts(counts);
+    } catch (error) {
+      console.error('Error fetching remarketing counts:', error);
+    }
+  };
+
   useEffect(() => {
     fetchPayments();
+    fetchRemarketingCounts();
 
     const channel = supabase
       .channel(`funnel-payments-${funnelId}`)
@@ -468,11 +501,86 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
     }
   };
 
+  // Remarketing individual media upload handlers
+  const processRemarketingMediaFile = async (file: File) => {
+    setUploadingRemarketingMedia(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Usuário não autenticado');
+
+      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'bin';
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `${user.id}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('user-media')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('user-media')
+        .getPublicUrl(filePath);
+
+      setRemarketingMediaUrl(publicUrl);
+
+      // Auto-detect media type
+      const isVideo = file.type.startsWith('video');
+      const isAudio = file.type.startsWith('audio');
+      const isImage = file.type.startsWith('image');
+
+      if (isVideo) setRemarketingMediaType('video');
+      else if (isAudio) setRemarketingMediaType('audio');
+      else if (isImage) setRemarketingMediaType('image');
+
+      const typeLabel = isVideo ? 'Vídeo' : isAudio ? 'Áudio' : 'Imagem';
+      toast({
+        title: `${typeLabel} carregado!`,
+        description: 'Agora você pode enviar o arquivo',
+      });
+    } catch (error: unknown) {
+      console.error('Error uploading remarketing media:', error);
+      toast({
+        title: 'Erro ao fazer upload',
+        description: error instanceof Error ? error.message : 'Erro desconhecido',
+        variant: 'destructive',
+      });
+    } finally {
+      setUploadingRemarketingMedia(false);
+      if (remarketingMediaInputRef.current) {
+        remarketingMediaInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleRemarketingMediaUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    await processRemarketingMediaFile(file);
+  };
+
+  const handleRemarketingMediaDrop = async (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setRemarketingMediaDragging(false);
+    const file = event.dataTransfer.files?.[0];
+    if (!file) return;
+    await processRemarketingMediaFile(file);
+  };
+
+  const handleRemarketingMediaDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setRemarketingMediaDragging(true);
+  };
+
+  const handleRemarketingMediaDragLeave = () => {
+    setRemarketingMediaDragging(false);
+  };
+
   const handleSendRemarketing = async () => {
-    if (!selectedPayment?.lead_chat_id || !remarketingMessage) {
+    if (!selectedPayment?.lead_chat_id || (!remarketingMessage && (remarketingMediaType === 'none' || !remarketingMediaUrl))) {
       toast({
         title: 'Erro',
-        description: 'Mensagem de remarketing é obrigatória',
+        description: 'Informe uma mensagem ou selecione uma mídia',
         variant: 'destructive',
       });
       return;
@@ -482,14 +590,50 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
     try {
       const botToken = await getBotToken();
       
-      const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      let endpoint = 'sendMessage';
+      let bodyPayload: Record<string, unknown> = {
+        chat_id: selectedPayment.lead_chat_id,
+        text: remarketingMessage,
+        parse_mode: 'HTML',
+      };
+
+      // Handle media types
+      if (remarketingMediaType !== 'none' && remarketingMediaUrl) {
+        switch (remarketingMediaType) {
+          case 'image':
+            endpoint = 'sendPhoto';
+            bodyPayload = {
+              chat_id: selectedPayment.lead_chat_id,
+              photo: remarketingMediaUrl,
+              caption: remarketingMessage || undefined,
+              parse_mode: 'HTML',
+            };
+            break;
+          case 'video':
+            endpoint = 'sendVideo';
+            bodyPayload = {
+              chat_id: selectedPayment.lead_chat_id,
+              video: remarketingMediaUrl,
+              caption: remarketingMessage || undefined,
+              parse_mode: 'HTML',
+            };
+            break;
+          case 'audio':
+            endpoint = 'sendAudio';
+            bodyPayload = {
+              chat_id: selectedPayment.lead_chat_id,
+              audio: remarketingMediaUrl,
+              caption: remarketingMessage || undefined,
+              parse_mode: 'HTML',
+            };
+            break;
+        }
+      }
+
+      const response = await fetch(`https://api.telegram.org/bot${botToken}/${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chat_id: selectedPayment.lead_chat_id,
-          text: remarketingMessage,
-          parse_mode: 'HTML',
-        }),
+        body: JSON.stringify(bodyPayload),
       });
 
       const result = await response.json();
@@ -504,6 +648,21 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
         .update({ reminded_at: new Date().toISOString() })
         .eq('id', selectedPayment.id);
 
+      // Log remarketing event for counting
+      await supabase
+        .from('telegram_logs')
+        .insert({
+          funnel_id: funnelId,
+          event_type: 'remarketing_sent',
+          payload: { payment_id: selectedPayment.id, lead_chat_id: selectedPayment.lead_chat_id },
+        });
+
+      // Update local count
+      setRemarketingCounts(prev => ({
+        ...prev,
+        [selectedPayment.id]: (prev[selectedPayment.id] || 0) + 1,
+      }));
+
       toast({
         title: 'Remarketing enviado!',
         description: `Mensagem enviada para ${selectedPayment.lead_name || selectedPayment.lead_chat_id}`,
@@ -511,6 +670,8 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
 
       setRemarketingDialogOpen(false);
       setRemarketingMessage('');
+      setRemarketingMediaType('none');
+      setRemarketingMediaUrl('');
       setSelectedPayment(null);
       fetchPayments();
     } catch (error: unknown) {
@@ -938,12 +1099,15 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
           <TableHead>Valor</TableHead>
           <TableHead>Status</TableHead>
           {isPaidTab && <TableHead>Entrega</TableHead>}
+          <TableHead>Remarketing</TableHead>
           <TableHead>Data</TableHead>
           <TableHead className="w-[180px]">Ações</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
-        {paymentsList.map((payment) => (
+        {paymentsList.map((payment) => {
+          const remarkCount = remarketingCounts[payment.id] || 0;
+          return (
           <TableRow key={payment.id}>
             <TableCell className="font-medium">
               {payment.lead_name || payment.lead_chat_id || '-'}
@@ -956,6 +1120,22 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
             {isPaidTab && (
               <TableCell>{getDeliveryBadge(payment.delivery_status, payment.status)}</TableCell>
             )}
+            <TableCell>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
+                  <MessageSquare className="h-3 w-3 text-muted-foreground" />
+                  <span className="text-sm font-medium">{remarkCount}</span>
+                </div>
+                {remarkCount > 0 && (
+                  <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-primary rounded-full transition-all"
+                      style={{ width: `${Math.min(remarkCount * 10, 100)}%` }}
+                    />
+                  </div>
+                )}
+              </div>
+            </TableCell>
             <TableCell className="text-xs text-muted-foreground">
               {formatDate(payment.created_at)}
             </TableCell>
@@ -1061,7 +1241,8 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
               </div>
             </TableCell>
           </TableRow>
-        ))}
+        );
+        })}
       </TableBody>
     </Table>
   );
@@ -1435,24 +1616,202 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
 
       {/* Dialog para remarketing */}
       <Dialog open={remarketingDialogOpen} onOpenChange={setRemarketingDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Enviar Remarketing</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5" />
+              Enviar Remarketing
+            </DialogTitle>
             <DialogDescription>
               Envie uma mensagem de remarketing para {selectedPayment?.lead_name || selectedPayment?.lead_chat_id}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            {/* Contador de remarketing */}
+            {selectedPayment && (
+              <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">Remarketing enviados</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-lg font-bold">{remarketingCounts[selectedPayment.id] || 0}</span>
+                  <div className="w-20 h-2 bg-background rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-primary rounded-full transition-all"
+                      style={{ width: `${Math.min((remarketingCounts[selectedPayment.id] || 0) * 10, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div>
-              <Label htmlFor="remarketingMessage">Mensagem</Label>
+              <Label htmlFor="remarketingMessage">Mensagem (legenda se enviar mídia)</Label>
               <Textarea
                 id="remarketingMessage"
                 placeholder="Digite sua mensagem de remarketing..."
                 value={remarketingMessage}
                 onChange={(e) => setRemarketingMessage(e.target.value)}
-                rows={4}
+                rows={3}
               />
             </div>
+
+            {/* Tipo de Mídia */}
+            <div>
+              <Label>Mídia (opcional)</Label>
+              <div className="flex gap-2 mt-2">
+                <Button
+                  size="sm"
+                  variant={remarketingMediaType === 'none' ? 'default' : 'outline'}
+                  onClick={() => { setRemarketingMediaType('none'); setRemarketingMediaUrl(''); }}
+                  className="flex-1"
+                >
+                  Texto
+                </Button>
+                <Button
+                  size="sm"
+                  variant={remarketingMediaType === 'image' ? 'default' : 'outline'}
+                  onClick={() => setRemarketingMediaType('image')}
+                  className="flex-1"
+                >
+                  <Image className="h-4 w-4 mr-1" />
+                  Imagem
+                </Button>
+                <Button
+                  size="sm"
+                  variant={remarketingMediaType === 'video' ? 'default' : 'outline'}
+                  onClick={() => setRemarketingMediaType('video')}
+                  className="flex-1"
+                >
+                  <Video className="h-4 w-4 mr-1" />
+                  Vídeo
+                </Button>
+                <Button
+                  size="sm"
+                  variant={remarketingMediaType === 'audio' ? 'default' : 'outline'}
+                  onClick={() => setRemarketingMediaType('audio')}
+                  className="flex-1"
+                >
+                  <Music className="h-4 w-4 mr-1" />
+                  Áudio
+                </Button>
+              </div>
+            </div>
+
+            {/* Upload de Mídia */}
+            {remarketingMediaType !== 'none' && (
+              <>
+                <div>
+                  <Label>Fazer upload do PC</Label>
+                  <div 
+                    className={`mt-2 border-2 border-dashed rounded-lg p-3 text-center transition-colors cursor-pointer ${
+                      remarketingMediaDragging 
+                        ? 'border-primary bg-primary/5' 
+                        : 'border-muted-foreground/25 hover:border-primary/50'
+                    }`}
+                    onDrop={handleRemarketingMediaDrop}
+                    onDragOver={handleRemarketingMediaDragOver}
+                    onDragLeave={handleRemarketingMediaDragLeave}
+                    onClick={() => remarketingMediaInputRef.current?.click()}
+                  >
+                    <input
+                      ref={remarketingMediaInputRef}
+                      type="file"
+                      accept={
+                        remarketingMediaType === 'image' ? 'image/*' :
+                        remarketingMediaType === 'video' ? 'video/*' :
+                        'audio/*'
+                      }
+                      onChange={handleRemarketingMediaUpload}
+                      className="hidden"
+                    />
+                    {uploadingRemarketingMedia ? (
+                      <div className="flex flex-col items-center gap-2">
+                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                        <p className="text-xs text-muted-foreground">Enviando...</p>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-1">
+                        <Upload className="h-6 w-6 text-muted-foreground" />
+                        <p className="text-xs text-muted-foreground">
+                          Arraste ou clique para selecionar
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">ou cole uma URL</span>
+                  </div>
+                </div>
+
+                <div>
+                  <Label>
+                    URL {remarketingMediaType === 'image' ? 'da Imagem' : remarketingMediaType === 'video' ? 'do Vídeo' : 'do Áudio'}
+                  </Label>
+                  <Input
+                    placeholder={
+                      remarketingMediaType === 'image' ? 'https://exemplo.com/imagem.jpg' :
+                      remarketingMediaType === 'video' ? 'https://exemplo.com/video.mp4' :
+                      'https://exemplo.com/audio.mp3'
+                    }
+                    value={remarketingMediaUrl}
+                    onChange={(e) => setRemarketingMediaUrl(e.target.value)}
+                  />
+                </div>
+
+                {/* Preview */}
+                {remarketingMediaUrl && (
+                  <div className="border rounded-lg p-2">
+                    {remarketingMediaType === 'image' && (
+                      <img 
+                        src={remarketingMediaUrl} 
+                        alt="Preview" 
+                        className="max-h-24 mx-auto rounded object-contain"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                    )}
+                    {remarketingMediaType === 'video' && (
+                      <video 
+                        src={remarketingMediaUrl} 
+                        controls 
+                        className="max-h-24 w-full rounded object-contain"
+                        onError={(e) => {
+                          (e.target as HTMLVideoElement).style.display = 'none';
+                        }}
+                      />
+                    )}
+                    {remarketingMediaType === 'audio' && (
+                      <audio 
+                        src={remarketingMediaUrl} 
+                        controls 
+                        className="w-full"
+                        onError={(e) => {
+                          (e.target as HTMLAudioElement).style.display = 'none';
+                        }}
+                      />
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Resumo */}
+            {remarketingMediaType !== 'none' && remarketingMediaUrl && (
+              <div className="bg-muted p-3 rounded-lg text-sm">
+                <p className="text-muted-foreground">
+                  📎 Com {remarketingMediaType === 'image' ? 'imagem' : remarketingMediaType === 'video' ? 'vídeo' : 'áudio'} anexado
+                </p>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setRemarketingDialogOpen(false)}>
@@ -1460,12 +1819,12 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
             </Button>
             <Button 
               onClick={handleSendRemarketing} 
-              disabled={!remarketingMessage || sendingRemarketingId === selectedPayment?.id}
+              disabled={(!remarketingMessage && (remarketingMediaType === 'none' || !remarketingMediaUrl)) || sendingRemarketingId === selectedPayment?.id || uploadingRemarketingMedia}
             >
               {sendingRemarketingId === selectedPayment?.id ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               ) : (
-                <MessageSquare className="h-4 w-4 mr-2" />
+                <Send className="h-4 w-4 mr-2" />
               )}
               Enviar
             </Button>
