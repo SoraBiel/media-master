@@ -10,11 +10,14 @@ import {
   Package,
   AlertCircle,
   Loader2,
+  Image,
+  MessageSquare,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Table,
   TableBody,
@@ -34,6 +37,17 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -62,6 +76,14 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
   const [payments, setPayments] = useState<FunnelPayment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [resendingId, setResendingId] = useState<string | null>(null);
+  const [sendingImageId, setSendingImageId] = useState<string | null>(null);
+  const [sendingRemarketingId, setSendingRemarketingId] = useState<string | null>(null);
+  const [imageDialogOpen, setImageDialogOpen] = useState(false);
+  const [remarketingDialogOpen, setRemarketingDialogOpen] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<FunnelPayment | null>(null);
+  const [imageUrl, setImageUrl] = useState('');
+  const [imageCaption, setImageCaption] = useState('');
+  const [remarketingMessage, setRemarketingMessage] = useState('');
   const { toast } = useToast();
 
   const fetchPayments = async () => {
@@ -111,7 +133,6 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
   useEffect(() => {
     fetchPayments();
 
-    // Subscribe to realtime updates
     const channel = supabase
       .channel(`funnel-payments-${funnelId}`)
       .on('postgres_changes', { 
@@ -127,6 +148,139 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
     };
   }, [funnelId]);
 
+  const getBotToken = async () => {
+    const { data: funnel } = await supabase
+      .from('funnels')
+      .select('telegram_integration_id')
+      .eq('id', funnelId)
+      .single();
+
+    if (!funnel?.telegram_integration_id) {
+      throw new Error('Integração do Telegram não encontrada');
+    }
+
+    const { data: integration } = await supabase
+      .from('telegram_integrations')
+      .select('bot_token')
+      .eq('id', funnel.telegram_integration_id)
+      .single();
+
+    if (!integration?.bot_token) {
+      throw new Error('Token do bot não encontrado');
+    }
+
+    return integration.bot_token;
+  };
+
+  const handleSendImage = async () => {
+    if (!selectedPayment?.lead_chat_id || !imageUrl) {
+      toast({
+        title: 'Erro',
+        description: 'URL da imagem e Chat ID são obrigatórios',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setSendingImageId(selectedPayment.id);
+    try {
+      const botToken = await getBotToken();
+      
+      const response = await fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: selectedPayment.lead_chat_id,
+          photo: imageUrl,
+          caption: imageCaption || undefined,
+          parse_mode: 'HTML',
+        }),
+      });
+
+      const result = await response.json();
+      
+      if (!result.ok) {
+        throw new Error(result.description || 'Erro ao enviar imagem');
+      }
+
+      toast({
+        title: 'Imagem enviada!',
+        description: `Imagem enviada para ${selectedPayment.lead_name || selectedPayment.lead_chat_id}`,
+      });
+
+      setImageDialogOpen(false);
+      setImageUrl('');
+      setImageCaption('');
+      setSelectedPayment(null);
+    } catch (error: unknown) {
+      console.error('Error sending image:', error);
+      toast({
+        title: 'Erro ao enviar imagem',
+        description: error instanceof Error ? error.message : 'Erro desconhecido',
+        variant: 'destructive',
+      });
+    } finally {
+      setSendingImageId(null);
+    }
+  };
+
+  const handleSendRemarketing = async () => {
+    if (!selectedPayment?.lead_chat_id || !remarketingMessage) {
+      toast({
+        title: 'Erro',
+        description: 'Mensagem de remarketing é obrigatória',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setSendingRemarketingId(selectedPayment.id);
+    try {
+      const botToken = await getBotToken();
+      
+      const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: selectedPayment.lead_chat_id,
+          text: remarketingMessage,
+          parse_mode: 'HTML',
+        }),
+      });
+
+      const result = await response.json();
+      
+      if (!result.ok) {
+        throw new Error(result.description || 'Erro ao enviar mensagem');
+      }
+
+      // Update reminded_at
+      await supabase
+        .from('funnel_payments')
+        .update({ reminded_at: new Date().toISOString() })
+        .eq('id', selectedPayment.id);
+
+      toast({
+        title: 'Remarketing enviado!',
+        description: `Mensagem enviada para ${selectedPayment.lead_name || selectedPayment.lead_chat_id}`,
+      });
+
+      setRemarketingDialogOpen(false);
+      setRemarketingMessage('');
+      setSelectedPayment(null);
+      fetchPayments();
+    } catch (error: unknown) {
+      console.error('Error sending remarketing:', error);
+      toast({
+        title: 'Erro ao enviar remarketing',
+        description: error instanceof Error ? error.message : 'Erro desconhecido',
+        variant: 'destructive',
+      });
+    } finally {
+      setSendingRemarketingId(null);
+    }
+  };
+
   const handleResendDelivery = async (payment: FunnelPayment) => {
     if (!payment.lead_chat_id) {
       toast({
@@ -139,29 +293,8 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
 
     setResendingId(payment.id);
     try {
-      // Get the funnel's telegram integration
-      const { data: funnel } = await supabase
-        .from('funnels')
-        .select('telegram_integration_id')
-        .eq('id', funnelId)
-        .single();
+      const botToken = await getBotToken();
 
-      if (!funnel?.telegram_integration_id) {
-        throw new Error('Integração do Telegram não encontrada');
-      }
-
-      // Get the bot token
-      const { data: integration } = await supabase
-        .from('telegram_integrations')
-        .select('bot_token')
-        .eq('id', funnel.telegram_integration_id)
-        .single();
-
-      if (!integration?.bot_token) {
-        throw new Error('Token do bot não encontrado');
-      }
-
-      // Get product details
       if (!payment.product_id) {
         throw new Error('Produto não encontrado');
       }
@@ -176,10 +309,8 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
         throw new Error('Produto não encontrado');
       }
 
-      const botToken = integration.bot_token;
       const chatId = payment.lead_chat_id;
 
-      // Send delivery based on type
       if (product.delivery_type === 'link') {
         const message = product.delivery_message || '🎁 Aqui está sua entrega!';
         const fullMessage = `${message}\n\n🔗 ${product.delivery_content}`;
@@ -206,7 +337,6 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
           }),
         });
       } else if (product.delivery_type === 'pack') {
-        // Get pack files
         const { data: pack } = await supabase
           .from('admin_media')
           .select('media_files')
@@ -214,7 +344,6 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
           .single();
 
         if (pack?.media_files && Array.isArray(pack.media_files)) {
-          // Send delivery message first
           if (product.delivery_message) {
             await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
               method: 'POST',
@@ -227,7 +356,6 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
             });
           }
 
-          // Send files with rate limiting
           for (const file of pack.media_files as Array<{ url: string; type: string }>) {
             const fileUrl = file.url;
             const fileType = file.type || 'document';
@@ -252,7 +380,6 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
                   body: JSON.stringify({ chat_id: chatId, document: fileUrl }),
                 });
               }
-              // Rate limiting
               await new Promise(resolve => setTimeout(resolve, 500));
             } catch (err) {
               console.error('Error sending file:', err);
@@ -276,7 +403,6 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
         }
       }
 
-      // Update delivery status
       await supabase
         .from('funnel_payments')
         .update({
@@ -291,11 +417,11 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
       });
 
       fetchPayments();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error resending delivery:', error);
       toast({
         title: 'Erro ao reenviar',
-        description: error.message || 'Erro desconhecido',
+        description: error instanceof Error ? error.message : 'Erro desconhecido',
         variant: 'destructive',
       });
     } finally {
@@ -342,10 +468,117 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
     }
   };
 
-  const paidCount = payments.filter(p => p.status === 'paid').length;
-  const pendingCount = payments.filter(p => p.status === 'pending').length;
+  const paidPayments = payments.filter(p => p.status === 'paid');
+  const unpaidPayments = payments.filter(p => p.status !== 'paid');
+  const paidCount = paidPayments.length;
+  const unpaidCount = unpaidPayments.length;
   const deliveredCount = payments.filter(p => p.delivery_status === 'delivered').length;
-  const totalRevenue = payments.filter(p => p.status === 'paid').reduce((sum, p) => sum + p.amount_cents, 0);
+  const totalRevenue = paidPayments.reduce((sum, p) => sum + p.amount_cents, 0);
+
+  const renderPaymentTable = (paymentsList: FunnelPayment[], showRemarketing: boolean) => (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Lead</TableHead>
+          <TableHead>Produto</TableHead>
+          <TableHead>Valor</TableHead>
+          <TableHead>Status</TableHead>
+          {!showRemarketing && <TableHead>Entrega</TableHead>}
+          <TableHead>Data</TableHead>
+          <TableHead className="w-[140px]">Ações</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {paymentsList.map((payment) => (
+          <TableRow key={payment.id}>
+            <TableCell className="font-medium">
+              {payment.lead_name || payment.lead_chat_id || '-'}
+            </TableCell>
+            <TableCell className="text-sm">
+              {payment.product?.name || '-'}
+            </TableCell>
+            <TableCell>{formatPrice(payment.amount_cents)}</TableCell>
+            <TableCell>{getStatusBadge(payment.status)}</TableCell>
+            {!showRemarketing && (
+              <TableCell>{getDeliveryBadge(payment.delivery_status, payment.status)}</TableCell>
+            )}
+            <TableCell className="text-xs text-muted-foreground">
+              {formatDate(payment.created_at)}
+            </TableCell>
+            <TableCell>
+              <div className="flex gap-1">
+                {/* Botão de enviar imagem */}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedPayment(payment);
+                    setImageDialogOpen(true);
+                  }}
+                  title="Enviar Imagem"
+                >
+                  <Image className="h-4 w-4" />
+                </Button>
+
+                {showRemarketing ? (
+                  // Botão de remarketing para não pagos
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setSelectedPayment(payment);
+                      setRemarketingMessage('💰 Oi! Vi que você ainda não finalizou seu pagamento. Posso te ajudar com algo?');
+                      setRemarketingDialogOpen(true);
+                    }}
+                    title="Enviar Remarketing"
+                  >
+                    <MessageSquare className="h-4 w-4" />
+                  </Button>
+                ) : (
+                  // Botão de reenviar entrega para pagos
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={resendingId === payment.id}
+                        title="Reenviar Entrega"
+                      >
+                        {resendingId === payment.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Send className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Reenviar Entrega</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Isso irá reenviar a entrega para o lead "{payment.lead_name || payment.lead_chat_id}".
+                          {payment.delivery_status === 'delivered' && (
+                            <span className="block mt-2 text-amber-500">
+                              ⚠️ A entrega já foi realizada anteriormente.
+                            </span>
+                          )}
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleResendDelivery(payment)}>
+                          Reenviar
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+              </div>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
 
   return (
     <div className="h-full flex flex-col bg-background">
@@ -372,8 +605,8 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
         </Card>
         <Card>
           <CardContent className="pt-3 pb-3">
-            <div className="text-xl font-bold text-teal-500">{deliveredCount}</div>
-            <p className="text-xs text-muted-foreground">Entregues</p>
+            <div className="text-xl font-bold text-amber-500">{unpaidCount}</div>
+            <p className="text-xs text-muted-foreground">Não Pagos</p>
           </CardContent>
         </Card>
         <Card>
@@ -384,85 +617,135 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
         </Card>
       </div>
 
-      <ScrollArea className="flex-1">
-        {payments.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>Nenhum pagamento encontrado</p>
-            <p className="text-sm">Os pagamentos aparecerão aqui quando leads gerarem PIX</p>
+      <Tabs defaultValue="paid" className="flex-1 flex flex-col">
+        <div className="px-4 pt-2">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="paid" className="flex items-center gap-2">
+              <CheckCircle className="h-4 w-4" />
+              Pagos ({paidCount})
+            </TabsTrigger>
+            <TabsTrigger value="unpaid" className="flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              Não Pagos ({unpaidCount})
+            </TabsTrigger>
+          </TabsList>
+        </div>
+
+        <TabsContent value="paid" className="flex-1 mt-0">
+          <ScrollArea className="h-full">
+            {paidPayments.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <CheckCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>Nenhum pagamento confirmado</p>
+              </div>
+            ) : (
+              renderPaymentTable(paidPayments, false)
+            )}
+          </ScrollArea>
+        </TabsContent>
+
+        <TabsContent value="unpaid" className="flex-1 mt-0">
+          <ScrollArea className="h-full">
+            {unpaidPayments.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>Nenhum pagamento pendente</p>
+              </div>
+            ) : (
+              renderPaymentTable(unpaidPayments, true)
+            )}
+          </ScrollArea>
+        </TabsContent>
+      </Tabs>
+
+      {/* Dialog para enviar imagem */}
+      <Dialog open={imageDialogOpen} onOpenChange={setImageDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Enviar Imagem</DialogTitle>
+            <DialogDescription>
+              Envie uma imagem para {selectedPayment?.lead_name || selectedPayment?.lead_chat_id}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="imageUrl">URL da Imagem</Label>
+              <Input
+                id="imageUrl"
+                placeholder="https://exemplo.com/imagem.jpg"
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="imageCaption">Legenda (opcional)</Label>
+              <Textarea
+                id="imageCaption"
+                placeholder="Digite uma legenda para a imagem..."
+                value={imageCaption}
+                onChange={(e) => setImageCaption(e.target.value)}
+                rows={3}
+              />
+            </div>
           </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Lead</TableHead>
-                <TableHead>Produto</TableHead>
-                <TableHead>Valor</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Entrega</TableHead>
-                <TableHead>Data</TableHead>
-                <TableHead className="w-[100px]">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {payments.map((payment) => (
-                <TableRow key={payment.id}>
-                  <TableCell className="font-medium">
-                    {payment.lead_name || payment.lead_chat_id || '-'}
-                  </TableCell>
-                  <TableCell className="text-sm">
-                    {payment.product?.name || '-'}
-                  </TableCell>
-                  <TableCell>{formatPrice(payment.amount_cents)}</TableCell>
-                  <TableCell>{getStatusBadge(payment.status)}</TableCell>
-                  <TableCell>{getDeliveryBadge(payment.delivery_status, payment.status)}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {formatDate(payment.created_at)}
-                  </TableCell>
-                  <TableCell>
-                    {payment.status === 'paid' && (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={resendingId === payment.id}
-                          >
-                            {resendingId === payment.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Send className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Reenviar Entrega</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Isso irá reenviar a entrega para o lead "{payment.lead_name || payment.lead_chat_id}".
-                              {payment.delivery_status === 'delivered' && (
-                                <span className="block mt-2 text-amber-500">
-                                  ⚠️ A entrega já foi realizada anteriormente.
-                                </span>
-                              )}
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleResendDelivery(payment)}>
-                              Reenviar
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </ScrollArea>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setImageDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleSendImage} 
+              disabled={!imageUrl || sendingImageId === selectedPayment?.id}
+            >
+              {sendingImageId === selectedPayment?.id ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Image className="h-4 w-4 mr-2" />
+              )}
+              Enviar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para remarketing */}
+      <Dialog open={remarketingDialogOpen} onOpenChange={setRemarketingDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Enviar Remarketing</DialogTitle>
+            <DialogDescription>
+              Envie uma mensagem de remarketing para {selectedPayment?.lead_name || selectedPayment?.lead_chat_id}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="remarketingMessage">Mensagem</Label>
+              <Textarea
+                id="remarketingMessage"
+                placeholder="Digite sua mensagem de remarketing..."
+                value={remarketingMessage}
+                onChange={(e) => setRemarketingMessage(e.target.value)}
+                rows={4}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRemarketingDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleSendRemarketing} 
+              disabled={!remarketingMessage || sendingRemarketingId === selectedPayment?.id}
+            >
+              {sendingRemarketingId === selectedPayment?.id ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <MessageSquare className="h-4 w-4 mr-2" />
+              )}
+              Enviar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
