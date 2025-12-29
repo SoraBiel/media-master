@@ -321,6 +321,7 @@ const AdminDashboardPage = () => {
   const [mediaDialogOpen, setMediaDialogOpen] = useState(false);
   const [editMediaDialogOpen, setEditMediaDialogOpen] = useState(false);
   const [selectedMedia, setSelectedMedia] = useState<AdminMedia | null>(null);
+  const [editMediaName, setEditMediaName] = useState("");
   const [planDialogOpen, setPlanDialogOpen] = useState(false);
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
   const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);
@@ -1401,6 +1402,7 @@ const AdminDashboardPage = () => {
 
   const handleEditMedia = (media: AdminMedia) => {
     setSelectedMedia(media);
+    setEditMediaName(media.name);
     const existingFiles = Array.isArray(media.media_files) 
       ? media.media_files.map((f: any) => ({
           name: f.name || 'file',
@@ -1422,6 +1424,7 @@ const AdminDashboardPage = () => {
       const { error } = await supabase
         .from("admin_media")
         .update({
+          name: editMediaName.trim() || selectedMedia.name,
           media_files: bulkUploadedFiles.map(f => ({ url: f.url, name: f.name, type: f.type, size: f.size })),
           file_count: bulkUploadedFiles.length,
           updated_at: new Date().toISOString(),
@@ -1432,10 +1435,11 @@ const AdminDashboardPage = () => {
 
       toast({ 
         title: "Pacote atualizado!", 
-        description: `${selectedMedia.name} agora tem ${bulkUploadedFiles.length.toLocaleString()} arquivos.` 
+        description: `${editMediaName || selectedMedia.name} agora tem ${bulkUploadedFiles.length.toLocaleString()} arquivos.` 
       });
       setEditMediaDialogOpen(false);
       setSelectedMedia(null);
+      setEditMediaName("");
       setBulkUploadedFiles([]);
       setBulkFilesCount(0);
       fetchAdminMedia();
@@ -2432,15 +2436,26 @@ const AdminDashboardPage = () => {
                 setEditMediaDialogOpen(open);
                 if (!open) {
                   setSelectedMedia(null);
+                  setEditMediaName("");
                   setBulkUploadedFiles([]);
                   setBulkFilesCount(0);
                 }
               }}>
                 <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
-                    <DialogTitle>Editar Pacote: {selectedMedia?.name}</DialogTitle>
+                    <DialogTitle>Editar Pacote de Mídia</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-media-name">Nome do Pacote</Label>
+                      <Input
+                        id="edit-media-name"
+                        value={editMediaName}
+                        onChange={(e) => setEditMediaName(e.target.value)}
+                        placeholder="Nome do pacote de mídia"
+                      />
+                    </div>
+                    
                     <div className="p-3 bg-muted/50 rounded-lg">
                       <p className="text-sm">
                         <strong>Arquivos atuais:</strong> {bulkUploadedFiles.length.toLocaleString()}
