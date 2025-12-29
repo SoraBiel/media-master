@@ -322,6 +322,8 @@ const AdminDashboardPage = () => {
   const [editMediaDialogOpen, setEditMediaDialogOpen] = useState(false);
   const [selectedMedia, setSelectedMedia] = useState<AdminMedia | null>(null);
   const [editMediaName, setEditMediaName] = useState("");
+  const [editMediaPackType, setEditMediaPackType] = useState("10k");
+  const [editMediaMinPlan, setEditMediaMinPlan] = useState("basic");
   const [planDialogOpen, setPlanDialogOpen] = useState(false);
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
   const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);
@@ -1403,6 +1405,8 @@ const AdminDashboardPage = () => {
   const handleEditMedia = (media: AdminMedia) => {
     setSelectedMedia(media);
     setEditMediaName(media.name);
+    setEditMediaPackType(media.pack_type || "10k");
+    setEditMediaMinPlan(media.min_plan || "basic");
     const existingFiles = Array.isArray(media.media_files) 
       ? media.media_files.map((f: any) => ({
           name: f.name || 'file',
@@ -1425,6 +1429,8 @@ const AdminDashboardPage = () => {
         .from("admin_media")
         .update({
           name: editMediaName.trim() || selectedMedia.name,
+          pack_type: editMediaPackType,
+          min_plan: editMediaMinPlan,
           media_files: bulkUploadedFiles.map(f => ({ url: f.url, name: f.name, type: f.type, size: f.size })),
           file_count: bulkUploadedFiles.length,
           updated_at: new Date().toISOString(),
@@ -1440,6 +1446,8 @@ const AdminDashboardPage = () => {
       setEditMediaDialogOpen(false);
       setSelectedMedia(null);
       setEditMediaName("");
+      setEditMediaPackType("10k");
+      setEditMediaMinPlan("basic");
       setBulkUploadedFiles([]);
       setBulkFilesCount(0);
       fetchAdminMedia();
@@ -2437,6 +2445,8 @@ const AdminDashboardPage = () => {
                 if (!open) {
                   setSelectedMedia(null);
                   setEditMediaName("");
+                  setEditMediaPackType("10k");
+                  setEditMediaMinPlan("basic");
                   setBulkUploadedFiles([]);
                   setBulkFilesCount(0);
                 }
@@ -2454,6 +2464,37 @@ const AdminDashboardPage = () => {
                         onChange={(e) => setEditMediaName(e.target.value)}
                         placeholder="Nome do pacote de mídia"
                       />
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-media-pack-type">Tipo do Pacote</Label>
+                        <Select value={editMediaPackType} onValueChange={setEditMediaPackType}>
+                          <SelectTrigger id="edit-media-pack-type">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="10k">10k</SelectItem>
+                            <SelectItem value="50k">50k</SelectItem>
+                            <SelectItem value="full">Full</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-media-min-plan">Plano Mínimo</Label>
+                        <Select value={editMediaMinPlan} onValueChange={setEditMediaMinPlan}>
+                          <SelectTrigger id="edit-media-min-plan">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="free">Free</SelectItem>
+                            <SelectItem value="basic">Basic</SelectItem>
+                            <SelectItem value="pro">Pro</SelectItem>
+                            <SelectItem value="agency">Agency</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                     
                     <div className="p-3 bg-muted/50 rounded-lg">
