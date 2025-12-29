@@ -1,9 +1,10 @@
 import { useState, useRef, useCallback, DragEvent, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Upload, X, CheckCircle2, AlertCircle, Loader2, Pause, Play, FolderOpen, Clock, RotateCcw, Trash2, Edit2, Image, Video, FileAudio, File } from "lucide-react";
+import { Upload, X, CheckCircle2, AlertCircle, Loader2, Pause, Play, FolderOpen, Clock, RotateCcw, Trash2, Edit2, Image, Video, FileAudio, File, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
+import { useBackgroundUpload } from "@/contexts/BackgroundUploadContext";
 
 interface UploadedFile {
   name: string;
@@ -28,6 +29,9 @@ interface BulkMediaUploaderProps {
   showManageControls?: boolean;
   showPreview?: boolean;
   existingFiles?: UploadedFile[];
+  enableBackgroundUpload?: boolean;
+  backgroundUploadPackName?: string;
+  onBackgroundUploadStarted?: () => void;
 }
 
 interface UploadProgress {
@@ -53,7 +57,11 @@ export const BulkMediaUploader = ({
   showManageControls = false,
   showPreview = false,
   existingFiles = [],
+  enableBackgroundUpload = false,
+  backgroundUploadPackName = "Pacote de Mídia",
+  onBackgroundUploadStarted,
 }: BulkMediaUploaderProps) => {
+  const { startBackgroundUpload } = useBackgroundUpload();
   const [files, setFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -589,14 +597,39 @@ export const BulkMediaUploader = ({
                 <X className="w-4 h-4 mr-1" />
                 Limpar
               </Button>
-              <Button size="sm" onClick={startUpload}>
-                <Upload className="w-4 h-4 mr-1" />
-                Iniciar Upload
-              </Button>
+              {enableBackgroundUpload ? (
+                <Button 
+                  size="sm" 
+                  onClick={() => {
+                    const uploadId = `upload-${Date.now()}`;
+                    startBackgroundUpload({
+                      id: uploadId,
+                      packName: backgroundUploadPackName,
+                      files,
+                      bucket,
+                      concurrency,
+                      onComplete: (uploadedFiles) => {
+                        onFilesUploaded(uploadedFiles);
+                      }
+                    });
+                    clearFiles();
+                    onBackgroundUploadStarted?.();
+                  }}
+                  className="telegram-gradient text-white"
+                >
+                  <Zap className="w-4 h-4 mr-1" />
+                  Upload em Background
+                </Button>
+              ) : (
+                <Button size="sm" onClick={startUpload}>
+                  <Upload className="w-4 h-4 mr-1" />
+                  Iniciar Upload
+                </Button>
+              )}
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            Concorrência: {concurrency} • Sem limite de tamanho • Retry automático ({maxRetries}x)
+            Concorrência: {concurrency} • Sem limite de tamanho • {enableBackgroundUpload ? 'Navegue enquanto envia!' : `Retry automático (${maxRetries}x)`}
           </p>
         </div>
       )}

@@ -612,6 +612,7 @@ const CampaignsPage = () => {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="2">2 segundos</SelectItem>
                         <SelectItem value="5">5 segundos</SelectItem>
                         <SelectItem value="10">10 segundos</SelectItem>
                         <SelectItem value="15">15 segundos</SelectItem>

@@ -1039,6 +1039,7 @@ const CampaignsSection = () => {
                       <Select value={String(newCampaign.delay_seconds)} onValueChange={(value) => setNewCampaign({ ...newCampaign, delay_seconds: parseInt(value) })}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
+                          <SelectItem value="2">2s</SelectItem>
                           <SelectItem value="5">5s</SelectItem>
                           <SelectItem value="10">10s</SelectItem>
                           <SelectItem value="15">15s</SelectItem>
