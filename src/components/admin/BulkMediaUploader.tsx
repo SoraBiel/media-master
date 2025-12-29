@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Upload, X, CheckCircle2, AlertCircle, Loader2, Pause, Play, FolderOpen, Clock } from "lucide-react";
+import { Upload, X, CheckCircle2, AlertCircle, Loader2, Pause, Play, FolderOpen, Clock, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,11 +12,18 @@ interface UploadedFile {
   size: number;
 }
 
+interface FailedFile {
+  file: File;
+  error: string;
+  retries: number;
+}
+
 interface BulkMediaUploaderProps {
   onFilesUploaded: (files: UploadedFile[]) => void;
   onFilesSelected: (count: number) => void;
   bucket?: string;
   concurrency?: number;
+  maxRetries?: number;
 }
 
 interface UploadProgress {
@@ -38,10 +45,12 @@ export const BulkMediaUploader = ({
   onFilesSelected,
   bucket = "media-packs",
   concurrency = 15,
+  maxRetries = 3,
 }: BulkMediaUploaderProps) => {
   const [files, setFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
   const [progress, setProgress] = useState<UploadProgress>({
     total: 0,
     completed: 0,
@@ -55,11 +64,13 @@ export const BulkMediaUploader = ({
     estimatedSecondsRemaining: 0,
   });
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [failedFiles, setFailedFiles] = useState<FailedFile[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
   const [totalSize, setTotalSize] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
   const pauseRef = useRef(false);
+  const cancelRef = useRef(false);
 
   const formatBytes = (bytes: number): string => {
     if (bytes === 0) return '0 B';
@@ -90,12 +101,13 @@ export const BulkMediaUploader = ({
       setTotalSize(total);
       setProgress({ total: selectedFiles.length, completed: 0, failed: 0, currentBatch: 0 });
       setUploadedFiles([]);
+      setFailedFiles([]);
       setErrors([]);
       setStats({ startTime: 0, bytesUploaded: 0, filesPerSecond: 0, estimatedSecondsRemaining: 0 });
     }
   }, [onFilesSelected]);
 
-  const uploadSingleFile = async (file: File): Promise<UploadedFile | null> => {
+  const uploadSingleFile = async (file: File, retryCount = 0): Promise<{ result: UploadedFile | null; failed: FailedFile | null }> => {
     const fileExt = file.name.split('.').pop();
     const fileName = `media/${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
     
@@ -114,24 +126,60 @@ export const BulkMediaUploader = ({
       const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(fileName);
       
       return {
-        name: file.name,
-        url: urlData.publicUrl,
-        type: file.type,
-        size: file.size,
+        result: {
+          name: file.name,
+          url: urlData.publicUrl,
+          type: file.type,
+          size: file.size,
+        },
+        failed: null,
       };
     } catch (error: any) {
-      console.error(`Failed to upload ${file.name}:`, error);
-      return null;
+      console.error(`Failed to upload ${file.name} (attempt ${retryCount + 1}):`, error);
+      return {
+        result: null,
+        failed: {
+          file,
+          error: error.message || 'Erro desconhecido',
+          retries: retryCount,
+        },
+      };
     }
   };
 
-  const uploadBatch = async (batch: File[]): Promise<{ uploaded: UploadedFile[]; bytesUploaded: number }> => {
+  const uploadBatchWithRetry = async (
+    batch: File[],
+    onProgress: (uploaded: UploadedFile[], failed: FailedFile[], bytes: number) => void
+  ) => {
     const results = await Promise.all(
-      batch.map(file => uploadSingleFile(file))
+      batch.map(file => uploadSingleFile(file, 0))
     );
-    const uploaded = results.filter((r): r is UploadedFile => r !== null);
-    const bytesUploaded = uploaded.reduce((acc, f) => acc + f.size, 0);
-    return { uploaded, bytesUploaded };
+    
+    let uploaded = results.filter(r => r.result !== null).map(r => r.result!);
+    let failed = results.filter(r => r.failed !== null).map(r => r.failed!);
+    let bytesUploaded = uploaded.reduce((acc, f) => acc + f.size, 0);
+
+    // Auto-retry failed files up to maxRetries
+    let retryAttempt = 1;
+    while (failed.length > 0 && retryAttempt <= maxRetries && !cancelRef.current) {
+      await new Promise(resolve => setTimeout(resolve, 500 * retryAttempt)); // Exponential backoff
+      
+      const retryResults = await Promise.all(
+        failed.map(f => uploadSingleFile(f.file, retryAttempt))
+      );
+      
+      const newUploaded = retryResults.filter(r => r.result !== null).map(r => r.result!);
+      const stillFailed = retryResults.filter(r => r.failed !== null).map(r => r.failed!);
+      
+      uploaded = [...uploaded, ...newUploaded];
+      bytesUploaded += newUploaded.reduce((acc, f) => acc + f.size, 0);
+      failed = stillFailed;
+      
+      retryAttempt++;
+    }
+
+    onProgress(uploaded, failed, bytesUploaded);
+    return { uploaded, failed, bytesUploaded };
   };
 
   const startUpload = async () => {
@@ -140,18 +188,21 @@ export const BulkMediaUploader = ({
     setIsUploading(true);
     setIsPaused(false);
     pauseRef.current = false;
+    cancelRef.current = false;
 
     const startTime = Date.now();
     setStats(prev => ({ ...prev, startTime }));
 
     const allUploaded: UploadedFile[] = [];
+    const allFailed: FailedFile[] = [];
     const allErrors: string[] = [];
     let completed = 0;
-    let failed = 0;
     let totalBytesUploaded = 0;
 
     for (let i = 0; i < files.length; i += concurrency) {
-      while (pauseRef.current) {
+      if (cancelRef.current) break;
+
+      while (pauseRef.current && !cancelRef.current) {
         await new Promise(resolve => setTimeout(resolve, 100));
       }
 
@@ -160,29 +211,33 @@ export const BulkMediaUploader = ({
       
       setProgress(prev => ({ ...prev, currentBatch: batchNumber }));
 
-      const { uploaded, bytesUploaded } = await uploadBatch(batch);
+      const { uploaded, failed, bytesUploaded } = await uploadBatchWithRetry(
+        batch,
+        (up, fail, bytes) => {
+          // Real-time progress update
+        }
+      );
       
       completed += uploaded.length;
-      failed += batch.length - uploaded.length;
       totalBytesUploaded += bytesUploaded;
       
-      if (uploaded.length < batch.length) {
-        const failedCount = batch.length - uploaded.length;
-        allErrors.push(`Lote ${batchNumber}: ${failedCount} arquivo(s) falharam`);
+      if (failed.length > 0) {
+        allErrors.push(`Lote ${batchNumber}: ${failed.length} arquivo(s) falharam após ${maxRetries} tentativas`);
       }
 
       allUploaded.push(...uploaded);
+      allFailed.push(...failed);
       
       // Calculate speed and ETA
       const elapsedSeconds = (Date.now() - startTime) / 1000;
       const filesPerSecond = completed / elapsedSeconds;
-      const remainingFiles = files.length - completed - failed;
+      const remainingFiles = files.length - completed - allFailed.length;
       const estimatedSecondsRemaining = filesPerSecond > 0 ? remainingFiles / filesPerSecond : 0;
 
       setProgress({
         total: files.length,
         completed,
-        failed,
+        failed: allFailed.length,
         currentBatch: batchNumber,
       });
       
@@ -194,10 +249,77 @@ export const BulkMediaUploader = ({
       });
       
       setUploadedFiles([...allUploaded]);
+      setFailedFiles([...allFailed]);
       setErrors([...allErrors]);
     }
 
     setIsUploading(false);
+    onFilesUploaded(allUploaded);
+  };
+
+  const retryFailedFiles = async () => {
+    if (failedFiles.length === 0) return;
+
+    setIsRetrying(true);
+    setIsUploading(true);
+    cancelRef.current = false;
+
+    const startTime = Date.now();
+    const filesToRetry = failedFiles.map(f => f.file);
+    
+    const allUploaded: UploadedFile[] = [...uploadedFiles];
+    const allFailed: FailedFile[] = [];
+    let completed = uploadedFiles.length;
+    let totalBytesUploaded = stats.bytesUploaded;
+
+    for (let i = 0; i < filesToRetry.length; i += concurrency) {
+      if (cancelRef.current) break;
+
+      const batch = filesToRetry.slice(i, i + concurrency);
+      const batchNumber = Math.floor(i / concurrency) + 1;
+
+      const { uploaded, failed, bytesUploaded } = await uploadBatchWithRetry(
+        batch,
+        () => {}
+      );
+
+      completed += uploaded.length;
+      totalBytesUploaded += bytesUploaded;
+
+      allUploaded.push(...uploaded);
+      allFailed.push(...failed);
+
+      const elapsedSeconds = (Date.now() - startTime) / 1000;
+      const filesPerSecond = (completed - uploadedFiles.length) / elapsedSeconds || 0;
+      const remainingFiles = filesToRetry.length - (completed - uploadedFiles.length) - allFailed.length;
+      const estimatedSecondsRemaining = filesPerSecond > 0 ? remainingFiles / filesPerSecond : 0;
+
+      setProgress({
+        total: files.length,
+        completed,
+        failed: allFailed.length,
+        currentBatch: batchNumber,
+      });
+
+      setStats(prev => ({
+        ...prev,
+        bytesUploaded: totalBytesUploaded,
+        filesPerSecond,
+        estimatedSecondsRemaining,
+      }));
+
+      setUploadedFiles([...allUploaded]);
+      setFailedFiles([...allFailed]);
+    }
+
+    if (allFailed.length === 0) {
+      setErrors([]);
+    } else {
+      setErrors([`${allFailed.length} arquivo(s) ainda falharam após retry`]);
+    }
+
+    setIsUploading(false);
+    setIsRetrying(false);
     onFilesUploaded(allUploaded);
   };
 
@@ -207,14 +329,17 @@ export const BulkMediaUploader = ({
   };
 
   const cancelUpload = () => {
+    cancelRef.current = true;
     setIsUploading(false);
     setIsPaused(false);
+    setIsRetrying(false);
     pauseRef.current = false;
   };
 
   const clearFiles = () => {
     setFiles([]);
     setUploadedFiles([]);
+    setFailedFiles([]);
     setErrors([]);
     setTotalSize(0);
     setProgress({ total: 0, completed: 0, failed: 0, currentBatch: 0 });
@@ -300,7 +425,7 @@ export const BulkMediaUploader = ({
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            Sem limite de tamanho por arquivo. Uploads paralelos para máxima velocidade.
+            Sem limite de tamanho. Retry automático ({maxRetries}x) para falhas.
           </p>
         </div>
       )}
@@ -322,13 +447,15 @@ export const BulkMediaUploader = ({
                   <Loader2 className="w-5 h-5 text-primary animate-spin" />
                 )}
                 <span className="font-medium">
-                  {isPaused ? "Pausado" : "Enviando..."}
+                  {isRetrying ? "Retentando falhas..." : isPaused ? "Pausado" : "Enviando..."}
                 </span>
               </div>
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={togglePause}>
-                  {isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
-                </Button>
+                {!isRetrying && (
+                  <Button size="sm" variant="outline" onClick={togglePause}>
+                    {isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
+                  </Button>
+                )}
                 <Button size="sm" variant="destructive" onClick={cancelUpload}>
                   <X className="w-4 h-4" />
                 </Button>
@@ -380,6 +507,7 @@ export const BulkMediaUploader = ({
 
             <div className="text-xs text-muted-foreground text-center">
               {progressPercent}% completo • Lote {progress.currentBatch} de {Math.ceil(progress.total / concurrency)}
+              {" • "} Auto-retry: {maxRetries}x
             </div>
           </motion.div>
         )}
@@ -392,31 +520,43 @@ export const BulkMediaUploader = ({
           animate={{ opacity: 1, y: 0 }}
           className="p-4 bg-green-500/10 border border-green-500/30 rounded-xl"
         >
-          <div className="flex items-center gap-2 mb-2">
-            <CheckCircle2 className="w-5 h-5 text-green-500" />
-            <span className="font-medium text-green-500">Upload Concluído!</span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-green-500" />
+              <span className="font-medium text-green-500">Upload Concluído!</span>
+            </div>
+            {failedFiles.length > 0 && (
+              <Button size="sm" variant="outline" onClick={retryFailedFiles}>
+                <RotateCcw className="w-4 h-4 mr-1" />
+                Retentar {failedFiles.length} falha(s)
+              </Button>
+            )}
           </div>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground mt-1">
             {uploadedFiles.length.toLocaleString()} arquivos enviados ({formatBytes(stats.bytesUploaded)})
-            {progress.failed > 0 && (
-              <span className="text-red-500"> • {progress.failed} falhas</span>
+            {failedFiles.length > 0 && (
+              <span className="text-red-500"> • {failedFiles.length} falha(s)</span>
             )}
           </p>
         </motion.div>
       )}
 
-      {/* Errors */}
-      {errors.length > 0 && (
+      {/* Errors with Retry Option */}
+      {errors.length > 0 && !isUploading && (
         <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
-          <div className="flex items-center gap-2 mb-1">
-            <AlertCircle className="w-4 h-4 text-red-500" />
-            <span className="text-sm font-medium text-red-500">Alguns arquivos falharam</span>
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-red-500" />
+              <span className="text-sm font-medium text-red-500">
+                {failedFiles.length} arquivo(s) falharam
+              </span>
+            </div>
           </div>
           <div className="text-xs text-muted-foreground max-h-20 overflow-y-auto">
-            {errors.slice(0, 5).map((err, i) => (
-              <div key={i}>{err}</div>
+            {failedFiles.slice(0, 5).map((f, i) => (
+              <div key={i}>{f.file.name}: {f.error}</div>
             ))}
-            {errors.length > 5 && <div>...e mais {errors.length - 5} erros</div>}
+            {failedFiles.length > 5 && <div>...e mais {failedFiles.length - 5} erros</div>}
           </div>
         </div>
       )}
