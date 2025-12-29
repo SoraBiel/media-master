@@ -12,6 +12,8 @@ import {
   Loader2,
   Image,
   MessageSquare,
+  Users,
+  Timer,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -48,6 +50,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -78,12 +81,17 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
   const [resendingId, setResendingId] = useState<string | null>(null);
   const [sendingImageId, setSendingImageId] = useState<string | null>(null);
   const [sendingRemarketingId, setSendingRemarketingId] = useState<string | null>(null);
+  const [sendingBulkRemarketing, setSendingBulkRemarketing] = useState(false);
   const [imageDialogOpen, setImageDialogOpen] = useState(false);
   const [remarketingDialogOpen, setRemarketingDialogOpen] = useState(false);
+  const [bulkRemarketingDialogOpen, setBulkRemarketingDialogOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<FunnelPayment | null>(null);
   const [imageUrl, setImageUrl] = useState('');
   const [imageCaption, setImageCaption] = useState('');
   const [remarketingMessage, setRemarketingMessage] = useState('');
+  const [bulkRemarketingMessage, setBulkRemarketingMessage] = useState('');
+  const [bulkRemarketingType, setBulkRemarketingType] = useState<'paid' | 'unpaid'>('unpaid');
+  const [bulkRemarketingMinutes, setBulkRemarketingMinutes] = useState(5);
   const { toast } = useToast();
 
   const fetchPayments = async () => {
@@ -281,6 +289,103 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
     }
   };
 
+  const handleBulkRemarketing = async () => {
+    if (!bulkRemarketingMessage) {
+      toast({
+        title: 'Erro',
+        description: 'Mensagem de remarketing é obrigatória',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setSendingBulkRemarketing(true);
+    try {
+      const botToken = await getBotToken();
+      
+      // Filter payments based on type and time
+      const now = new Date();
+      const cutoffTime = new Date(now.getTime() - bulkRemarketingMinutes * 60 * 1000);
+      
+      let targetPayments: FunnelPayment[];
+      if (bulkRemarketingType === 'unpaid') {
+        targetPayments = payments.filter(p => 
+          p.status !== 'paid' && 
+          p.lead_chat_id && 
+          new Date(p.created_at) <= cutoffTime
+        );
+      } else {
+        targetPayments = payments.filter(p => 
+          p.status === 'paid' && 
+          p.lead_chat_id && 
+          new Date(p.created_at) <= cutoffTime
+        );
+      }
+
+      if (targetPayments.length === 0) {
+        toast({
+          title: 'Nenhum lead encontrado',
+          description: `Não há leads ${bulkRemarketingType === 'paid' ? 'pagos' : 'não pagos'} com mais de ${bulkRemarketingMinutes} minutos`,
+          variant: 'destructive',
+        });
+        setSendingBulkRemarketing(false);
+        return;
+      }
+
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const payment of targetPayments) {
+        try {
+          const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: payment.lead_chat_id,
+              text: bulkRemarketingMessage,
+              parse_mode: 'HTML',
+            }),
+          });
+
+          const result = await response.json();
+          
+          if (result.ok) {
+            successCount++;
+            await supabase
+              .from('funnel_payments')
+              .update({ reminded_at: new Date().toISOString() })
+              .eq('id', payment.id);
+          } else {
+            errorCount++;
+          }
+          
+          // Small delay between messages
+          await new Promise(resolve => setTimeout(resolve, 300));
+        } catch {
+          errorCount++;
+        }
+      }
+
+      toast({
+        title: 'Remarketing enviado!',
+        description: `${successCount} mensagens enviadas${errorCount > 0 ? `, ${errorCount} erros` : ''}`,
+      });
+
+      setBulkRemarketingDialogOpen(false);
+      setBulkRemarketingMessage('');
+      fetchPayments();
+    } catch (error: unknown) {
+      console.error('Error sending bulk remarketing:', error);
+      toast({
+        title: 'Erro ao enviar remarketing',
+        description: error instanceof Error ? error.message : 'Erro desconhecido',
+        variant: 'destructive',
+      });
+    } finally {
+      setSendingBulkRemarketing(false);
+    }
+  };
+
   const handleResendDelivery = async (payment: FunnelPayment) => {
     if (!payment.lead_chat_id) {
       toast({
@@ -475,7 +580,7 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
   const deliveredCount = payments.filter(p => p.delivery_status === 'delivered').length;
   const totalRevenue = paidPayments.reduce((sum, p) => sum + p.amount_cents, 0);
 
-  const renderPaymentTable = (paymentsList: FunnelPayment[], showRemarketing: boolean) => (
+  const renderPaymentTable = (paymentsList: FunnelPayment[], isPaidTab: boolean) => (
     <Table>
       <TableHeader>
         <TableRow>
@@ -483,9 +588,9 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
           <TableHead>Produto</TableHead>
           <TableHead>Valor</TableHead>
           <TableHead>Status</TableHead>
-          {!showRemarketing && <TableHead>Entrega</TableHead>}
+          {isPaidTab && <TableHead>Entrega</TableHead>}
           <TableHead>Data</TableHead>
-          <TableHead className="w-[140px]">Ações</TableHead>
+          <TableHead className="w-[180px]">Ações</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -499,7 +604,7 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
             </TableCell>
             <TableCell>{formatPrice(payment.amount_cents)}</TableCell>
             <TableCell>{getStatusBadge(payment.status)}</TableCell>
-            {!showRemarketing && (
+            {isPaidTab && (
               <TableCell>{getDeliveryBadge(payment.delivery_status, payment.status)}</TableCell>
             )}
             <TableCell className="text-xs text-muted-foreground">
@@ -520,22 +625,26 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
                   <Image className="h-4 w-4" />
                 </Button>
 
-                {showRemarketing ? (
-                  // Botão de remarketing para não pagos
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      setSelectedPayment(payment);
-                      setRemarketingMessage('💰 Oi! Vi que você ainda não finalizou seu pagamento. Posso te ajudar com algo?');
-                      setRemarketingDialogOpen(true);
-                    }}
-                    title="Enviar Remarketing"
-                  >
-                    <MessageSquare className="h-4 w-4" />
-                  </Button>
-                ) : (
-                  // Botão de reenviar entrega para pagos
+                {/* Botão de remarketing - disponível em ambas as abas */}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedPayment(payment);
+                    setRemarketingMessage(
+                      payment.status === 'paid'
+                        ? '🎁 Oi! Temos uma oferta especial para você que já é nosso cliente!'
+                        : '💰 Oi! Vi que você ainda não finalizou seu pagamento. Posso te ajudar com algo?'
+                    );
+                    setRemarketingDialogOpen(true);
+                  }}
+                  title="Enviar Remarketing"
+                >
+                  <MessageSquare className="h-4 w-4" />
+                </Button>
+
+                {/* Botão de reenviar entrega - apenas para pagos */}
+                {isPaidTab && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button
@@ -584,10 +693,20 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
     <div className="h-full flex flex-col bg-background">
       <div className="p-4 border-b flex items-center justify-between">
         <h2 className="font-semibold text-lg">Pagamentos</h2>
-        <Button variant="outline" size="sm" onClick={fetchPayments} disabled={isLoading}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-          Atualizar
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => setBulkRemarketingDialogOpen(true)}
+          >
+            <Users className="h-4 w-4 mr-2" />
+            Remarketing em Massa
+          </Button>
+          <Button variant="outline" size="sm" onClick={fetchPayments} disabled={isLoading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+            Atualizar
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-4 gap-3 p-4 border-b">
@@ -639,7 +758,7 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
                 <p>Nenhum pagamento confirmado</p>
               </div>
             ) : (
-              renderPaymentTable(paidPayments, false)
+              renderPaymentTable(paidPayments, true)
             )}
           </ScrollArea>
         </TabsContent>
@@ -652,7 +771,7 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
                 <p>Nenhum pagamento pendente</p>
               </div>
             ) : (
-              renderPaymentTable(unpaidPayments, true)
+              renderPaymentTable(unpaidPayments, false)
             )}
           </ScrollArea>
         </TabsContent>
@@ -742,6 +861,100 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
                 <MessageSquare className="h-4 w-4 mr-2" />
               )}
               Enviar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para remarketing em massa */}
+      <Dialog open={bulkRemarketingDialogOpen} onOpenChange={setBulkRemarketingDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Remarketing em Massa
+            </DialogTitle>
+            <DialogDescription>
+              Envie mensagens de remarketing para múltiplos leads de uma vez
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Tipo de Lead</Label>
+              <Select value={bulkRemarketingType} onValueChange={(v) => setBulkRemarketingType(v as 'paid' | 'unpaid')}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unpaid">
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-amber-500" />
+                      Não Pagos ({unpaidCount})
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="paid">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      Pagos ({paidCount})
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="flex items-center gap-2">
+                <Timer className="h-4 w-4" />
+                Tempo mínimo (minutos)
+              </Label>
+              <p className="text-xs text-muted-foreground mb-2">
+                Apenas leads criados há mais de X minutos receberão a mensagem
+              </p>
+              <Input
+                type="number"
+                min={1}
+                max={1440}
+                value={bulkRemarketingMinutes}
+                onChange={(e) => setBulkRemarketingMinutes(parseInt(e.target.value) || 5)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="bulkRemarketingMessage">Mensagem</Label>
+              <Textarea
+                id="bulkRemarketingMessage"
+                placeholder={
+                  bulkRemarketingType === 'unpaid' 
+                    ? "💰 Oi! Vi que você ainda não finalizou seu pagamento..."
+                    : "🎁 Oi! Temos uma oferta especial para você..."
+                }
+                value={bulkRemarketingMessage}
+                onChange={(e) => setBulkRemarketingMessage(e.target.value)}
+                rows={4}
+              />
+            </div>
+            <div className="bg-muted p-3 rounded-lg text-sm">
+              <p className="font-medium mb-1">Resumo:</p>
+              <p className="text-muted-foreground">
+                {bulkRemarketingType === 'unpaid' 
+                  ? `Enviará para leads NÃO PAGOS criados há mais de ${bulkRemarketingMinutes} minutos`
+                  : `Enviará para leads PAGOS criados há mais de ${bulkRemarketingMinutes} minutos`
+                }
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkRemarketingDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleBulkRemarketing} 
+              disabled={!bulkRemarketingMessage || sendingBulkRemarketing}
+            >
+              {sendingBulkRemarketing ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4 mr-2" />
+              )}
+              Enviar Remarketing
             </Button>
           </DialogFooter>
         </DialogContent>
