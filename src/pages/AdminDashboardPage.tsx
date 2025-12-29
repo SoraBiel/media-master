@@ -2407,7 +2407,7 @@ const AdminDashboardPage = () => {
                           onFilesUploaded={(files) => setBulkUploadedFiles(files)}
                           onFilesSelected={(count) => setBulkFilesCount(count)}
                           bucket="media-packs"
-                          concurrency={25}
+                          concurrency={40}
                           showManageControls={true}
                           showPreview={true}
                           enableBackgroundUpload={true}

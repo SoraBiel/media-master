@@ -1,13 +1,6 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import React, { createContext, useContext, useState, useCallback, ReactNode, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-
-interface UploadingFile {
-  name: string;
-  progress: number;
-  status: 'pending' | 'uploading' | 'completed' | 'error';
-  error?: string;
-}
 
 interface BackgroundUpload {
   id: string;
@@ -17,7 +10,6 @@ interface BackgroundUpload {
   completedFiles: number;
   failedFiles: number;
   status: 'uploading' | 'completed' | 'error' | 'cancelled';
-  files: UploadingFile[];
   uploadedUrls: { url: string; name: string; type: string; size: number }[];
   startTime: number;
   onComplete?: (files: { url: string; name: string; type: string; size: number }[]) => void;
@@ -52,18 +44,14 @@ export const useBackgroundUpload = () => {
 export const BackgroundUploadProvider = ({ children }: { children: ReactNode }) => {
   const [uploads, setUploads] = useState<BackgroundUpload[]>([]);
   const { toast } = useToast();
-  const cancelledRef = React.useRef<Set<string>>(new Set());
-
-  const updateUpload = useCallback((id: string, updates: Partial<BackgroundUpload>) => {
-    setUploads(prev => prev.map(u => u.id === id ? { ...u, ...updates } : u));
-  }, []);
+  const cancelledRef = useRef<Set<string>>(new Set());
 
   const startBackgroundUpload = useCallback(async ({
     id,
     packName,
     files,
     bucket,
-    concurrency = 25,
+    concurrency = 40, // Increased from 25 to 40
     onComplete
   }: {
     id: string;
@@ -73,13 +61,6 @@ export const BackgroundUploadProvider = ({ children }: { children: ReactNode }) 
     concurrency?: number;
     onComplete?: (files: { url: string; name: string; type: string; size: number }[]) => void;
   }) => {
-    // Initialize upload state
-    const initialFiles: UploadingFile[] = files.map(f => ({
-      name: f.name,
-      progress: 0,
-      status: 'pending'
-    }));
-
     const newUpload: BackgroundUpload = {
       id,
       packName,
@@ -88,7 +69,6 @@ export const BackgroundUploadProvider = ({ children }: { children: ReactNode }) 
       completedFiles: 0,
       failedFiles: 0,
       status: 'uploading',
-      files: initialFiles,
       uploadedUrls: [],
       startTime: Date.now(),
       onComplete
@@ -97,25 +77,19 @@ export const BackgroundUploadProvider = ({ children }: { children: ReactNode }) 
     setUploads(prev => [...prev, newUpload]);
 
     toast({
-      title: "Upload iniciado em background",
-      description: `${files.length.toLocaleString()} arquivos sendo enviados. Você pode continuar usando a Nexo.`,
+      title: "Upload turbo iniciado!",
+      description: `${files.length.toLocaleString()} arquivos • ${concurrency}x paralelo • Continue navegando!`,
     });
 
-    // Process uploads in batches
+    // Ultra-fast upload with minimal overhead
     const uploadedFiles: { url: string; name: string; type: string; size: number }[] = [];
     let completedCount = 0;
     let failedCount = 0;
+    let lastUpdateTime = 0;
+    const UPDATE_INTERVAL = 100; // Only update UI every 100ms for speed
 
-    const uploadFile = async (file: File, index: number): Promise<void> => {
+    const uploadFile = async (file: File): Promise<void> => {
       if (cancelledRef.current.has(id)) return;
-
-      // Update file status to uploading
-      setUploads(prev => prev.map(u => {
-        if (u.id !== id) return u;
-        const newFiles = [...u.files];
-        newFiles[index] = { ...newFiles[index], status: 'uploading', progress: 0 };
-        return { ...u, files: newFiles };
-      }));
 
       const timestamp = Date.now();
       const random = Math.random().toString(36).substring(7);
@@ -123,7 +97,7 @@ export const BackgroundUploadProvider = ({ children }: { children: ReactNode }) 
       const filePath = `uploads/${timestamp}_${random}_${safeFileName}`;
 
       let retries = 0;
-      const maxRetries = 3;
+      const maxRetries = 2; // Reduced retries for speed
 
       while (retries < maxRetries) {
         try {
@@ -146,85 +120,68 @@ export const BackgroundUploadProvider = ({ children }: { children: ReactNode }) 
 
           completedCount++;
 
-          // Update progress
-          setUploads(prev => prev.map(u => {
-            if (u.id !== id) return u;
-            const newFiles = [...u.files];
-            newFiles[index] = { ...newFiles[index], status: 'completed', progress: 100 };
-            return { 
-              ...u, 
-              files: newFiles, 
-              completedFiles: completedCount,
-              uploadedUrls: [...uploadedFiles]
-            };
-          }));
+          // Throttled UI updates for speed
+          const now = Date.now();
+          if (now - lastUpdateTime > UPDATE_INTERVAL) {
+            lastUpdateTime = now;
+            setUploads(prev => prev.map(u => 
+              u.id === id ? { ...u, completedFiles: completedCount, failedFiles: failedCount } : u
+            ));
+          }
 
           return;
         } catch (error: any) {
           retries++;
           if (retries >= maxRetries) {
             failedCount++;
-            setUploads(prev => prev.map(u => {
-              if (u.id !== id) return u;
-              const newFiles = [...u.files];
-              newFiles[index] = { 
-                ...newFiles[index], 
-                status: 'error', 
-                progress: 0,
-                error: error.message 
-              };
-              return { ...u, files: newFiles, failedFiles: failedCount };
-            }));
           } else {
-            // Wait with exponential backoff before retry
-            await new Promise(r => setTimeout(r, Math.pow(2, retries) * 1000));
+            await new Promise(r => setTimeout(r, 500 * retries)); // Faster retry
           }
         }
       }
     };
 
-    // Process in concurrent batches
-    const processInBatches = async () => {
-      let index = 0;
-      const executing: Promise<void>[] = [];
+    // Process with maximum parallelism
+    let index = 0;
+    const executing: Promise<void>[] = [];
 
-      for (const file of files) {
-        if (cancelledRef.current.has(id)) break;
+    for (const file of files) {
+      if (cancelledRef.current.has(id)) break;
 
-        const currentIndex = index++;
-        const promise = uploadFile(file, currentIndex).then(() => {
-          executing.splice(executing.indexOf(promise), 1);
-        });
-        executing.push(promise);
+      const promise = uploadFile(file).then(() => {
+        executing.splice(executing.indexOf(promise), 1);
+      });
+      executing.push(promise);
 
-        if (executing.length >= concurrency) {
-          await Promise.race(executing);
-        }
+      if (executing.length >= concurrency) {
+        await Promise.race(executing);
       }
+    }
 
-      await Promise.all(executing);
-    };
+    await Promise.all(executing);
 
-    await processInBatches();
-
-    // Finalize upload
+    // Final update
     if (cancelledRef.current.has(id)) {
       cancelledRef.current.delete(id);
       return;
     }
 
     const finalStatus = failedCount === files.length ? 'error' : 'completed';
-    updateUpload(id, { 
-      status: finalStatus,
-      uploadedUrls: uploadedFiles,
-      completedFiles: completedCount,
-      failedFiles: failedCount
-    });
+    setUploads(prev => prev.map(u => 
+      u.id === id ? { 
+        ...u, 
+        status: finalStatus, 
+        uploadedUrls: uploadedFiles,
+        completedFiles: completedCount,
+        failedFiles: failedCount
+      } : u
+    ));
 
     if (finalStatus === 'completed') {
+      const elapsed = ((Date.now() - newUpload.startTime) / 1000).toFixed(1);
       toast({
         title: "Upload concluído!",
-        description: `${completedCount.toLocaleString()} arquivos enviados com sucesso.`,
+        description: `${completedCount.toLocaleString()} arquivos em ${elapsed}s`,
       });
       onComplete?.(uploadedFiles);
     } else {
@@ -234,16 +191,13 @@ export const BackgroundUploadProvider = ({ children }: { children: ReactNode }) 
         variant: "destructive"
       });
     }
-  }, [toast, updateUpload]);
+  }, [toast]);
 
   const cancelUpload = useCallback((id: string) => {
     cancelledRef.current.add(id);
-    updateUpload(id, { status: 'cancelled' });
-    toast({
-      title: "Upload cancelado",
-      description: "O upload foi interrompido.",
-    });
-  }, [updateUpload, toast]);
+    setUploads(prev => prev.map(u => u.id === id ? { ...u, status: 'cancelled' } : u));
+    toast({ title: "Upload cancelado" });
+  }, [toast]);
 
   const clearCompletedUploads = useCallback(() => {
     setUploads(prev => prev.filter(u => u.status === 'uploading'));
