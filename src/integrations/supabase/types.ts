@@ -736,6 +736,8 @@ export type Database = {
       }
       funnels: {
         Row: {
+          auto_remarketing_enabled: boolean | null
+          auto_remarketing_message: string | null
           channel: string | null
           created_at: string
           description: string | null
@@ -752,6 +754,8 @@ export type Database = {
           webhook_url: string | null
         }
         Insert: {
+          auto_remarketing_enabled?: boolean | null
+          auto_remarketing_message?: string | null
           channel?: string | null
           created_at?: string
           description?: string | null
@@ -768,6 +772,8 @@ export type Database = {
           webhook_url?: string | null
         }
         Update: {
+          auto_remarketing_enabled?: boolean | null
+          auto_remarketing_message?: string | null
           channel?: string | null
           created_at?: string
           description?: string | null
