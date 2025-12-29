@@ -691,20 +691,45 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
             </TableCell>
             <TableCell>
               <div className="flex gap-1">
-                {/* Botão de enviar mídia (imagem/vídeo/áudio) */}
+                {/* Botão de enviar imagem */}
                 <Button
                   size="sm"
                   variant="outline"
+                  disabled={sendingImageId === payment.id}
                   onClick={() => {
                     setSelectedPayment(payment);
-                    setMediaType('image');
+                    setImageUrl('');
+                    setImageCaption('');
+                    setImageDialogOpen(true);
+                  }}
+                  title="Enviar Imagem"
+                >
+                  {sendingImageId === payment.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Image className="h-4 w-4" />
+                  )}
+                </Button>
+
+                {/* Botão de enviar vídeo/áudio */}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={sendingMediaId === payment.id}
+                  onClick={() => {
+                    setSelectedPayment(payment);
+                    setMediaType('video');
                     setMediaUrl('');
                     setMediaCaption('');
                     setMediaDialogOpen(true);
                   }}
-                  title="Enviar Mídia"
+                  title="Enviar Vídeo/Áudio"
                 >
-                  <Image className="h-4 w-4" />
+                  {sendingMediaId === payment.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Video className="h-4 w-4" />
+                  )}
                 </Button>
 
                 {/* Botão de remarketing - disponível em ambas as abas */}
@@ -950,6 +975,58 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
                 <Video className="h-4 w-4 mr-2" />
               ) : (
                 <FileAudio className="h-4 w-4 mr-2" />
+              )}
+              Enviar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para enviar imagem */}
+      <Dialog open={imageDialogOpen} onOpenChange={setImageDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Image className="h-5 w-5" />
+              Enviar Imagem
+            </DialogTitle>
+            <DialogDescription>
+              Envie uma imagem para {selectedPayment?.lead_name || selectedPayment?.lead_chat_id}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="imageUrl">URL da Imagem</Label>
+              <Input
+                id="imageUrl"
+                placeholder="https://exemplo.com/imagem.jpg"
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="imageCaption">Legenda (opcional)</Label>
+              <Textarea
+                id="imageCaption"
+                placeholder="Digite uma legenda..."
+                value={imageCaption}
+                onChange={(e) => setImageCaption(e.target.value)}
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setImageDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleSendImage} 
+              disabled={!imageUrl || sendingImageId === selectedPayment?.id}
+            >
+              {sendingImageId === selectedPayment?.id ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Image className="h-4 w-4 mr-2" />
               )}
               Enviar
             </Button>
