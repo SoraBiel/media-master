@@ -96,6 +96,7 @@ import { AdminTemplatesPanel } from "@/components/admin/AdminTemplatesPanel";
 import { AdminNotificationsPanel } from "@/components/admin/AdminNotificationsPanel";
 import { AdminBannersPanel } from "@/components/admin/AdminBannersPanel";
 import AdminAutomationPanel from "@/components/admin/AdminAutomationPanel";
+import { BulkMediaUploader } from "@/components/admin/BulkMediaUploader";
 import { useAdminSettings, getSettingLabel } from "@/hooks/useAdminSettings";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -381,6 +382,8 @@ const AdminDashboardPage = () => {
   const [mediaFiles, setMediaFiles] = useState<File[]>([]);
   const [mediaCoverFile, setMediaCoverFile] = useState<File | null>(null);
   const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+  const [bulkUploadedFiles, setBulkUploadedFiles] = useState<{ name: string; url: string; type: string; size: number }[]>([]);
+  const [bulkFilesCount, setBulkFilesCount] = useState(0);
   const [isUploadingTiktok, setIsUploadingTiktok] = useState(false);
   const [isUploadingModel, setIsUploadingModel] = useState(false);
   const [isUploadingTelegramGroup, setIsUploadingTelegramGroup] = useState(false);
@@ -1293,6 +1296,14 @@ const AdminDashboardPage = () => {
       return;
     }
 
+    // Use bulk uploaded files if available, otherwise use legacy mediaFiles
+    const filesToSave = bulkUploadedFiles.length > 0 ? bulkUploadedFiles : [];
+    
+    if (filesToSave.length === 0 && mediaFiles.length === 0) {
+      toast({ title: "Erro", description: "Adicione arquivos de mídia", variant: "destructive" });
+      return;
+    }
+
     setIsUploadingMedia(true);
     try {
       // Upload cover image if provided
@@ -1301,28 +1312,31 @@ const AdminDashboardPage = () => {
         coverUrl = await handleUploadImage(mediaCoverFile, "product-images");
       }
 
-      // Upload media files
-      const uploadedFiles: { name: string; url: string; type: string; size: number }[] = [];
-      for (const file of mediaFiles) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `media/${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
-        
-        const { error: uploadError } = await supabase.storage
-          .from("media-packs")
-          .upload(fileName, file);
+      // If using legacy upload (small files), upload them now
+      let uploadedFiles = filesToSave;
+      if (filesToSave.length === 0 && mediaFiles.length > 0) {
+        uploadedFiles = [];
+        for (const file of mediaFiles) {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `media/${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+          
+          const { error: uploadError } = await supabase.storage
+            .from("media-packs")
+            .upload(fileName, file);
 
-        if (uploadError) {
-          console.error("Upload error:", uploadError);
-          continue;
+          if (uploadError) {
+            console.error("Upload error:", uploadError);
+            continue;
+          }
+
+          const { data: urlData } = supabase.storage.from("media-packs").getPublicUrl(fileName);
+          uploadedFiles.push({
+            name: file.name,
+            url: urlData.publicUrl,
+            type: file.type,
+            size: file.size,
+          });
         }
-
-        const { data: urlData } = supabase.storage.from("media-packs").getPublicUrl(fileName);
-        uploadedFiles.push({
-          name: file.name,
-          url: urlData.publicUrl,
-          type: file.type,
-          size: file.size,
-        });
       }
 
       const { error } = await supabase.from("admin_media").insert({
@@ -1337,9 +1351,11 @@ const AdminDashboardPage = () => {
 
       if (error) throw error;
 
-      toast({ title: "Pacote adicionado!", description: `${mediaForm.name} foi adicionado com ${uploadedFiles.length} arquivos.` });
+      toast({ title: "Pacote adicionado!", description: `${mediaForm.name} foi adicionado com ${uploadedFiles.length.toLocaleString()} arquivos.` });
       setMediaForm({ name: "", description: "", pack_type: "10k", min_plan: "basic" });
       setMediaFiles([]);
+      setBulkUploadedFiles([]);
+      setBulkFilesCount(0);
       setMediaCoverFile(null);
       setMediaDialogOpen(false);
     } catch (error: any) {
@@ -2321,55 +2337,38 @@ const AdminDashboardPage = () => {
                       </div>
                     </div>
 
-                    {/* Media Files Upload */}
+                    {/* Bulk Media Files Upload */}
                     <div>
-                      <Label>Arquivos de Mídia</Label>
-                      <input
-                        type="file"
-                        ref={mediaFilesInputRef}
-                        accept="image/*,video/*"
-                        multiple
-                        className="hidden"
-                        onChange={(e) => {
-                          const files = Array.from(e.target.files || []);
-                          setMediaFiles(prev => [...prev, ...files]);
-                        }}
-                      />
-                      <div className="mt-2 space-y-2">
-                        <Button variant="outline" className="w-full" onClick={() => mediaFilesInputRef.current?.click()}>
-                          <Upload className="w-4 h-4 mr-2" />
-                          Adicionar Arquivos ({mediaFiles.length} selecionados)
-                        </Button>
-                        
-                        {mediaFiles.length > 0 && (
-                          <div className="max-h-40 overflow-y-auto space-y-1 p-2 bg-secondary/30 rounded-lg">
-                            {mediaFiles.map((file, index) => (
-                              <div key={index} className="flex items-center gap-2 text-sm p-1 bg-background/50 rounded">
-                                <Image className="w-3 h-3" />
-                                <span className="flex-1 truncate">{file.name}</span>
-                                <span className="text-muted-foreground text-xs">{(file.size / 1024 / 1024).toFixed(2)} MB</span>
-                                <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setMediaFiles(prev => prev.filter((_, i) => i !== index))}>
-                                  <Trash2 className="w-3 h-3" />
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                      <Label>Arquivos de Mídia (Upload em Massa)</Label>
+                      <div className="mt-2">
+                        <BulkMediaUploader
+                          onFilesUploaded={(files) => setBulkUploadedFiles(files)}
+                          onFilesSelected={(count) => setBulkFilesCount(count)}
+                          bucket="media-packs"
+                          concurrency={15}
+                        />
                       </div>
+                      {bulkUploadedFiles.length > 0 && (
+                        <p className="text-sm text-green-500 mt-2">
+                          ✓ {bulkUploadedFiles.length.toLocaleString()} arquivos prontos para salvar
+                        </p>
+                      )}
                     </div>
                     
                     <Button 
                       onClick={handleAddMedia} 
                       className="w-full telegram-gradient text-white"
-                      disabled={isUploadingMedia || !mediaForm.name}
+                      disabled={isUploadingMedia || !mediaForm.name || (bulkUploadedFiles.length === 0 && mediaFiles.length === 0)}
                     >
                       {isUploadingMedia ? (
                         <>
                           <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                          Enviando...
+                          Salvando pacote...
                         </>
+                      ) : bulkUploadedFiles.length > 0 ? (
+                        `Salvar Pacote (${bulkUploadedFiles.length.toLocaleString()} arquivos)`
                       ) : (
-                        "Adicionar Pacote"
+                        "Salvar Pacote"
                       )}
                     </Button>
                   </div>
