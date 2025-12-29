@@ -155,6 +155,7 @@ interface TikTokAccount {
   followers: number;
   likes: number;
   niche: string | null;
+  description: string | null;
   price_cents: number;
   is_sold: boolean;
   image_url: string | null;
@@ -940,6 +941,265 @@ const AdminDashboardPage = () => {
   const handleDeleteModel = async (id: string) => {
     const { error } = await supabase.from("models_for_sale").delete().eq("id", id);
     if (!error) toast({ title: "Modelo removido!" });
+  };
+
+  // Admin product edit/reactivate state
+  const [editTiktokDialogOpen, setEditTiktokDialogOpen] = useState(false);
+  const [editInstagramDialogOpen, setEditInstagramDialogOpen] = useState(false);
+  const [editTelegramDialogOpen, setEditTelegramDialogOpen] = useState(false);
+  const [editModelDialogOpen, setEditModelDialogOpen] = useState(false);
+  const [selectedEditTiktok, setSelectedEditTiktok] = useState<TikTokAccount | null>(null);
+  const [selectedEditInstagram, setSelectedEditInstagram] = useState<InstagramAccount | null>(null);
+  const [selectedEditTelegram, setSelectedEditTelegram] = useState<TelegramGroup | null>(null);
+  const [selectedEditModel, setSelectedEditModel] = useState<ModelForSale | null>(null);
+
+  // Open edit dialogs
+  const openEditTiktok = (acc: TikTokAccount) => {
+    setSelectedEditTiktok(acc);
+    setTiktokForm({
+      username: acc.username,
+      followers: String(acc.followers || 0),
+      likes: String(acc.likes || 0),
+      description: acc.description || "",
+      niche: acc.niche || "",
+      price: String(acc.price_cents / 100),
+      deliverable_login: acc.deliverable_login || "",
+      deliverable_password: acc.deliverable_password || "",
+      deliverable_email: acc.deliverable_email || "",
+      deliverable_notes: acc.deliverable_notes || "",
+    });
+    setEditTiktokDialogOpen(true);
+  };
+
+  const openEditInstagram = (acc: InstagramAccount) => {
+    setSelectedEditInstagram(acc);
+    setInstagramForm({
+      username: acc.username,
+      followers: String(acc.followers || 0),
+      following: String(acc.following || 0),
+      posts_count: String(acc.posts_count || 0),
+      engagement_rate: String(acc.engagement_rate || 0),
+      description: acc.description || "",
+      niche: acc.niche || "",
+      price: String(acc.price_cents / 100),
+      is_verified: acc.is_verified || false,
+      deliverable_login: acc.deliverable_login || "",
+      deliverable_password: acc.deliverable_password || "",
+      deliverable_email: acc.deliverable_email || "",
+      deliverable_notes: acc.deliverable_notes || "",
+    });
+    setEditInstagramDialogOpen(true);
+  };
+
+  const openEditTelegram = (grp: TelegramGroup) => {
+    setSelectedEditTelegram(grp);
+    setTelegramGroupForm({
+      group_name: grp.group_name,
+      group_username: grp.group_username || "",
+      members_count: String(grp.members_count || 0),
+      description: grp.description || "",
+      niche: grp.niche || "",
+      price: String(grp.price_cents / 100),
+      group_type: grp.group_type || "group",
+      deliverable_invite_link: grp.deliverable_invite_link || "",
+      deliverable_notes: grp.deliverable_notes || "",
+    });
+    setEditTelegramDialogOpen(true);
+  };
+
+  const openEditModel = (model: ModelForSale) => {
+    setSelectedEditModel(model);
+    setModelForm({
+      name: model.name,
+      bio: model.bio || "",
+      niche: model.niche || "",
+      category: model.category || "black",
+      price: String(model.price_cents / 100),
+      deliverable_link: model.deliverable_link || "",
+      deliverable_notes: model.deliverable_notes || "",
+    });
+    setEditModelDialogOpen(true);
+  };
+
+  // Handle update functions
+  const handleUpdateTiktok = async () => {
+    if (!selectedEditTiktok) return;
+    setIsUploadingTiktok(true);
+    try {
+      let imageUrl = selectedEditTiktok.image_url;
+      if (tiktokImageFile) {
+        imageUrl = await handleUploadImage(tiktokImageFile, "product-images");
+      }
+      const { error } = await supabase.from("tiktok_accounts").update({
+        username: tiktokForm.username,
+        followers: parseInt(tiktokForm.followers) || 0,
+        likes: parseInt(tiktokForm.likes) || 0,
+        description: tiktokForm.description,
+        niche: tiktokForm.niche,
+        price_cents: Math.round(parseFloat(tiktokForm.price) * 100),
+        image_url: imageUrl,
+        deliverable_login: tiktokForm.deliverable_login || null,
+        deliverable_password: tiktokForm.deliverable_password || null,
+        deliverable_email: tiktokForm.deliverable_email || null,
+        deliverable_notes: tiktokForm.deliverable_notes || null,
+      }).eq("id", selectedEditTiktok.id);
+      if (error) throw error;
+      toast({ title: "Conta TikTok atualizada!" });
+      setEditTiktokDialogOpen(false);
+      setTiktokImageFile(null);
+      fetchTikTokAccounts();
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    } finally {
+      setIsUploadingTiktok(false);
+    }
+  };
+
+  const handleUpdateInstagram = async () => {
+    if (!selectedEditInstagram) return;
+    setIsUploadingInstagram(true);
+    try {
+      let imageUrl = selectedEditInstagram.image_url;
+      if (instagramImageFile) {
+        imageUrl = await handleUploadImage(instagramImageFile, "product-images");
+      }
+      const { error } = await supabase.from("instagram_accounts").update({
+        username: instagramForm.username.replace("@", ""),
+        followers: parseInt(instagramForm.followers) || 0,
+        following: parseInt(instagramForm.following) || 0,
+        posts_count: parseInt(instagramForm.posts_count) || 0,
+        engagement_rate: parseFloat(instagramForm.engagement_rate) || 0,
+        description: instagramForm.description || null,
+        niche: instagramForm.niche || null,
+        price_cents: Math.round(parseFloat(instagramForm.price) * 100) || 0,
+        is_verified: instagramForm.is_verified,
+        image_url: imageUrl,
+        deliverable_login: instagramForm.deliverable_login || null,
+        deliverable_password: instagramForm.deliverable_password || null,
+        deliverable_email: instagramForm.deliverable_email || null,
+        deliverable_notes: instagramForm.deliverable_notes || null,
+      }).eq("id", selectedEditInstagram.id);
+      if (error) throw error;
+      toast({ title: "Conta Instagram atualizada!" });
+      setEditInstagramDialogOpen(false);
+      setInstagramImageFile(null);
+      fetchInstagramAccounts();
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    } finally {
+      setIsUploadingInstagram(false);
+    }
+  };
+
+  const handleUpdateTelegram = async () => {
+    if (!selectedEditTelegram) return;
+    setIsUploadingTelegramGroup(true);
+    try {
+      let imageUrl = selectedEditTelegram.image_url;
+      if (telegramGroupImageFile) {
+        imageUrl = await handleUploadImage(telegramGroupImageFile, "product-images");
+      }
+      const { error } = await supabase.from("telegram_groups").update({
+        group_name: telegramGroupForm.group_name,
+        group_username: telegramGroupForm.group_username || null,
+        members_count: parseInt(telegramGroupForm.members_count) || 0,
+        description: telegramGroupForm.description || null,
+        niche: telegramGroupForm.niche || null,
+        price_cents: Math.round(parseFloat(telegramGroupForm.price) * 100) || 0,
+        group_type: telegramGroupForm.group_type,
+        image_url: imageUrl,
+        deliverable_invite_link: telegramGroupForm.deliverable_invite_link || null,
+        deliverable_notes: telegramGroupForm.deliverable_notes || null,
+      }).eq("id", selectedEditTelegram.id);
+      if (error) throw error;
+      toast({ title: "Grupo Telegram atualizado!" });
+      setEditTelegramDialogOpen(false);
+      setTelegramGroupImageFile(null);
+      fetchTelegramGroups();
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    } finally {
+      setIsUploadingTelegramGroup(false);
+    }
+  };
+
+  const handleUpdateModel = async () => {
+    if (!selectedEditModel) return;
+    setIsUploadingModel(true);
+    try {
+      let imageUrl = selectedEditModel.image_url;
+      if (modelImageFile) {
+        imageUrl = await handleUploadImage(modelImageFile, "product-images");
+      }
+      const { error } = await supabase.from("models_for_sale").update({
+        name: modelForm.name,
+        bio: modelForm.bio,
+        niche: modelForm.niche,
+        category: modelForm.category,
+        price_cents: Math.round(parseFloat(modelForm.price) * 100),
+        image_url: imageUrl,
+        deliverable_link: modelForm.deliverable_link || null,
+        deliverable_notes: modelForm.deliverable_notes || null,
+      }).eq("id", selectedEditModel.id);
+      if (error) throw error;
+      toast({ title: "Modelo atualizado!" });
+      setEditModelDialogOpen(false);
+      setModelImageFile(null);
+      fetchModels();
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    } finally {
+      setIsUploadingModel(false);
+    }
+  };
+
+  // Reactivate functions (reset sold status and clear buyer info)
+  const handleReactivateTiktok = async (id: string) => {
+    const { error } = await supabase.from("tiktok_accounts").update({
+      is_sold: false,
+      sold_at: null,
+      sold_to_user_id: null,
+    }).eq("id", id);
+    if (!error) {
+      toast({ title: "Conta TikTok reativada!", description: "A conta está novamente disponível para venda." });
+      fetchTikTokAccounts();
+    }
+  };
+
+  const handleReactivateInstagram = async (id: string) => {
+    const { error } = await supabase.from("instagram_accounts").update({
+      is_sold: false,
+      sold_at: null,
+      sold_to_user_id: null,
+    }).eq("id", id);
+    if (!error) {
+      toast({ title: "Conta Instagram reativada!", description: "A conta está novamente disponível para venda." });
+      fetchInstagramAccounts();
+    }
+  };
+
+  const handleReactivateTelegram = async (id: string) => {
+    const { error } = await supabase.from("telegram_groups").update({
+      is_sold: false,
+      sold_at: null,
+      sold_to_user_id: null,
+    }).eq("id", id);
+    if (!error) {
+      toast({ title: "Grupo Telegram reativado!", description: "O grupo está novamente disponível para venda." });
+      fetchTelegramGroups();
+    }
+  };
+
+  const handleReactivateModel = async (id: string) => {
+    const { error } = await supabase.from("models_for_sale").update({
+      is_sold: false,
+      sold_at: null,
+      sold_to_user_id: null,
+    }).eq("id", id);
+    if (!error) {
+      toast({ title: "Modelo reativado!", description: "O modelo está novamente disponível para venda." });
+      fetchModels();
+    }
   };
 
   // Reseller product edit handlers
@@ -2286,7 +2546,27 @@ const AdminDashboardPage = () => {
                           <TableCell>{account.niche || "—"}</TableCell>
                           <TableCell className="font-semibold">{formatPrice(account.price_cents)}</TableCell>
                           <TableCell><Badge variant={account.is_sold ? "secondary" : "default"}>{account.is_sold ? "Vendido" : "Disponível"}</Badge></TableCell>
-                          <TableCell><Button variant="ghost" size="icon" onClick={() => handleDeleteTikTokAccount(account.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button></TableCell>
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon"><MoreVertical className="w-4 h-4" /></Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => openEditTiktok(account)}>
+                                  <Eye className="w-4 h-4 mr-2" />Editar
+                                </DropdownMenuItem>
+                                {account.is_sold && (
+                                  <DropdownMenuItem onClick={() => handleReactivateTiktok(account.id)}>
+                                    <RefreshCw className="w-4 h-4 mr-2" />Reativar
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => handleDeleteTikTokAccount(account.id)} className="text-destructive">
+                                  <Trash2 className="w-4 h-4 mr-2" />Excluir
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
                         </TableRow>
                       ))}
                       {tiktokAccounts.filter(a => !a.created_by).length === 0 && (
@@ -2428,7 +2708,27 @@ const AdminDashboardPage = () => {
                           <TableCell>{account.niche || "—"}</TableCell>
                           <TableCell className="font-semibold">{formatPrice(account.price_cents)}</TableCell>
                           <TableCell><Badge variant={account.is_sold ? "secondary" : "default"}>{account.is_sold ? "Vendido" : "Disponível"}</Badge></TableCell>
-                          <TableCell><Button variant="ghost" size="icon" onClick={() => handleDeleteInstagramAccount(account.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button></TableCell>
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon"><MoreVertical className="w-4 h-4" /></Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => openEditInstagram(account)}>
+                                  <Eye className="w-4 h-4 mr-2" />Editar
+                                </DropdownMenuItem>
+                                {account.is_sold && (
+                                  <DropdownMenuItem onClick={() => handleReactivateInstagram(account.id)}>
+                                    <RefreshCw className="w-4 h-4 mr-2" />Reativar
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => handleDeleteInstagramAccount(account.id)} className="text-destructive">
+                                  <Trash2 className="w-4 h-4 mr-2" />Excluir
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
                         </TableRow>
                       ))}
                       {instagramAccounts.filter(a => !a.created_by).length === 0 && (
@@ -2528,7 +2828,27 @@ const AdminDashboardPage = () => {
                           <TableCell>{group.niche || "—"}</TableCell>
                           <TableCell className="font-semibold">{formatPrice(group.price_cents)}</TableCell>
                           <TableCell><Badge variant={group.is_sold ? "secondary" : "default"}>{group.is_sold ? "Vendido" : "Disponível"}</Badge></TableCell>
-                          <TableCell><Button variant="ghost" size="icon" onClick={() => handleDeleteTelegramGroup(group.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button></TableCell>
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon"><MoreVertical className="w-4 h-4" /></Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => openEditTelegram(group)}>
+                                  <Eye className="w-4 h-4 mr-2" />Editar
+                                </DropdownMenuItem>
+                                {group.is_sold && (
+                                  <DropdownMenuItem onClick={() => handleReactivateTelegram(group.id)}>
+                                    <RefreshCw className="w-4 h-4 mr-2" />Reativar
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => handleDeleteTelegramGroup(group.id)} className="text-destructive">
+                                  <Trash2 className="w-4 h-4 mr-2" />Excluir
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
                         </TableRow>
                       ))}
                       {telegramGroups.length === 0 && (
@@ -2660,7 +2980,27 @@ const AdminDashboardPage = () => {
                           <TableCell>{model.niche || "—"}</TableCell>
                           <TableCell className="font-semibold">{formatPrice(model.price_cents)}</TableCell>
                           <TableCell><Badge variant={model.is_sold ? "secondary" : "default"}>{model.is_sold ? "Vendido" : "Disponível"}</Badge></TableCell>
-                          <TableCell><Button variant="ghost" size="icon" onClick={() => handleDeleteModel(model.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button></TableCell>
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon"><MoreVertical className="w-4 h-4" /></Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => openEditModel(model)}>
+                                  <Eye className="w-4 h-4 mr-2" />Editar
+                                </DropdownMenuItem>
+                                {model.is_sold && (
+                                  <DropdownMenuItem onClick={() => handleReactivateModel(model.id)}>
+                                    <RefreshCw className="w-4 h-4 mr-2" />Reativar
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => handleDeleteModel(model.id)} className="text-destructive">
+                                  <Trash2 className="w-4 h-4 mr-2" />Excluir
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
                         </TableRow>
                       ))}
                       {models.filter(m => m.category === "black").length === 0 && (
