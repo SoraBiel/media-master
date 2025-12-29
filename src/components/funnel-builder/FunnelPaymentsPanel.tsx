@@ -16,6 +16,8 @@ import {
   Timer,
   Video,
   Music,
+  Settings,
+  Zap,
   FileAudio,
   Upload,
 } from 'lucide-react';
@@ -120,6 +122,13 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
   const [mediaDragging, setMediaDragging] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const mediaInputRef = useRef<HTMLInputElement>(null);
+  
+  // Auto remarketing state
+  const [autoRemarketingDialogOpen, setAutoRemarketingDialogOpen] = useState(false);
+  const [autoRemarketingEnabled, setAutoRemarketingEnabled] = useState(false);
+  const [autoRemarketingMessage, setAutoRemarketingMessage] = useState('');
+  const [autoRemarketingMinutes, setAutoRemarketingMinutes] = useState(5);
+  const [savingAutoRemarketing, setSavingAutoRemarketing] = useState(false);
   const { toast } = useToast();
 
   const fetchPayments = async () => {
@@ -190,9 +199,61 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
     }
   };
 
+  const fetchFunnelSettings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('funnels')
+        .select('auto_remarketing_enabled, auto_remarketing_message, payment_reminder_minutes')
+        .eq('id', funnelId)
+        .single();
+
+      if (error) throw error;
+
+      setAutoRemarketingEnabled(data?.auto_remarketing_enabled || false);
+      setAutoRemarketingMessage(data?.auto_remarketing_message || '');
+      setAutoRemarketingMinutes(data?.payment_reminder_minutes || 5);
+    } catch (error) {
+      console.error('Error fetching funnel settings:', error);
+    }
+  };
+
+  const handleSaveAutoRemarketing = async () => {
+    setSavingAutoRemarketing(true);
+    try {
+      const { error } = await supabase
+        .from('funnels')
+        .update({
+          auto_remarketing_enabled: autoRemarketingEnabled,
+          auto_remarketing_message: autoRemarketingMessage,
+          payment_reminder_minutes: autoRemarketingMinutes,
+        })
+        .eq('id', funnelId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Configurações salvas!',
+        description: autoRemarketingEnabled 
+          ? `Remarketing automático ativado (${autoRemarketingMinutes} min)`
+          : 'Remarketing automático desativado',
+      });
+      setAutoRemarketingDialogOpen(false);
+    } catch (error: unknown) {
+      console.error('Error saving auto remarketing:', error);
+      toast({
+        title: 'Erro ao salvar',
+        description: error instanceof Error ? error.message : 'Erro desconhecido',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingAutoRemarketing(false);
+    }
+  };
+
   useEffect(() => {
     fetchPayments();
     fetchRemarketingCounts();
+    fetchFunnelSettings();
 
     const channel = supabase
       .channel(`funnel-payments-${funnelId}`)
@@ -1250,15 +1311,32 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
   return (
     <div className="h-full flex flex-col bg-background">
       <div className="p-4 border-b flex items-center justify-between">
-        <h2 className="font-semibold text-lg">Pagamentos</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="font-semibold text-lg">Pagamentos</h2>
+          {autoRemarketingEnabled && (
+            <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30">
+              <Zap className="h-3 w-3 mr-1" />
+              Auto Remarketing
+            </Badge>
+          )}
+        </div>
         <div className="flex gap-2">
+          <Button 
+            variant={autoRemarketingEnabled ? "default" : "outline"}
+            size="sm" 
+            onClick={() => setAutoRemarketingDialogOpen(true)}
+            className={autoRemarketingEnabled ? "bg-green-600 hover:bg-green-700" : ""}
+          >
+            <Zap className="h-4 w-4 mr-2" />
+            {autoRemarketingEnabled ? 'Automático Ativo' : 'Remarketing Auto'}
+          </Button>
           <Button 
             variant="outline" 
             size="sm" 
             onClick={() => setBulkRemarketingDialogOpen(true)}
           >
             <Users className="h-4 w-4 mr-2" />
-            Remarketing em Massa
+            Em Massa
           </Button>
           <Button variant="outline" size="sm" onClick={fetchPayments} disabled={isLoading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
@@ -2106,6 +2184,115 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
                 <Send className="h-4 w-4 mr-2" />
               )}
               Enviar Remarketing
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para configurar remarketing automático */}
+      <Dialog open={autoRemarketingDialogOpen} onOpenChange={setAutoRemarketingDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-amber-500" />
+              Remarketing Automático
+            </DialogTitle>
+            <DialogDescription>
+              Configure o envio automático de mensagens de remarketing para leads não pagos
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Toggle de ativar/desativar */}
+            <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/50">
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-full ${autoRemarketingEnabled ? 'bg-green-500/20' : 'bg-muted'}`}>
+                  <Zap className={`h-5 w-5 ${autoRemarketingEnabled ? 'text-green-500' : 'text-muted-foreground'}`} />
+                </div>
+                <div>
+                  <p className="font-medium">Remarketing Automático</p>
+                  <p className="text-xs text-muted-foreground">
+                    {autoRemarketingEnabled ? 'Ativo' : 'Desativado'}
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant={autoRemarketingEnabled ? "default" : "outline"}
+                size="sm"
+                onClick={() => setAutoRemarketingEnabled(!autoRemarketingEnabled)}
+                className={autoRemarketingEnabled ? "bg-green-600 hover:bg-green-700" : ""}
+              >
+                {autoRemarketingEnabled ? 'Ativado' : 'Ativar'}
+              </Button>
+            </div>
+
+            {autoRemarketingEnabled && (
+              <>
+                <div>
+                  <Label className="flex items-center gap-2">
+                    <Timer className="h-4 w-4" />
+                    Tempo de espera (minutos)
+                  </Label>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Tempo após criação do pagamento para enviar o remarketing
+                  </p>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={1440}
+                    value={autoRemarketingMinutes}
+                    onChange={(e) => setAutoRemarketingMinutes(parseInt(e.target.value) || 5)}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="autoRemarketingMessage">Mensagem de remarketing</Label>
+                  <Textarea
+                    id="autoRemarketingMessage"
+                    placeholder="💰 Oi! Vi que você ainda não finalizou seu pagamento. Posso ajudar?"
+                    value={autoRemarketingMessage}
+                    onChange={(e) => setAutoRemarketingMessage(e.target.value)}
+                    rows={3}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Variáveis: {'{nome}'}, {'{produto}'}, {'{valor}'}
+                  </p>
+                </div>
+
+                <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                  <p className="text-sm text-amber-600 flex items-start gap-2">
+                    <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                    <span>
+                      O remarketing automático é executado em background pelo sistema e enviará mensagens 
+                      automaticamente para leads não pagos após {autoRemarketingMinutes} minutos.
+                    </span>
+                  </p>
+                </div>
+              </>
+            )}
+
+            {!autoRemarketingEnabled && (
+              <div className="p-4 rounded-lg bg-muted text-center">
+                <Zap className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  Ative o remarketing automático para recuperar vendas perdidas automaticamente
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAutoRemarketingDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleSaveAutoRemarketing} 
+              disabled={savingAutoRemarketing || (autoRemarketingEnabled && !autoRemarketingMessage)}
+            >
+              {savingAutoRemarketing ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Settings className="h-4 w-4 mr-2" />
+              )}
+              Salvar Configurações
             </Button>
           </DialogFooter>
         </DialogContent>
