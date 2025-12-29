@@ -102,7 +102,9 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
   const [bulkRemarketingType, setBulkRemarketingType] = useState<'paid' | 'unpaid'>('unpaid');
   const [bulkRemarketingMinutes, setBulkRemarketingMinutes] = useState(5);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const mediaInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const fetchPayments = async () => {
@@ -288,6 +290,62 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
       setUploadingImage(false);
       if (imageInputRef.current) {
         imageInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleMediaUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const isVideo = file.type.startsWith('video/');
+    const isAudio = file.type.startsWith('audio/');
+
+    if (!isVideo && !isAudio) {
+      toast({
+        title: 'Erro',
+        description: 'Por favor, selecione um arquivo de vídeo ou áudio',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Set the correct media type based on the file
+    if (isVideo) setMediaType('video');
+    if (isAudio) setMediaType('audio');
+
+    setUploadingMedia(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `remarketing/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('user-media')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('user-media')
+        .getPublicUrl(filePath);
+
+      setMediaUrl(publicUrl);
+      toast({
+        title: isVideo ? 'Vídeo carregado!' : 'Áudio carregado!',
+        description: 'Agora você pode enviar o arquivo',
+      });
+    } catch (error: unknown) {
+      console.error('Error uploading media:', error);
+      toast({
+        title: 'Erro ao fazer upload',
+        description: error instanceof Error ? error.message : 'Erro desconhecido',
+        variant: 'destructive',
+      });
+    } finally {
+      setUploadingMedia(false);
+      if (mediaInputRef.current) {
+        mediaInputRef.current.value = '';
       }
     }
   };
@@ -936,15 +994,14 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
         </TabsContent>
       </Tabs>
 
-      {/* Dialog para enviar mídia (imagem/vídeo/áudio) */}
+      {/* Dialog para enviar mídia (vídeo/áudio) */}
       <Dialog open={mediaDialogOpen} onOpenChange={setMediaDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              {mediaType === 'image' && <Image className="h-5 w-5" />}
               {mediaType === 'video' && <Video className="h-5 w-5" />}
               {mediaType === 'audio' && <FileAudio className="h-5 w-5" />}
-              Enviar Mídia
+              Enviar Vídeo/Áudio
             </DialogTitle>
             <DialogDescription>
               Envie mídia para {selectedPayment?.lead_name || selectedPayment?.lead_chat_id}
@@ -954,15 +1011,6 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
             <div>
               <Label>Tipo de Mídia</Label>
               <div className="flex gap-2 mt-2">
-                <Button
-                  size="sm"
-                  variant={mediaType === 'image' ? 'default' : 'outline'}
-                  onClick={() => setMediaType('image')}
-                  className="flex-1"
-                >
-                  <Image className="h-4 w-4 mr-2" />
-                  Imagem
-                </Button>
                 <Button
                   size="sm"
                   variant={mediaType === 'video' ? 'default' : 'outline'}
@@ -983,16 +1031,58 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
                 </Button>
               </div>
             </div>
+
+            {/* Upload do PC */}
+            <div>
+              <Label>Fazer upload do PC</Label>
+              <div className="mt-2">
+                <input
+                  ref={mediaInputRef}
+                  type="file"
+                  accept={mediaType === 'video' ? 'video/*' : 'audio/*'}
+                  onChange={handleMediaUpload}
+                  className="hidden"
+                  id="media-upload"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  disabled={uploadingMedia}
+                  onClick={() => mediaInputRef.current?.click()}
+                >
+                  {uploadingMedia ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Upload className="h-4 w-4 mr-2" />
+                  )}
+                  {uploadingMedia 
+                    ? 'Enviando...' 
+                    : mediaType === 'video' 
+                      ? 'Selecionar vídeo do PC' 
+                      : 'Selecionar áudio do PC'
+                  }
+                </Button>
+              </div>
+            </div>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">ou cole uma URL</span>
+              </div>
+            </div>
+
             <div>
               <Label htmlFor="mediaUrl">
-                URL {mediaType === 'image' ? 'da Imagem' : mediaType === 'video' ? 'do Vídeo' : 'do Áudio'}
+                URL {mediaType === 'video' ? 'do Vídeo' : 'do Áudio'}
               </Label>
               <Input
                 id="mediaUrl"
                 placeholder={
-                  mediaType === 'image' 
-                    ? 'https://exemplo.com/imagem.jpg'
-                    : mediaType === 'video'
+                  mediaType === 'video'
                     ? 'https://exemplo.com/video.mp4'
                     : 'https://exemplo.com/audio.mp3'
                 }
@@ -1000,6 +1090,14 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
                 onChange={(e) => setMediaUrl(e.target.value)}
               />
             </div>
+
+            {/* Preview URL */}
+            {mediaUrl && (
+              <div className="border rounded-lg p-2 text-center">
+                <p className="text-sm text-muted-foreground truncate">{mediaUrl}</p>
+              </div>
+            )}
+
             <div>
               <Label htmlFor="mediaCaption">Legenda (opcional)</Label>
               <Textarea
@@ -1017,12 +1115,10 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
             </Button>
             <Button 
               onClick={handleSendMedia} 
-              disabled={!mediaUrl || sendingMediaId === selectedPayment?.id}
+              disabled={!mediaUrl || sendingMediaId === selectedPayment?.id || uploadingMedia}
             >
               {sendingMediaId === selectedPayment?.id ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : mediaType === 'image' ? (
-                <Image className="h-4 w-4 mr-2" />
               ) : mediaType === 'video' ? (
                 <Video className="h-4 w-4 mr-2" />
               ) : (
