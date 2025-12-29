@@ -9,7 +9,9 @@ import {
   AlertCircle, 
   ChevronDown, 
   ChevronUp,
-  Trash2
+  Trash2,
+  Loader2,
+  Zap
 } from "lucide-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -21,7 +23,7 @@ export const BackgroundUploadIndicator = () => {
   // Only show if there are uploads
   if (uploads.length === 0) return null;
 
-  const activeUploads = uploads.filter(u => u.status === 'uploading');
+  const activeUploads = uploads.filter(u => u.status === 'uploading' || u.status === 'compressing');
   const completedUploads = uploads.filter(u => u.status === 'completed' || u.status === 'error');
 
   const getElapsedTime = (startTime: number) => {
@@ -29,6 +31,12 @@ export const BackgroundUploadIndicator = () => {
     const mins = Math.floor(elapsed / 60);
     const secs = elapsed % 60;
     return mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+  };
+
+  const formatBytes = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes}B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
+    return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
   };
 
   return (
@@ -47,7 +55,11 @@ export const BackgroundUploadIndicator = () => {
           <div className="flex items-center gap-2">
             {isUploading ? (
               <div className="relative">
-                <Upload className="w-5 h-5 text-primary animate-pulse" />
+                {activeUploads[0]?.status === 'compressing' ? (
+                  <Loader2 className="w-5 h-5 text-primary animate-spin" />
+                ) : (
+                  <Upload className="w-5 h-5 text-primary animate-pulse" />
+                )}
                 <span className="absolute -top-1 -right-1 w-2 h-2 bg-success rounded-full animate-ping" />
               </div>
             ) : (
@@ -55,12 +67,14 @@ export const BackgroundUploadIndicator = () => {
             )}
             <div>
               <p className="text-sm font-medium">
-                {isUploading 
-                  ? `Enviando ${activeUploads.reduce((acc, u) => acc + u.totalFiles, 0).toLocaleString()} arquivos`
-                  : "Uploads concluídos"
+                {activeUploads[0]?.status === 'compressing'
+                  ? "Comprimindo imagens..."
+                  : isUploading 
+                    ? `Enviando ${activeUploads.reduce((acc, u) => acc + u.totalFiles, 0).toLocaleString()} arquivos`
+                    : "Uploads concluídos"
                 }
               </p>
-              {isUploading && activeUploads.length > 0 && (
+              {isUploading && activeUploads.length > 0 && activeUploads[0].status !== 'compressing' && (
                 <p className="text-xs text-muted-foreground">
                   {activeUploads[0].completedFiles.toLocaleString()} / {activeUploads[0].totalFiles.toLocaleString()} • {getElapsedTime(activeUploads[0].startTime)}
                 </p>
@@ -116,6 +130,9 @@ export const BackgroundUploadIndicator = () => {
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 flex-1 min-w-0">
+                        {upload.status === 'compressing' && (
+                          <Loader2 className="w-4 h-4 text-primary flex-shrink-0 animate-spin" />
+                        )}
                         {upload.status === 'uploading' && (
                           <Upload className="w-4 h-4 text-primary flex-shrink-0 animate-pulse" />
                         )}
@@ -142,8 +159,18 @@ export const BackgroundUploadIndicator = () => {
                       )}
                     </div>
                     
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span>{upload.completedFiles.toLocaleString()} / {upload.totalFiles.toLocaleString()}</span>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+                      {upload.status === 'compressing' ? (
+                        <span>Comprimindo imagens...</span>
+                      ) : (
+                        <span>{upload.completedFiles.toLocaleString()} / {upload.totalFiles.toLocaleString()}</span>
+                      )}
+                      {upload.savedBytes && upload.savedBytes > 0 && (
+                        <Badge className="bg-primary/20 text-primary text-[10px] px-1 py-0">
+                          <Zap className="w-2 h-2 mr-0.5" />
+                          -{formatBytes(upload.savedBytes)}
+                        </Badge>
+                      )}
                       {upload.failedFiles > 0 && (
                         <Badge variant="destructive" className="text-[10px] px-1 py-0">
                           {upload.failedFiles} falhas
