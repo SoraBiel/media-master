@@ -11,7 +11,9 @@ import {
   ChevronUp,
   Trash2,
   Loader2,
-  Zap
+  Zap,
+  Minimize2,
+  Maximize2
 } from "lucide-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -19,6 +21,7 @@ import { motion, AnimatePresence } from "framer-motion";
 export const BackgroundUploadIndicator = () => {
   const { uploads, cancelUpload, clearCompletedUploads, isUploading } = useBackgroundUpload();
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
 
   // Only show if there are uploads
   if (uploads.length === 0) return null;
@@ -38,6 +41,51 @@ export const BackgroundUploadIndicator = () => {
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
     return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
   };
+
+  const currentProgress = activeUploads.length > 0 
+    ? (activeUploads[0].completedFiles / activeUploads[0].totalFiles) * 100 
+    : 100;
+
+  // Minimized compact view - just a small pill with progress
+  if (isMinimized) {
+    return (
+      <motion.div
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className="fixed bottom-4 right-4 z-50"
+      >
+        <div 
+          className="glass-card shadow-2xl border border-border/50 rounded-full px-3 py-2 flex items-center gap-2 cursor-pointer hover:scale-105 transition-transform"
+          onClick={() => setIsMinimized(false)}
+        >
+          {isUploading ? (
+            <>
+              {activeUploads[0]?.status === 'compressing' ? (
+                <Loader2 className="w-4 h-4 text-primary animate-spin" />
+              ) : (
+                <Upload className="w-4 h-4 text-primary animate-pulse" />
+              )}
+              <div className="w-16 h-1.5 bg-secondary rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-primary transition-all duration-300"
+                  style={{ width: `${currentProgress}%` }}
+                />
+              </div>
+              <span className="text-xs font-medium">
+                {activeUploads[0]?.completedFiles || 0}/{activeUploads[0]?.totalFiles || 0}
+              </span>
+            </>
+          ) : (
+            <>
+              <CheckCircle2 className="w-4 h-4 text-success" />
+              <span className="text-xs font-medium">{completedUploads.length} concluído(s)</span>
+            </>
+          )}
+          <Maximize2 className="w-3 h-3 text-muted-foreground ml-1" />
+        </div>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
@@ -82,6 +130,19 @@ export const BackgroundUploadIndicator = () => {
             </div>
           </div>
           <div className="flex items-center gap-1">
+            {/* Minimize button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsMinimized(true);
+              }}
+              title="Minimizar"
+            >
+              <Minimize2 className="w-3 h-3" />
+            </Button>
             {!isUploading && completedUploads.length > 0 && (
               <Button
                 variant="ghost"
@@ -107,7 +168,7 @@ export const BackgroundUploadIndicator = () => {
         {isUploading && activeUploads.length > 0 && (
           <div className="px-3 pb-2">
             <Progress 
-              value={(activeUploads[0].completedFiles / activeUploads[0].totalFiles) * 100} 
+              value={currentProgress} 
               className="h-1.5"
             />
           </div>

@@ -2520,10 +2520,18 @@ const AdminDashboardPage = () => {
                       }}
                       onFilesSelected={() => {}}
                       bucket="media-packs"
-                      concurrency={25}
+                      concurrency={40}
                       showManageControls={true}
                       showPreview={true}
                       existingFiles={bulkUploadedFiles}
+                      enableBackgroundUpload={true}
+                      backgroundUploadPackName={selectedMedia?.name || "Editando Pacote"}
+                      onBackgroundUploadStarted={() => {
+                        toast({
+                          title: "Upload em segundo plano",
+                          description: "Você pode fechar esta janela e continuar usando a Nexo. O progresso aparece no canto inferior direito.",
+                        });
+                      }}
                     />
                     
                     <Button 
