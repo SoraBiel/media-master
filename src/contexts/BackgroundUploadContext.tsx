@@ -46,6 +46,31 @@ export const useBackgroundUpload = () => {
   return context;
 };
 
+// Notification sound utility
+const playNotificationSound = () => {
+  try {
+    // Create a simple notification sound using Web Audio API
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+    oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
+    oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.2);
+    
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+    
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.4);
+  } catch (error) {
+    console.log("Could not play notification sound:", error);
+  }
+};
+
 export const BackgroundUploadProvider = ({ children }: { children: ReactNode }) => {
   const [uploads, setUploads] = useState<BackgroundUpload[]>([]);
   const { toast } = useToast();
@@ -227,6 +252,9 @@ export const BackgroundUploadProvider = ({ children }: { children: ReactNode }) 
 
     if (finalStatus === 'completed') {
       const elapsed = ((Date.now() - newUpload.startTime) / 1000).toFixed(1);
+      
+      // Play notification sound
+      playNotificationSound();
       
       // Auto-save to database if mediaId is provided
       if (autoSaveMediaId) {

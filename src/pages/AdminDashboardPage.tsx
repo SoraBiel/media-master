@@ -2583,6 +2583,7 @@ const AdminDashboardPage = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Preview</TableHead>
                     <TableHead>Nome</TableHead>
                     <TableHead>Tipo</TableHead>
                     <TableHead>Plano Mínimo</TableHead>
@@ -2592,34 +2593,73 @@ const AdminDashboardPage = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {adminMedia.map((media) => (
-                    <TableRow key={media.id}>
-                      <TableCell className="font-medium">{media.name}</TableCell>
-                      <TableCell><Badge variant="default">{media.pack_type}</Badge></TableCell>
-                      <TableCell><Badge variant="outline" className="capitalize">{media.min_plan}</Badge></TableCell>
-                      <TableCell>{media.file_count} arquivos</TableCell>
-                      <TableCell className="text-muted-foreground">{formatDate(media.created_at)}</TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon"><MoreVertical className="w-4 h-4" /></Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleEditMedia(media)}>
-                              <Edit2 className="w-4 h-4 mr-2" />Editar / Adicionar Mídias
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleDeleteMedia(media.id)} className="text-destructive">
-                              <Trash2 className="w-4 h-4 mr-2" />Excluir
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {adminMedia.map((media) => {
+                    // Get first 4 images for preview
+                    const mediaFiles = Array.isArray(media.media_files) ? media.media_files : [];
+                    const imageFiles = mediaFiles
+                      .filter((f: any) => f.type?.startsWith('image/') || f.url?.match(/\.(jpg|jpeg|png|gif|webp)$/i))
+                      .slice(0, 4);
+                    const hasMoreFiles = mediaFiles.length > 4;
+                    
+                    return (
+                      <TableRow key={media.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            {imageFiles.length > 0 ? (
+                              <>
+                                {imageFiles.map((file: any, idx: number) => (
+                                  <div 
+                                    key={idx}
+                                    className="w-10 h-10 rounded-md overflow-hidden border border-border bg-muted flex-shrink-0"
+                                  >
+                                    <img 
+                                      src={file.url} 
+                                      alt={file.name || 'Preview'} 
+                                      className="w-full h-full object-cover"
+                                      loading="lazy"
+                                    />
+                                  </div>
+                                ))}
+                                {hasMoreFiles && (
+                                  <div className="w-10 h-10 rounded-md border border-border bg-muted/50 flex items-center justify-center text-xs text-muted-foreground flex-shrink-0">
+                                    +{mediaFiles.length - 4}
+                                  </div>
+                                )}
+                              </>
+                            ) : (
+                              <div className="w-10 h-10 rounded-md border border-border bg-muted flex items-center justify-center">
+                                <Image className="w-4 h-4 text-muted-foreground" />
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-medium">{media.name}</TableCell>
+                        <TableCell><Badge variant="default">{media.pack_type}</Badge></TableCell>
+                        <TableCell><Badge variant="outline" className="capitalize">{media.min_plan}</Badge></TableCell>
+                        <TableCell>{media.file_count} arquivos</TableCell>
+                        <TableCell className="text-muted-foreground">{formatDate(media.created_at)}</TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon"><MoreVertical className="w-4 h-4" /></Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleEditMedia(media)}>
+                                <Edit2 className="w-4 h-4 mr-2" />Editar / Adicionar Mídias
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => handleDeleteMedia(media.id)} className="text-destructive">
+                                <Trash2 className="w-4 h-4 mr-2" />Excluir
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                   {adminMedia.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                         <Image className="w-8 h-8 mx-auto mb-2 opacity-50" />
                         <p>Nenhum pacote cadastrado</p>
                       </TableCell>
