@@ -1,6 +1,6 @@
-import { useState, useRef, useCallback, DragEvent } from "react";
+import { useState, useRef, useCallback, DragEvent, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Upload, X, CheckCircle2, AlertCircle, Loader2, Pause, Play, FolderOpen, Clock, RotateCcw, Trash2, Edit2 } from "lucide-react";
+import { Upload, X, CheckCircle2, AlertCircle, Loader2, Pause, Play, FolderOpen, Clock, RotateCcw, Trash2, Edit2, Image, Video, FileAudio, File } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,6 +26,8 @@ interface BulkMediaUploaderProps {
   concurrency?: number;
   maxRetries?: number;
   showManageControls?: boolean;
+  showPreview?: boolean;
+  existingFiles?: UploadedFile[];
 }
 
 interface UploadProgress {
@@ -49,6 +51,8 @@ export const BulkMediaUploader = ({
   concurrency = 25,
   maxRetries = 3,
   showManageControls = false,
+  showPreview = false,
+  existingFiles = [],
 }: BulkMediaUploaderProps) => {
   const [files, setFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -67,16 +71,24 @@ export const BulkMediaUploader = ({
     filesPerSecond: 0,
     estimatedSecondsRemaining: 0,
   });
-  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>(existingFiles);
   const [failedFiles, setFailedFiles] = useState<FailedFile[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
   const [totalSize, setTotalSize] = useState(0);
   const [selectedForDelete, setSelectedForDelete] = useState<Set<number>>(new Set());
+  const [previewFile, setPreviewFile] = useState<UploadedFile | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
   const pauseRef = useRef(false);
   const cancelRef = useRef(false);
+
+  // Sync with existing files prop
+  useEffect(() => {
+    if (existingFiles.length > 0 && uploadedFiles.length === 0) {
+      setUploadedFiles(existingFiles);
+    }
+  }, [existingFiles]);
 
   const formatBytes = (bytes: number): string => {
     if (bytes === 0) return '0 B';
@@ -708,49 +720,145 @@ export const BulkMediaUploader = ({
             </p>
           </div>
 
-          {/* File Management Grid */}
-          {showManageControls && uploadedFiles.length > 0 && (
-            <div className="border border-border rounded-lg p-3 max-h-[300px] overflow-y-auto">
+          {/* Preview Grid with Thumbnails */}
+          {(showManageControls || showPreview) && uploadedFiles.length > 0 && (
+            <div className="border border-border rounded-lg p-3 max-h-[400px] overflow-y-auto">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Arquivos enviados</span>
-                <Button size="sm" variant="ghost" onClick={clearFiles}>
-                  <X className="w-4 h-4 mr-1" />
-                  Limpar tudo
-                </Button>
+                <span className="text-sm font-medium">
+                  {uploadedFiles.length.toLocaleString()} arquivos
+                </span>
+                {showManageControls && (
+                  <Button size="sm" variant="ghost" onClick={clearFiles}>
+                    <X className="w-4 h-4 mr-1" />
+                    Limpar tudo
+                  </Button>
+                )}
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {uploadedFiles.slice(0, 50).map((file, index) => (
-                  <div 
-                    key={index} 
-                    className={`
-                      relative group p-2 rounded-lg border text-xs truncate cursor-pointer
-                      ${selectedForDelete.has(index) 
-                        ? 'border-red-500 bg-red-500/10' 
-                        : 'border-border hover:border-primary/50'
-                      }
-                    `}
-                    onClick={() => toggleSelectForDelete(index)}
-                  >
-                    <span className="truncate block pr-6">{file.name}</span>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="absolute right-1 top-1 h-5 w-5 opacity-0 group-hover:opacity-100"
-                      onClick={(e) => { e.stopPropagation(); handleDeleteSingle(index); }}
+              <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+                {uploadedFiles.slice(0, 100).map((file, index) => {
+                  const isImage = file.type?.startsWith('image/');
+                  const isVideo = file.type?.startsWith('video/');
+                  const isAudio = file.type?.startsWith('audio/');
+                  
+                  return (
+                    <div 
+                      key={index} 
+                      className={`
+                        relative group rounded-lg border overflow-hidden cursor-pointer aspect-square
+                        ${selectedForDelete.has(index) 
+                          ? 'border-red-500 ring-2 ring-red-500/50' 
+                          : 'border-border hover:border-primary/50'
+                        }
+                      `}
+                      onClick={() => showManageControls ? toggleSelectForDelete(index) : setPreviewFile(file)}
                     >
-                      <Trash2 className="w-3 h-3 text-red-500" />
-                    </Button>
-                  </div>
-                ))}
+                      {/* Thumbnail */}
+                      {isImage ? (
+                        <img 
+                          src={file.url} 
+                          alt={file.name}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : isVideo ? (
+                        <div className="w-full h-full bg-muted flex items-center justify-center relative">
+                          <video 
+                            src={file.url} 
+                            className="w-full h-full object-cover"
+                            muted
+                            preload="metadata"
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                            <Video className="w-8 h-8 text-white" />
+                          </div>
+                        </div>
+                      ) : isAudio ? (
+                        <div className="w-full h-full bg-muted flex flex-col items-center justify-center p-2">
+                          <FileAudio className="w-8 h-8 text-primary mb-1" />
+                          <span className="text-[10px] text-center truncate w-full">{file.name}</span>
+                        </div>
+                      ) : (
+                        <div className="w-full h-full bg-muted flex flex-col items-center justify-center p-2">
+                          <File className="w-8 h-8 text-muted-foreground mb-1" />
+                          <span className="text-[10px] text-center truncate w-full">{file.name}</span>
+                        </div>
+                      )}
+                      
+                      {/* Delete button overlay */}
+                      {showManageControls && (
+                        <Button
+                          size="icon"
+                          variant="destructive"
+                          className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => { e.stopPropagation(); handleDeleteSingle(index); }}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      )}
+                      
+                      {/* Selection indicator */}
+                      {selectedForDelete.has(index) && (
+                        <div className="absolute inset-0 bg-red-500/20 flex items-center justify-center">
+                          <CheckCircle2 className="w-6 h-6 text-red-500" />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-              {uploadedFiles.length > 50 && (
+              {uploadedFiles.length > 100 && (
                 <p className="text-xs text-muted-foreground mt-2 text-center">
-                  +{uploadedFiles.length - 50} arquivos não exibidos
+                  +{uploadedFiles.length - 100} arquivos não exibidos
                 </p>
               )}
             </div>
           )}
         </motion.div>
+      )}
+
+      {/* Preview Modal */}
+      {previewFile && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+          onClick={() => setPreviewFile(null)}
+        >
+          <div className="relative max-w-4xl max-h-[90vh] w-full mx-4">
+            <Button
+              size="icon"
+              variant="ghost"
+              className="absolute -top-10 right-0 text-white hover:bg-white/20"
+              onClick={() => setPreviewFile(null)}
+            >
+              <X className="w-6 h-6" />
+            </Button>
+            {previewFile.type?.startsWith('image/') ? (
+              <img 
+                src={previewFile.url} 
+                alt={previewFile.name}
+                className="max-w-full max-h-[85vh] mx-auto rounded-lg object-contain"
+              />
+            ) : previewFile.type?.startsWith('video/') ? (
+              <video 
+                src={previewFile.url} 
+                controls
+                autoPlay
+                className="max-w-full max-h-[85vh] mx-auto rounded-lg"
+              />
+            ) : previewFile.type?.startsWith('audio/') ? (
+              <div className="bg-card p-8 rounded-lg mx-auto">
+                <FileAudio className="w-16 h-16 text-primary mx-auto mb-4" />
+                <p className="text-center mb-4">{previewFile.name}</p>
+                <audio src={previewFile.url} controls className="w-full" />
+              </div>
+            ) : (
+              <div className="bg-card p-8 rounded-lg mx-auto text-center">
+                <File className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                <p>{previewFile.name}</p>
+                <p className="text-sm text-muted-foreground">{formatBytes(previewFile.size)}</p>
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {/* Errors with Retry Option */}
