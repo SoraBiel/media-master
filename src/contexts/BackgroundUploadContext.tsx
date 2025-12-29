@@ -26,6 +26,8 @@ interface BackgroundUploadContextType {
     bucket: string;
     concurrency?: number;
     compressImages?: boolean;
+    autoSaveMediaId?: string;
+    existingFiles?: { url: string; name: string; type: string; size: number }[];
     onComplete?: (files: { url: string; name: string; type: string; size: number }[]) => void;
   }) => void;
   cancelUpload: (id: string) => void;
@@ -56,6 +58,8 @@ export const BackgroundUploadProvider = ({ children }: { children: ReactNode }) 
     bucket,
     concurrency = 40,
     compressImages: shouldCompress = true,
+    autoSaveMediaId,
+    existingFiles = [],
     onComplete
   }: {
     id: string;
@@ -64,6 +68,8 @@ export const BackgroundUploadProvider = ({ children }: { children: ReactNode }) 
     bucket: string;
     concurrency?: number;
     compressImages?: boolean;
+    autoSaveMediaId?: string;
+    existingFiles?: { url: string; name: string; type: string; size: number }[];
     onComplete?: (files: { url: string; name: string; type: string; size: number }[]) => void;
   }) => {
     // Initial state with compression status
@@ -221,10 +227,47 @@ export const BackgroundUploadProvider = ({ children }: { children: ReactNode }) 
 
     if (finalStatus === 'completed') {
       const elapsed = ((Date.now() - newUpload.startTime) / 1000).toFixed(1);
-      toast({
-        title: "Upload concluído!",
-        description: `${completedCount.toLocaleString()} arquivos em ${elapsed}s`,
-      });
+      
+      // Auto-save to database if mediaId is provided
+      if (autoSaveMediaId) {
+        try {
+          const allFiles = [...existingFiles, ...uploadedFiles];
+          const { error } = await supabase
+            .from("admin_media")
+            .update({
+              media_files: allFiles.map(f => ({ url: f.url, name: f.name, type: f.type, size: f.size })),
+              file_count: allFiles.length,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", autoSaveMediaId);
+          
+          if (!error) {
+            toast({
+              title: "Salvo automaticamente!",
+              description: `${allFiles.length.toLocaleString()} arquivos salvos em "${packName}" (${elapsed}s)`,
+            });
+          } else {
+            toast({
+              title: "Upload concluído, mas erro ao salvar",
+              description: `${completedCount.toLocaleString()} arquivos enviados, mas falha ao salvar no banco.`,
+              variant: "destructive"
+            });
+          }
+        } catch (error) {
+          console.error("Error auto-saving media:", error);
+          toast({
+            title: "Erro ao salvar",
+            description: "Upload concluído mas houve erro ao salvar automaticamente.",
+            variant: "destructive"
+          });
+        }
+      } else {
+        toast({
+          title: "Upload concluído!",
+          description: `${completedCount.toLocaleString()} arquivos em ${elapsed}s`,
+        });
+      }
+      
       onComplete?.(uploadedFiles);
     } else {
       toast({

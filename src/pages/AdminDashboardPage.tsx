@@ -2515,8 +2515,31 @@ const AdminDashboardPage = () => {
                     </div>
                     
                     <BulkMediaUploader
-                      onFilesUploaded={(files) => {
-                        setBulkUploadedFiles(prev => [...prev, ...files]);
+                      onFilesUploaded={async (files) => {
+                        const newFiles = [...bulkUploadedFiles, ...files];
+                        setBulkUploadedFiles(newFiles);
+                        
+                        // Auto-save when new files are uploaded (for non-background uploads)
+                        if (selectedMedia) {
+                          try {
+                            await supabase
+                              .from("admin_media")
+                              .update({
+                                media_files: newFiles.map(f => ({ url: f.url, name: f.name, type: f.type, size: f.size })),
+                                file_count: newFiles.length,
+                                updated_at: new Date().toISOString(),
+                              })
+                              .eq("id", selectedMedia.id);
+                            
+                            toast({ 
+                              title: "Salvo automaticamente!", 
+                              description: `${newFiles.length.toLocaleString()} arquivos salvos.` 
+                            });
+                            fetchAdminMedia();
+                          } catch (error: any) {
+                            toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
+                          }
+                        }
                       }}
                       onFilesSelected={() => {}}
                       bucket="media-packs"
@@ -2526,11 +2549,14 @@ const AdminDashboardPage = () => {
                       existingFiles={bulkUploadedFiles}
                       enableBackgroundUpload={true}
                       backgroundUploadPackName={selectedMedia?.name || "Editando Pacote"}
+                      autoSaveMediaId={selectedMedia?.id}
                       onBackgroundUploadStarted={() => {
                         toast({
                           title: "Upload em segundo plano",
-                          description: "Você pode fechar esta janela e continuar usando a Nexo. O progresso aparece no canto inferior direito.",
+                          description: "Você pode fechar esta janela. Os arquivos serão salvos automaticamente ao terminar.",
                         });
+                        // Close dialog since it will auto-save
+                        setEditMediaDialogOpen(false);
                       }}
                     />
                     
