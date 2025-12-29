@@ -2410,6 +2410,14 @@ const AdminDashboardPage = () => {
                           concurrency={25}
                           showManageControls={true}
                           showPreview={true}
+                          enableBackgroundUpload={true}
+                          backgroundUploadPackName={mediaForm.name || "Novo Pacote"}
+                          onBackgroundUploadStarted={() => {
+                            toast({
+                              title: "Upload em segundo plano",
+                              description: "Você pode fechar esta janela e continuar usando a Nexo. O progresso aparece no canto inferior direito.",
+                            });
+                          }}
                         />
                       </div>
                       {bulkUploadedFiles.length > 0 && (
