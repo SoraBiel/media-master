@@ -584,21 +584,48 @@ serve(async (req) => {
         case 'action_message': {
           const text = replaceVariables(currentNode.data.text || '', variables);
           
-          if (currentNode.data.mediaType === 'image' && currentNode.data.mediaUrl) {
+          // Support both old format (mediaType/mediaUrl) and new format (imageUrl/videoUrl)
+          const imageUrl = currentNode.data.imageUrl;
+          const videoUrl = currentNode.data.videoUrl;
+          const legacyMediaType = currentNode.data.mediaType;
+          const legacyMediaUrl = currentNode.data.mediaUrl;
+          
+          // Check for image (new format first, then legacy)
+          if (imageUrl) {
             await callTelegramAPI(botToken, "sendPhoto", {
               chat_id: chatId,
-              photo: currentNode.data.mediaUrl,
-              caption: text,
+              photo: imageUrl,
+              caption: text || undefined,
               parse_mode: "HTML",
             });
-          } else if (currentNode.data.mediaType === 'video' && currentNode.data.mediaUrl) {
+          } 
+          // Check for video (new format first, then legacy)
+          else if (videoUrl) {
             await callTelegramAPI(botToken, "sendVideo", {
               chat_id: chatId,
-              video: currentNode.data.mediaUrl,
-              caption: text,
+              video: videoUrl,
+              caption: text || undefined,
               parse_mode: "HTML",
             });
-          } else if (text) {
+          }
+          // Legacy format support
+          else if (legacyMediaType === 'image' && legacyMediaUrl) {
+            await callTelegramAPI(botToken, "sendPhoto", {
+              chat_id: chatId,
+              photo: legacyMediaUrl,
+              caption: text || undefined,
+              parse_mode: "HTML",
+            });
+          } else if (legacyMediaType === 'video' && legacyMediaUrl) {
+            await callTelegramAPI(botToken, "sendVideo", {
+              chat_id: chatId,
+              video: legacyMediaUrl,
+              caption: text || undefined,
+              parse_mode: "HTML",
+            });
+          } 
+          // Text only
+          else if (text) {
             await callTelegramAPI(botToken, "sendMessage", {
               chat_id: chatId,
               text: text,
