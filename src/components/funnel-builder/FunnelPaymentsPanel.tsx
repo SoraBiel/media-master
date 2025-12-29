@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { 
@@ -17,6 +17,7 @@ import {
   Video,
   Music,
   FileAudio,
+  Upload,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -100,6 +101,8 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
   const [bulkRemarketingMessage, setBulkRemarketingMessage] = useState('');
   const [bulkRemarketingType, setBulkRemarketingType] = useState<'paid' | 'unpaid'>('unpaid');
   const [bulkRemarketingMinutes, setBulkRemarketingMinutes] = useState(5);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const fetchPayments = async () => {
@@ -237,6 +240,55 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
       });
     } finally {
       setSendingImageId(null);
+    }
+  };
+
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: 'Erro',
+        description: 'Por favor, selecione um arquivo de imagem',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setUploadingImage(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `remarketing/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('user-media')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('user-media')
+        .getPublicUrl(filePath);
+
+      setImageUrl(publicUrl);
+      toast({
+        title: 'Imagem carregada!',
+        description: 'Agora você pode enviar a imagem',
+      });
+    } catch (error: unknown) {
+      console.error('Error uploading image:', error);
+      toast({
+        title: 'Erro ao fazer upload',
+        description: error instanceof Error ? error.message : 'Erro desconhecido',
+        variant: 'destructive',
+      });
+    } finally {
+      setUploadingImage(false);
+      if (imageInputRef.current) {
+        imageInputRef.current.value = '';
+      }
     }
   };
 
@@ -995,6 +1047,45 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            {/* Upload do PC */}
+            <div>
+              <Label>Fazer upload do PC</Label>
+              <div className="mt-2">
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                  id="image-upload"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  disabled={uploadingImage}
+                  onClick={() => imageInputRef.current?.click()}
+                >
+                  {uploadingImage ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Upload className="h-4 w-4 mr-2" />
+                  )}
+                  {uploadingImage ? 'Enviando...' : 'Selecionar imagem do PC'}
+                </Button>
+              </div>
+            </div>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">ou cole uma URL</span>
+              </div>
+            </div>
+
+            {/* URL da imagem */}
             <div>
               <Label htmlFor="imageUrl">URL da Imagem</Label>
               <Input
@@ -1004,6 +1095,21 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
                 onChange={(e) => setImageUrl(e.target.value)}
               />
             </div>
+
+            {/* Preview */}
+            {imageUrl && (
+              <div className="border rounded-lg p-2">
+                <img 
+                  src={imageUrl} 
+                  alt="Preview" 
+                  className="max-h-32 mx-auto rounded object-contain"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+              </div>
+            )}
+
             <div>
               <Label htmlFor="imageCaption">Legenda (opcional)</Label>
               <Textarea
@@ -1021,7 +1127,7 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
             </Button>
             <Button 
               onClick={handleSendImage} 
-              disabled={!imageUrl || sendingImageId === selectedPayment?.id}
+              disabled={!imageUrl || sendingImageId === selectedPayment?.id || uploadingImage}
             >
               {sendingImageId === selectedPayment?.id ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
