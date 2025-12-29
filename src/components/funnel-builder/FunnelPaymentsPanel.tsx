@@ -103,6 +103,8 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
   const [bulkRemarketingMinutes, setBulkRemarketingMinutes] = useState(5);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [imageDragging, setImageDragging] = useState(false);
+  const [mediaDragging, setMediaDragging] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const mediaInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -245,10 +247,7 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
     }
   };
 
-  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
+  const processImageFile = async (file: File) => {
     if (!file.type.startsWith('image/')) {
       toast({
         title: 'Erro',
@@ -294,10 +293,30 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
     }
   };
 
-  const handleMediaUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
+    await processImageFile(file);
+  };
 
+  const handleImageDrop = async (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setImageDragging(false);
+    const file = event.dataTransfer.files?.[0];
+    if (!file) return;
+    await processImageFile(file);
+  };
+
+  const handleImageDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setImageDragging(true);
+  };
+
+  const handleImageDragLeave = () => {
+    setImageDragging(false);
+  };
+
+  const processMediaFile = async (file: File) => {
     const isVideo = file.type.startsWith('video/');
     const isAudio = file.type.startsWith('audio/');
 
@@ -348,6 +367,29 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
         mediaInputRef.current.value = '';
       }
     }
+  };
+
+  const handleMediaUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    await processMediaFile(file);
+  };
+
+  const handleMediaDrop = async (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setMediaDragging(false);
+    const file = event.dataTransfer.files?.[0];
+    if (!file) return;
+    await processMediaFile(file);
+  };
+
+  const handleMediaDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setMediaDragging(true);
+  };
+
+  const handleMediaDragLeave = () => {
+    setMediaDragging(false);
   };
 
   const handleSendMedia = async () => {
@@ -1032,37 +1074,44 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
               </div>
             </div>
 
-            {/* Upload do PC */}
+            {/* Upload do PC com Drag and Drop */}
             <div>
               <Label>Fazer upload do PC</Label>
-              <div className="mt-2">
+              <div 
+                className={`mt-2 border-2 border-dashed rounded-lg p-4 text-center transition-colors cursor-pointer ${
+                  mediaDragging 
+                    ? 'border-primary bg-primary/5' 
+                    : 'border-muted-foreground/25 hover:border-primary/50'
+                }`}
+                onDrop={handleMediaDrop}
+                onDragOver={handleMediaDragOver}
+                onDragLeave={handleMediaDragLeave}
+                onClick={() => mediaInputRef.current?.click()}
+              >
                 <input
                   ref={mediaInputRef}
                   type="file"
-                  accept={mediaType === 'video' ? 'video/*' : 'audio/*'}
+                  accept="video/*,audio/*"
                   onChange={handleMediaUpload}
                   className="hidden"
                   id="media-upload"
                 />
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full"
-                  disabled={uploadingMedia}
-                  onClick={() => mediaInputRef.current?.click()}
-                >
-                  {uploadingMedia ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Upload className="h-4 w-4 mr-2" />
-                  )}
-                  {uploadingMedia 
-                    ? 'Enviando...' 
-                    : mediaType === 'video' 
-                      ? 'Selecionar vídeo do PC' 
-                      : 'Selecionar áudio do PC'
-                  }
-                </Button>
+                {uploadingMedia ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <p className="text-sm text-muted-foreground">Enviando...</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-2">
+                    <Upload className="h-8 w-8 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">
+                      Arraste e solte ou clique para selecionar
+                    </p>
+                    <p className="text-xs text-muted-foreground/70">
+                      {mediaType === 'video' ? 'Vídeos' : 'Áudios'} aceitos
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1091,10 +1140,28 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
               />
             </div>
 
-            {/* Preview URL */}
+            {/* Preview de Vídeo ou Player de Áudio */}
             {mediaUrl && (
-              <div className="border rounded-lg p-2 text-center">
-                <p className="text-sm text-muted-foreground truncate">{mediaUrl}</p>
+              <div className="border rounded-lg p-2">
+                {mediaType === 'video' ? (
+                  <video 
+                    src={mediaUrl} 
+                    controls 
+                    className="max-h-40 w-full rounded object-contain"
+                    onError={(e) => {
+                      (e.target as HTMLVideoElement).style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  <audio 
+                    src={mediaUrl} 
+                    controls 
+                    className="w-full"
+                    onError={(e) => {
+                      (e.target as HTMLAudioElement).style.display = 'none';
+                    }}
+                  />
+                )}
               </div>
             )}
 
@@ -1143,10 +1210,20 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            {/* Upload do PC */}
+            {/* Upload do PC com Drag and Drop */}
             <div>
               <Label>Fazer upload do PC</Label>
-              <div className="mt-2">
+              <div 
+                className={`mt-2 border-2 border-dashed rounded-lg p-4 text-center transition-colors cursor-pointer ${
+                  imageDragging 
+                    ? 'border-primary bg-primary/5' 
+                    : 'border-muted-foreground/25 hover:border-primary/50'
+                }`}
+                onDrop={handleImageDrop}
+                onDragOver={handleImageDragOver}
+                onDragLeave={handleImageDragLeave}
+                onClick={() => imageInputRef.current?.click()}
+              >
                 <input
                   ref={imageInputRef}
                   type="file"
@@ -1155,20 +1232,22 @@ export const FunnelPaymentsPanel = ({ funnelId }: FunnelPaymentsPanelProps) => {
                   className="hidden"
                   id="image-upload"
                 />
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full"
-                  disabled={uploadingImage}
-                  onClick={() => imageInputRef.current?.click()}
-                >
-                  {uploadingImage ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Upload className="h-4 w-4 mr-2" />
-                  )}
-                  {uploadingImage ? 'Enviando...' : 'Selecionar imagem do PC'}
-                </Button>
+                {uploadingImage ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <p className="text-sm text-muted-foreground">Enviando...</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-2">
+                    <Upload className="h-8 w-8 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">
+                      Arraste e solte ou clique para selecionar
+                    </p>
+                    <p className="text-xs text-muted-foreground/70">
+                      Imagens aceitas
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
