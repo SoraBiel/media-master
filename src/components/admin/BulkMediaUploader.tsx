@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Upload, X, CheckCircle2, AlertCircle, Loader2, Pause, Play, FolderOpen } from "lucide-react";
+import { Upload, X, CheckCircle2, AlertCircle, Loader2, Pause, Play, FolderOpen, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,11 +26,18 @@ interface UploadProgress {
   currentBatch: number;
 }
 
+interface UploadStats {
+  startTime: number;
+  bytesUploaded: number;
+  filesPerSecond: number;
+  estimatedSecondsRemaining: number;
+}
+
 export const BulkMediaUploader = ({
   onFilesUploaded,
   onFilesSelected,
   bucket = "media-packs",
-  concurrency = 10, // Upload 10 files at a time for speed
+  concurrency = 15,
 }: BulkMediaUploaderProps) => {
   const [files, setFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -41,21 +48,50 @@ export const BulkMediaUploader = ({
     failed: 0,
     currentBatch: 0,
   });
+  const [stats, setStats] = useState<UploadStats>({
+    startTime: 0,
+    bytesUploaded: 0,
+    filesPerSecond: 0,
+    estimatedSecondsRemaining: 0,
+  });
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
+  const [totalSize, setTotalSize] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
   const pauseRef = useRef(false);
+
+  const formatBytes = (bytes: number): string => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const formatTime = (seconds: number): string => {
+    if (seconds < 60) return `${Math.round(seconds)}s`;
+    if (seconds < 3600) {
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.round(seconds % 60);
+      return `${mins}m ${secs}s`;
+    }
+    const hours = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    return `${hours}h ${mins}m`;
+  };
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || []);
     if (selectedFiles.length > 0) {
       setFiles(selectedFiles);
       onFilesSelected(selectedFiles.length);
+      const total = selectedFiles.reduce((acc, f) => acc + f.size, 0);
+      setTotalSize(total);
       setProgress({ total: selectedFiles.length, completed: 0, failed: 0, currentBatch: 0 });
       setUploadedFiles([]);
       setErrors([]);
+      setStats({ startTime: 0, bytesUploaded: 0, filesPerSecond: 0, estimatedSecondsRemaining: 0 });
     }
   }, [onFilesSelected]);
 
@@ -89,11 +125,13 @@ export const BulkMediaUploader = ({
     }
   };
 
-  const uploadBatch = async (batch: File[]): Promise<UploadedFile[]> => {
+  const uploadBatch = async (batch: File[]): Promise<{ uploaded: UploadedFile[]; bytesUploaded: number }> => {
     const results = await Promise.all(
       batch.map(file => uploadSingleFile(file))
     );
-    return results.filter((r): r is UploadedFile => r !== null);
+    const uploaded = results.filter((r): r is UploadedFile => r !== null);
+    const bytesUploaded = uploaded.reduce((acc, f) => acc + f.size, 0);
+    return { uploaded, bytesUploaded };
   };
 
   const startUpload = async () => {
@@ -102,16 +140,17 @@ export const BulkMediaUploader = ({
     setIsUploading(true);
     setIsPaused(false);
     pauseRef.current = false;
-    abortControllerRef.current = new AbortController();
+
+    const startTime = Date.now();
+    setStats(prev => ({ ...prev, startTime }));
 
     const allUploaded: UploadedFile[] = [];
     const allErrors: string[] = [];
     let completed = 0;
     let failed = 0;
+    let totalBytesUploaded = 0;
 
-    // Process in batches for speed
     for (let i = 0; i < files.length; i += concurrency) {
-      // Check for pause
       while (pauseRef.current) {
         await new Promise(resolve => setTimeout(resolve, 100));
       }
@@ -119,29 +158,41 @@ export const BulkMediaUploader = ({
       const batch = files.slice(i, i + concurrency);
       const batchNumber = Math.floor(i / concurrency) + 1;
       
-      setProgress(prev => ({
-        ...prev,
-        currentBatch: batchNumber,
-      }));
+      setProgress(prev => ({ ...prev, currentBatch: batchNumber }));
 
-      const results = await uploadBatch(batch);
+      const { uploaded, bytesUploaded } = await uploadBatch(batch);
       
-      completed += results.length;
-      failed += batch.length - results.length;
+      completed += uploaded.length;
+      failed += batch.length - uploaded.length;
+      totalBytesUploaded += bytesUploaded;
       
-      if (results.length < batch.length) {
-        const failedCount = batch.length - results.length;
-        allErrors.push(`Batch ${batchNumber}: ${failedCount} arquivo(s) falharam`);
+      if (uploaded.length < batch.length) {
+        const failedCount = batch.length - uploaded.length;
+        allErrors.push(`Lote ${batchNumber}: ${failedCount} arquivo(s) falharam`);
       }
 
-      allUploaded.push(...results);
+      allUploaded.push(...uploaded);
       
+      // Calculate speed and ETA
+      const elapsedSeconds = (Date.now() - startTime) / 1000;
+      const filesPerSecond = completed / elapsedSeconds;
+      const remainingFiles = files.length - completed - failed;
+      const estimatedSecondsRemaining = filesPerSecond > 0 ? remainingFiles / filesPerSecond : 0;
+
       setProgress({
         total: files.length,
         completed,
         failed,
         currentBatch: batchNumber,
       });
+      
+      setStats({
+        startTime,
+        bytesUploaded: totalBytesUploaded,
+        filesPerSecond,
+        estimatedSecondsRemaining,
+      });
+      
       setUploadedFiles([...allUploaded]);
       setErrors([...allErrors]);
     }
@@ -156,7 +207,6 @@ export const BulkMediaUploader = ({
   };
 
   const cancelUpload = () => {
-    abortControllerRef.current?.abort();
     setIsUploading(false);
     setIsPaused(false);
     pauseRef.current = false;
@@ -166,7 +216,9 @@ export const BulkMediaUploader = ({
     setFiles([]);
     setUploadedFiles([]);
     setErrors([]);
+    setTotalSize(0);
     setProgress({ total: 0, completed: 0, failed: 0, currentBatch: 0 });
+    setStats({ startTime: 0, bytesUploaded: 0, filesPerSecond: 0, estimatedSecondsRemaining: 0 });
     onFilesSelected(0);
     if (fileInputRef.current) fileInputRef.current.value = "";
     if (folderInputRef.current) folderInputRef.current.value = "";
@@ -186,14 +238,14 @@ export const BulkMediaUploader = ({
           ref={fileInputRef}
           type="file"
           multiple
-          accept="image/*,video/*"
+          accept="image/*,video/*,audio/*,application/*"
           onChange={handleFileSelect}
           className="hidden"
         />
         <input
           ref={folderInputRef}
           type="file"
-          // @ts-ignore - webkitdirectory is not in the standard type definitions
+          // @ts-ignore
           webkitdirectory=""
           directory=""
           multiple
@@ -224,22 +276,32 @@ export const BulkMediaUploader = ({
         </Button>
       </div>
 
-      {/* File Count */}
+      {/* File Count & Size */}
       {files.length > 0 && !isUploading && (
-        <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-          <span className="text-sm">
-            <strong>{files.length.toLocaleString()}</strong> arquivos selecionados
-          </span>
-          <div className="flex gap-2">
-            <Button size="sm" variant="ghost" onClick={clearFiles}>
-              <X className="w-4 h-4 mr-1" />
-              Limpar
-            </Button>
-            <Button size="sm" onClick={startUpload}>
-              <Upload className="w-4 h-4 mr-1" />
-              Iniciar Upload
-            </Button>
+        <div className="flex flex-col gap-2 p-3 bg-muted/50 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-sm font-medium">
+                {files.length.toLocaleString()} arquivos
+              </span>
+              <span className="text-sm text-muted-foreground ml-2">
+                ({formatBytes(totalSize)})
+              </span>
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" variant="ghost" onClick={clearFiles}>
+                <X className="w-4 h-4 mr-1" />
+                Limpar
+              </Button>
+              <Button size="sm" onClick={startUpload}>
+                <Upload className="w-4 h-4 mr-1" />
+                Iniciar Upload
+              </Button>
+            </div>
           </div>
+          <p className="text-xs text-muted-foreground">
+            Sem limite de tamanho por arquivo. Uploads paralelos para máxima velocidade.
+          </p>
         </div>
       )}
 
@@ -296,6 +358,26 @@ export const BulkMediaUploader = ({
               </div>
             </div>
 
+            {/* Speed & ETA */}
+            <div className="flex items-center justify-between p-2 bg-primary/5 rounded-lg text-sm">
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-primary" />
+                <span>Tempo restante:</span>
+                <span className="font-bold text-primary">
+                  {stats.estimatedSecondsRemaining > 0 
+                    ? formatTime(stats.estimatedSecondsRemaining) 
+                    : "Calculando..."}
+                </span>
+              </div>
+              <div className="text-muted-foreground">
+                {stats.filesPerSecond > 0 
+                  ? `${stats.filesPerSecond.toFixed(1)} arquivos/s` 
+                  : "—"}
+                {" • "}
+                {formatBytes(stats.bytesUploaded)} enviados
+              </div>
+            </div>
+
             <div className="text-xs text-muted-foreground text-center">
               {progressPercent}% completo • Lote {progress.currentBatch} de {Math.ceil(progress.total / concurrency)}
             </div>
@@ -315,7 +397,7 @@ export const BulkMediaUploader = ({
             <span className="font-medium text-green-500">Upload Concluído!</span>
           </div>
           <p className="text-sm text-muted-foreground">
-            {uploadedFiles.length.toLocaleString()} arquivos enviados com sucesso
+            {uploadedFiles.length.toLocaleString()} arquivos enviados ({formatBytes(stats.bytesUploaded)})
             {progress.failed > 0 && (
               <span className="text-red-500"> • {progress.failed} falhas</span>
             )}
