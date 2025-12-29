@@ -3,7 +3,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Loader2, Save, Bell, Clock } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
+import { Loader2, Save, Bell, Clock, Zap } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { TypebotConverter } from './TypebotConverter';
@@ -19,13 +21,15 @@ export const FunnelSettingsTab = ({ funnelId, onImportFunnel }: FunnelSettingsTa
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [reminderMinutes, setReminderMinutes] = useState<string>('5');
+  const [autoRemarketingEnabled, setAutoRemarketingEnabled] = useState(false);
+  const [autoRemarketingMessage, setAutoRemarketingMessage] = useState('');
 
   useEffect(() => {
     const fetchSettings = async () => {
       try {
         const { data, error } = await supabase
           .from('funnels')
-          .select('payment_reminder_minutes')
+          .select('payment_reminder_minutes, auto_remarketing_enabled, auto_remarketing_message')
           .eq('id', funnelId)
           .single();
 
@@ -34,6 +38,8 @@ export const FunnelSettingsTab = ({ funnelId, onImportFunnel }: FunnelSettingsTa
         if (data?.payment_reminder_minutes) {
           setReminderMinutes(String(data.payment_reminder_minutes));
         }
+        setAutoRemarketingEnabled(data?.auto_remarketing_enabled || false);
+        setAutoRemarketingMessage(data?.auto_remarketing_message || '');
       } catch (error) {
         console.error('Error fetching funnel settings:', error);
       } finally {
@@ -51,6 +57,8 @@ export const FunnelSettingsTab = ({ funnelId, onImportFunnel }: FunnelSettingsTa
         .from('funnels')
         .update({ 
           payment_reminder_minutes: parseInt(reminderMinutes),
+          auto_remarketing_enabled: autoRemarketingEnabled,
+          auto_remarketing_message: autoRemarketingMessage || null,
           updated_at: new Date().toISOString()
         })
         .eq('id', funnelId);
@@ -61,10 +69,10 @@ export const FunnelSettingsTab = ({ funnelId, onImportFunnel }: FunnelSettingsTa
         title: 'Configurações salvas',
         description: 'As configurações do funil foram atualizadas.',
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Erro ao salvar',
-        description: error.message,
+        description: error instanceof Error ? error.message : 'Erro desconhecido',
         variant: 'destructive',
       });
     } finally {
@@ -125,6 +133,48 @@ export const FunnelSettingsTab = ({ funnelId, onImportFunnel }: FunnelSettingsTa
               }
             </p>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Zap className="h-5 w-5 text-amber-500" />
+            <CardTitle className="text-base">Remarketing Automático</CardTitle>
+          </div>
+          <CardDescription>
+            Envie mensagens automáticas para leads que não completaram o pagamento.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label>Ativar Remarketing Automático</Label>
+              <p className="text-xs text-muted-foreground">
+                Envia mensagens automaticamente após o tempo de lembrete configurado acima.
+              </p>
+            </div>
+            <Switch
+              checked={autoRemarketingEnabled}
+              onCheckedChange={setAutoRemarketingEnabled}
+            />
+          </div>
+          
+          {autoRemarketingEnabled && (
+            <div className="space-y-2">
+              <Label htmlFor="auto-remarketing-message">Mensagem de Remarketing</Label>
+              <Textarea
+                id="auto-remarketing-message"
+                placeholder="💰 Oi! Vi que você ainda não finalizou seu pagamento. Posso te ajudar com algo?"
+                value={autoRemarketingMessage}
+                onChange={(e) => setAutoRemarketingMessage(e.target.value)}
+                rows={4}
+              />
+              <p className="text-xs text-muted-foreground">
+                Se vazio, será usada a mensagem padrão. Você pode usar HTML para formatação.
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
