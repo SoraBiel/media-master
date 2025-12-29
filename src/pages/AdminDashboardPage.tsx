@@ -3796,6 +3796,184 @@ const AdminDashboardPage = () => {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Edit Admin TikTok Dialog */}
+        <Dialog open={editTiktokDialogOpen} onOpenChange={setEditTiktokDialogOpen}>
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Editar Conta TikTok</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div><Label>Username</Label><Input value={tiktokForm.username} onChange={(e) => setTiktokForm({ ...tiktokForm, username: e.target.value })} placeholder="@usuario" /></div>
+              <div className="grid grid-cols-2 gap-4">
+                <div><Label>Seguidores</Label><Input type="number" value={tiktokForm.followers} onChange={(e) => setTiktokForm({ ...tiktokForm, followers: e.target.value })} /></div>
+                <div><Label>Curtidas</Label><Input type="number" value={tiktokForm.likes} onChange={(e) => setTiktokForm({ ...tiktokForm, likes: e.target.value })} /></div>
+              </div>
+              <div><Label>Nicho</Label><Input value={tiktokForm.niche} onChange={(e) => setTiktokForm({ ...tiktokForm, niche: e.target.value })} placeholder="Entretenimento, Música, etc." /></div>
+              <div><Label>Descrição</Label><Textarea value={tiktokForm.description} onChange={(e) => setTiktokForm({ ...tiktokForm, description: e.target.value })} placeholder="Descreva a conta..." /></div>
+              <div><Label>Preço (R$)</Label><Input type="number" step="0.01" value={tiktokForm.price} onChange={(e) => setTiktokForm({ ...tiktokForm, price: e.target.value })} /></div>
+              <div>
+                <Label>Foto da Conta</Label>
+                <input type="file" ref={tiktokImageInputRef} accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) setTiktokImageFile(file); }} />
+                <div className="mt-2">
+                  {tiktokImageFile ? (
+                    <div className="flex items-center gap-2 p-2 bg-secondary/50 rounded-lg">
+                      <Image className="w-4 h-4" />
+                      <span className="text-sm flex-1 truncate">{tiktokImageFile.name}</span>
+                      <Button variant="ghost" size="sm" onClick={() => setTiktokImageFile(null)}><Trash2 className="w-4 h-4" /></Button>
+                    </div>
+                  ) : selectedEditTiktok?.image_url ? (
+                    <div className="flex items-center gap-2 p-2 bg-secondary/50 rounded-lg">
+                      <img src={selectedEditTiktok.image_url} alt="Preview" className="w-10 h-10 rounded object-cover" />
+                      <span className="text-sm flex-1">Imagem atual</span>
+                      <Button variant="outline" size="sm" onClick={() => tiktokImageInputRef.current?.click()}>Trocar</Button>
+                    </div>
+                  ) : (
+                    <Button variant="outline" className="w-full" onClick={() => tiktokImageInputRef.current?.click()}>
+                      <Upload className="w-4 h-4 mr-2" />Selecionar Foto
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <div className="border-t pt-4 mt-4">
+                <h4 className="font-semibold mb-3 flex items-center gap-2"><Shield className="w-4 h-4" />Dados para Entrega</h4>
+                <div className="space-y-3">
+                  <div><Label>Login</Label><Input value={tiktokForm.deliverable_login} onChange={(e) => setTiktokForm({ ...tiktokForm, deliverable_login: e.target.value })} /></div>
+                  <div><Label>Senha</Label><Input type="password" value={tiktokForm.deliverable_password} onChange={(e) => setTiktokForm({ ...tiktokForm, deliverable_password: e.target.value })} /></div>
+                  <div><Label>Email Vinculado</Label><Input value={tiktokForm.deliverable_email} onChange={(e) => setTiktokForm({ ...tiktokForm, deliverable_email: e.target.value })} /></div>
+                  <div><Label>Notas</Label><Textarea value={tiktokForm.deliverable_notes} onChange={(e) => setTiktokForm({ ...tiktokForm, deliverable_notes: e.target.value })} /></div>
+                </div>
+              </div>
+              <Button onClick={handleUpdateTiktok} className="w-full telegram-gradient text-white" disabled={isUploadingTiktok}>
+                {isUploadingTiktok ? <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />Salvando...</> : "Salvar Alterações"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Admin Instagram Dialog */}
+        <Dialog open={editInstagramDialogOpen} onOpenChange={setEditInstagramDialogOpen}>
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Editar Conta Instagram</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div><Label>Username</Label><Input value={instagramForm.username} onChange={(e) => setInstagramForm({ ...instagramForm, username: e.target.value })} placeholder="@usuario" /></div>
+              <div className="grid grid-cols-3 gap-4">
+                <div><Label>Seguidores</Label><Input type="number" value={instagramForm.followers} onChange={(e) => setInstagramForm({ ...instagramForm, followers: e.target.value })} /></div>
+                <div><Label>Seguindo</Label><Input type="number" value={instagramForm.following} onChange={(e) => setInstagramForm({ ...instagramForm, following: e.target.value })} /></div>
+                <div><Label>Posts</Label><Input type="number" value={instagramForm.posts_count} onChange={(e) => setInstagramForm({ ...instagramForm, posts_count: e.target.value })} /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div><Label>Taxa de Engajamento (%)</Label><Input type="number" step="0.1" value={instagramForm.engagement_rate} onChange={(e) => setInstagramForm({ ...instagramForm, engagement_rate: e.target.value })} /></div>
+                <div className="flex items-center gap-2 pt-6">
+                  <input type="checkbox" id="edit_is_verified" checked={instagramForm.is_verified} onChange={(e) => setInstagramForm({ ...instagramForm, is_verified: e.target.checked })} className="h-4 w-4" />
+                  <Label htmlFor="edit_is_verified">Verificada</Label>
+                </div>
+              </div>
+              <div><Label>Nicho</Label><Input value={instagramForm.niche} onChange={(e) => setInstagramForm({ ...instagramForm, niche: e.target.value })} /></div>
+              <div><Label>Descrição</Label><Textarea value={instagramForm.description} onChange={(e) => setInstagramForm({ ...instagramForm, description: e.target.value })} /></div>
+              <div><Label>Preço (R$)</Label><Input type="number" step="0.01" value={instagramForm.price} onChange={(e) => setInstagramForm({ ...instagramForm, price: e.target.value })} /></div>
+              <div>
+                <Label>Foto da Conta</Label>
+                <input type="file" ref={instagramImageInputRef} accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) setInstagramImageFile(file); }} />
+                <div className="mt-2">
+                  {instagramImageFile ? (
+                    <div className="flex items-center gap-2 p-2 bg-secondary/50 rounded-lg">
+                      <Image className="w-4 h-4" />
+                      <span className="text-sm flex-1 truncate">{instagramImageFile.name}</span>
+                      <Button variant="ghost" size="sm" onClick={() => setInstagramImageFile(null)}><Trash2 className="w-4 h-4" /></Button>
+                    </div>
+                  ) : selectedEditInstagram?.image_url ? (
+                    <div className="flex items-center gap-2 p-2 bg-secondary/50 rounded-lg">
+                      <img src={selectedEditInstagram.image_url} alt="Preview" className="w-10 h-10 rounded object-cover" />
+                      <span className="text-sm flex-1">Imagem atual</span>
+                      <Button variant="outline" size="sm" onClick={() => instagramImageInputRef.current?.click()}>Trocar</Button>
+                    </div>
+                  ) : (
+                    <Button variant="outline" className="w-full" onClick={() => instagramImageInputRef.current?.click()}>
+                      <Upload className="w-4 h-4 mr-2" />Selecionar Foto
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <div className="border-t pt-4 mt-4">
+                <h4 className="font-semibold mb-3 flex items-center gap-2"><Shield className="w-4 h-4" />Dados para Entrega</h4>
+                <div className="space-y-3">
+                  <div><Label>Login</Label><Input value={instagramForm.deliverable_login} onChange={(e) => setInstagramForm({ ...instagramForm, deliverable_login: e.target.value })} /></div>
+                  <div><Label>Senha</Label><Input type="password" value={instagramForm.deliverable_password} onChange={(e) => setInstagramForm({ ...instagramForm, deliverable_password: e.target.value })} /></div>
+                  <div><Label>Email Vinculado</Label><Input value={instagramForm.deliverable_email} onChange={(e) => setInstagramForm({ ...instagramForm, deliverable_email: e.target.value })} /></div>
+                  <div><Label>Notas</Label><Textarea value={instagramForm.deliverable_notes} onChange={(e) => setInstagramForm({ ...instagramForm, deliverable_notes: e.target.value })} /></div>
+                </div>
+              </div>
+              <Button onClick={handleUpdateInstagram} className="w-full telegram-gradient text-white" disabled={isUploadingInstagram}>
+                {isUploadingInstagram ? <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />Salvando...</> : "Salvar Alterações"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Admin Telegram Dialog */}
+        <Dialog open={editTelegramDialogOpen} onOpenChange={setEditTelegramDialogOpen}>
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Editar Grupo Telegram</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div><Label>Nome do Grupo</Label><Input value={telegramGroupForm.group_name} onChange={(e) => setTelegramGroupForm({ ...telegramGroupForm, group_name: e.target.value })} /></div>
+              <div><Label>Username</Label><Input value={telegramGroupForm.group_username} onChange={(e) => setTelegramGroupForm({ ...telegramGroupForm, group_username: e.target.value })} placeholder="@grupo" /></div>
+              <div className="grid grid-cols-2 gap-4">
+                <div><Label>Membros</Label><Input type="number" value={telegramGroupForm.members_count} onChange={(e) => setTelegramGroupForm({ ...telegramGroupForm, members_count: e.target.value })} /></div>
+                <div>
+                  <Label>Tipo</Label>
+                  <Select value={telegramGroupForm.group_type} onValueChange={(v) => setTelegramGroupForm({ ...telegramGroupForm, group_type: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="group">Grupo</SelectItem>
+                      <SelectItem value="channel">Canal</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div><Label>Nicho</Label><Input value={telegramGroupForm.niche} onChange={(e) => setTelegramGroupForm({ ...telegramGroupForm, niche: e.target.value })} /></div>
+              <div><Label>Descrição</Label><Textarea value={telegramGroupForm.description} onChange={(e) => setTelegramGroupForm({ ...telegramGroupForm, description: e.target.value })} /></div>
+              <div><Label>Preço (R$)</Label><Input type="number" step="0.01" value={telegramGroupForm.price} onChange={(e) => setTelegramGroupForm({ ...telegramGroupForm, price: e.target.value })} /></div>
+              <div>
+                <Label>Foto do Grupo</Label>
+                <input type="file" ref={telegramGroupImageInputRef} accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) setTelegramGroupImageFile(file); }} />
+                <div className="mt-2">
+                  {telegramGroupImageFile ? (
+                    <div className="flex items-center gap-2 p-2 bg-secondary/50 rounded-lg">
+                      <Image className="w-4 h-4" />
+                      <span className="text-sm flex-1 truncate">{telegramGroupImageFile.name}</span>
+                      <Button variant="ghost" size="sm" onClick={() => setTelegramGroupImageFile(null)}><Trash2 className="w-4 h-4" /></Button>
+                    </div>
+                  ) : selectedEditTelegram?.image_url ? (
+                    <div className="flex items-center gap-2 p-2 bg-secondary/50 rounded-lg">
+                      <img src={selectedEditTelegram.image_url} alt="Preview" className="w-10 h-10 rounded object-cover" />
+                      <span className="text-sm flex-1">Imagem atual</span>
+                      <Button variant="outline" size="sm" onClick={() => telegramGroupImageInputRef.current?.click()}>Trocar</Button>
+                    </div>
+                  ) : (
+                    <Button variant="outline" className="w-full" onClick={() => telegramGroupImageInputRef.current?.click()}>
+                      <Upload className="w-4 h-4 mr-2" />Selecionar Foto
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <div className="border-t pt-4 mt-4">
+                <h4 className="font-semibold mb-3 flex items-center gap-2"><Shield className="w-4 h-4" />Dados para Entrega</h4>
+                <div className="space-y-3">
+                  <div><Label>Link de Convite</Label><Input value={telegramGroupForm.deliverable_invite_link} onChange={(e) => setTelegramGroupForm({ ...telegramGroupForm, deliverable_invite_link: e.target.value })} placeholder="https://t.me/+..." /></div>
+                  <div><Label>Notas</Label><Textarea value={telegramGroupForm.deliverable_notes} onChange={(e) => setTelegramGroupForm({ ...telegramGroupForm, deliverable_notes: e.target.value })} /></div>
+                </div>
+              </div>
+              <Button onClick={handleUpdateTelegram} className="w-full telegram-gradient text-white" disabled={isUploadingTelegramGroup}>
+                {isUploadingTelegramGroup ? <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />Salvando...</> : "Salvar Alterações"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
