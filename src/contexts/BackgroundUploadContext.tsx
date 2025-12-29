@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { compressImages, getCompressionStats, isCompressibleImage } from "@/utils/imageCompression";
 
 interface BackgroundUpload {
   id: string;
@@ -9,9 +10,10 @@ interface BackgroundUpload {
   totalFiles: number;
   completedFiles: number;
   failedFiles: number;
-  status: 'uploading' | 'completed' | 'error' | 'cancelled';
+  status: 'uploading' | 'completed' | 'error' | 'cancelled' | 'compressing';
   uploadedUrls: { url: string; name: string; type: string; size: number }[];
   startTime: number;
+  savedBytes?: number;
   onComplete?: (files: { url: string; name: string; type: string; size: number }[]) => void;
 }
 
@@ -23,6 +25,7 @@ interface BackgroundUploadContextType {
     files: File[];
     bucket: string;
     concurrency?: number;
+    compressImages?: boolean;
     onComplete?: (files: { url: string; name: string; type: string; size: number }[]) => void;
   }) => void;
   cancelUpload: (id: string) => void;
@@ -49,9 +52,10 @@ export const BackgroundUploadProvider = ({ children }: { children: ReactNode }) 
   const startBackgroundUpload = useCallback(async ({
     id,
     packName,
-    files,
+    files: originalFiles,
     bucket,
-    concurrency = 40, // Increased from 25 to 40
+    concurrency = 40,
+    compressImages: shouldCompress = true,
     onComplete
   }: {
     id: string;
@@ -59,16 +63,18 @@ export const BackgroundUploadProvider = ({ children }: { children: ReactNode }) 
     files: File[];
     bucket: string;
     concurrency?: number;
+    compressImages?: boolean;
     onComplete?: (files: { url: string; name: string; type: string; size: number }[]) => void;
   }) => {
+    // Initial state with compression status
     const newUpload: BackgroundUpload = {
       id,
       packName,
       bucket,
-      totalFiles: files.length,
+      totalFiles: originalFiles.length,
       completedFiles: 0,
       failedFiles: 0,
-      status: 'uploading',
+      status: shouldCompress ? 'compressing' : 'uploading',
       uploadedUrls: [],
       startTime: Date.now(),
       onComplete
@@ -76,9 +82,45 @@ export const BackgroundUploadProvider = ({ children }: { children: ReactNode }) 
 
     setUploads(prev => [...prev, newUpload]);
 
+    // Compress images first if enabled
+    let files = originalFiles;
+    let savedBytes = 0;
+
+    if (shouldCompress) {
+      const imageCount = originalFiles.filter(f => isCompressibleImage(f)).length;
+      if (imageCount > 0) {
+        toast({
+          title: "Comprimindo imagens...",
+          description: `${imageCount} imagens serão otimizadas para upload mais rápido.`,
+        });
+
+        files = await compressImages(originalFiles, {
+          maxWidth: 1920,
+          maxHeight: 1920,
+          quality: 0.85,
+          format: 'webp'
+        }, 8);
+
+        const stats = getCompressionStats(originalFiles, files);
+        savedBytes = stats.savedBytes;
+
+        if (stats.savedPercent > 0) {
+          toast({
+            title: "Imagens comprimidas!",
+            description: `Economia de ${(stats.savedBytes / 1024 / 1024).toFixed(1)}MB (${stats.savedPercent}%)`,
+          });
+        }
+      }
+    }
+
+    // Update status to uploading
+    setUploads(prev => prev.map(u => 
+      u.id === id ? { ...u, status: 'uploading', savedBytes } : u
+    ));
+
     toast({
       title: "Upload turbo iniciado!",
-      description: `${files.length.toLocaleString()} arquivos • ${concurrency}x paralelo • Continue navegando!`,
+      description: `${files.length.toLocaleString()} arquivos • ${concurrency}x paralelo`,
     });
 
     // Ultra-fast upload with minimal overhead
