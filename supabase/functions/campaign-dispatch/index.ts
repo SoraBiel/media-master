@@ -515,12 +515,29 @@ serve(async (req) => {
     const packSize = campaign.pack_size || 1;
     console.log(`Will dispatch ${totalMediaCount} media files with pack_size=${packSize}`);
 
-    // Update campaign with total count
-    await supabaseClient.from("campaigns").update({
-      total_count: totalMediaCount,
-      status: "running",
-      started_at: new Date().toISOString(),
-    }).eq("id", campaignId);
+    // Update campaign with total count (resume-safe: don't reset counters if already started)
+    const alreadyStarted = (campaign.sent_count ?? 0) > 0;
+    const startedAt = campaign.started_at || new Date().toISOString();
+
+    await supabaseClient
+      .from("campaigns")
+      .update({
+        total_count: totalMediaCount,
+        status: "running",
+        started_at: startedAt,
+        ...(alreadyStarted
+          ? {}
+          : {
+              progress: 0,
+              sent_count: 0,
+              success_count: 0,
+              error_count: 0,
+              errors_log: [],
+              avg_send_time_ms: 0,
+              error_message: null,
+            }),
+      })
+      .eq("id", campaignId);
 
     // Start background dispatch - pass only IDs and configs, not the data
     EdgeRuntime.waitUntil(dispatchMediaInBackground(
@@ -572,17 +589,44 @@ async function dispatchMediaInBackground(
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
   );
 
-  let sentCount = 0;
-  let successCount = 0;
-  let errorCount = 0;
-  const errorsLog: { index: number; url: string; error: string; timestamp: string }[] = [];
+  // Resume-safe counters (in case the runtime shuts down mid-campaign)
+  const { data: existingCampaign } = await supabase
+    .from("campaigns")
+    .select("status, sent_count, success_count, error_count, errors_log, total_count")
+    .eq("id", campaignId)
+    .single();
+
+  if (existingCampaign?.status && ["completed", "failed"].includes(existingCampaign.status)) {
+    console.log(`Campaign ${campaignId} already ${existingCampaign.status}, skipping dispatch`);
+    return;
+  }
+
+  let sentCount = Math.max(0, existingCampaign?.sent_count ?? 0);
+  let successCount = Math.max(0, existingCampaign?.success_count ?? 0);
+  let errorCount = Math.max(0, existingCampaign?.error_count ?? 0);
+
+  const errorsLog: { index: number; url: string; error: string; timestamp: string }[] =
+    Array.isArray(existingCampaign?.errors_log)
+      ? (existingCampaign!.errors_log as any[])
+          .filter((e) => e && typeof e === "object")
+          .map((e) => ({
+            index: Number(e.index ?? 0),
+            url: String(e.url ?? ""),
+            error: String(e.error ?? ""),
+            timestamp: String(e.timestamp ?? new Date().toISOString()),
+          }))
+          .slice(-100)
+      : [];
+
   const sendTimes: number[] = [];
-  
+
   // Process in batches to avoid memory issues with large media packs
   const BATCH_SIZE = 100; // Process 100 files at a time
-  let offset = 0;
+  let offset = Math.min(sentCount, totalMediaCount);
 
-  console.log(`Background dispatch started for campaign ${campaignId} with ${totalMediaCount} files, packSize=${packSize}`);
+  console.log(
+    `Background dispatch started for campaign ${campaignId} at offset=${offset} of ${totalMediaCount} (packSize=${packSize})`
+  );
 
   try {
     while (offset < totalMediaCount) {
