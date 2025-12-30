@@ -19,6 +19,13 @@ function encodeStoragePath(path: string): string {
   return path.split("/").map((part) => encodeURIComponent(part)).join("/");
 }
 
+function maybeForceDownload(url: string): string {
+  if (url.includes("/storage/v1/object/public/") && !url.includes("download=")) {
+    return `${url}${url.includes("?") ? "&" : "?"}download=1`;
+  }
+  return url;
+}
+
 async function telegramPostJson(botToken: string, method: string, payload: Record<string, any>): Promise<any> {
   const url = `${TELEGRAM_API_BASE}${botToken}/${method}`;
 
@@ -51,59 +58,100 @@ async function telegramPostJson(botToken: string, method: string, payload: Recor
   throw new Error("Telegram API retry limit reached");
 }
 
-async function sendMediaByUrl(botToken: string, chatId: string, mediaUrl: string, caption?: string, sendMode: string = "media"): Promise<any> {
-  const isVideo = isVideoUrl(mediaUrl);
+async function sendMediaByUrl(
+  botToken: string,
+  chatId: string,
+  mediaUrl: string,
+  caption?: string,
+  sendMode: string = "media"
+): Promise<any> {
+  const url = maybeForceDownload(mediaUrl);
+  const isVideo = isVideoUrl(url);
 
   if (sendMode === "document") {
     return telegramPostJson(botToken, "sendDocument", {
       chat_id: chatId,
-      document: mediaUrl,
+      document: url,
       caption,
       parse_mode: caption ? "HTML" : undefined,
+      disable_content_type_detection: true,
     });
   }
 
   if (!isVideo) {
-    return telegramPostJson(botToken, "sendPhoto", {
-      chat_id: chatId,
-      photo: mediaUrl,
-      caption,
-      parse_mode: caption ? "HTML" : undefined,
-    });
+    try {
+      return await telegramPostJson(botToken, "sendPhoto", {
+        chat_id: chatId,
+        photo: url,
+        caption,
+        parse_mode: caption ? "HTML" : undefined,
+      });
+    } catch (e: any) {
+      const msg = String(e?.message || "");
+      if (
+        msg.toLowerCase().includes("wrong type of the web page content") ||
+        msg.toLowerCase().includes("failed to get http url content") ||
+        msg.includes("WEBPAGE_CURL_FAILED")
+      ) {
+        return telegramPostJson(botToken, "sendDocument", {
+          chat_id: chatId,
+          document: url,
+          caption,
+          parse_mode: caption ? "HTML" : undefined,
+          disable_content_type_detection: true,
+        });
+      }
+      throw e;
+    }
   }
 
   try {
     return await telegramPostJson(botToken, "sendVideo", {
       chat_id: chatId,
-      video: mediaUrl,
+      video: url,
       caption,
       parse_mode: caption ? "HTML" : undefined,
       supports_streaming: true,
     });
   } catch (e: any) {
     const msg = String(e?.message || "");
-    if (msg.includes("WEBPAGE_CURL_FAILED") || msg.toLowerCase().includes("file is too big") || msg.toLowerCase().includes("video_file_invalid")) {
+    if (
+      msg.includes("WEBPAGE_CURL_FAILED") ||
+      msg.toLowerCase().includes("failed to get http url content") ||
+      msg.toLowerCase().includes("wrong type of the web page content") ||
+      msg.toLowerCase().includes("file is too big") ||
+      msg.toLowerCase().includes("video_file_invalid")
+    ) {
       return telegramPostJson(botToken, "sendDocument", {
         chat_id: chatId,
-        document: mediaUrl,
+        document: url,
         caption,
         parse_mode: caption ? "HTML" : undefined,
+        disable_content_type_detection: true,
       });
     }
     throw e;
   }
 }
 
-async function sendMediaGroupByUrl(botToken: string, chatId: string, mediaUrls: string[], caption?: string): Promise<any> {
-  const media = mediaUrls.slice(0, 10).map((url, idx) => {
-    const isVideo = isVideoUrl(url);
-    return {
-      type: isVideo ? "video" : "photo",
-      media: url,
-      caption: idx === 0 ? caption : undefined,
-      parse_mode: idx === 0 && caption ? "HTML" : undefined,
-    };
-  });
+async function sendMediaGroupByUrl(
+  botToken: string,
+  chatId: string,
+  mediaUrls: string[],
+  caption?: string
+): Promise<any> {
+  const media = mediaUrls
+    .slice(0, 10)
+    .map((rawUrl, idx) => {
+      const url = maybeForceDownload(rawUrl);
+      const isVideo = isVideoUrl(url);
+      return {
+        type: isVideo ? "video" : "photo",
+        media: url,
+        caption: idx === 0 ? caption : undefined,
+        parse_mode: idx === 0 && caption ? "HTML" : undefined,
+      };
+    });
 
   return telegramPostJson(botToken, "sendMediaGroup", {
     chat_id: chatId,

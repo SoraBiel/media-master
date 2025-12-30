@@ -59,6 +59,15 @@ function encodeStoragePath(path: string): string {
     .join("/");
 }
 
+function maybeForceDownload(url: string): string {
+  // Telegram is picky with some direct URLs. For public storage objects, forcing download often fixes
+  // "wrong type of the web page content".
+  if (url.includes("/storage/v1/object/public/") && !url.includes("download=")) {
+    return `${url}${url.includes("?") ? "&" : "?"}download=1`;
+  }
+  return url;
+}
+
 // Send using Telegrams ability to fetch the URL directly (low memory)
 async function telegramPostJson(
   botToken: string,
@@ -115,33 +124,53 @@ async function sendMediaByUrl(
   caption?: string,
   sendMode: string = "media"
 ): Promise<any> {
-  const isVideo = isVideoUrl(mediaUrl);
+  const url = maybeForceDownload(mediaUrl);
+  const isVideo = isVideoUrl(url);
 
   // If caller forces document, just do it.
   if (sendMode === "document") {
     return telegramPostJson(botToken, "sendDocument", {
       chat_id: chatId,
-      document: mediaUrl,
+      document: url,
       caption,
       parse_mode: caption ? "HTML" : undefined,
+      disable_content_type_detection: true,
     });
   }
 
   // Photos
   if (!isVideo) {
-    return telegramPostJson(botToken, "sendPhoto", {
-      chat_id: chatId,
-      photo: mediaUrl,
-      caption,
-      parse_mode: caption ? "HTML" : undefined,
-    });
+    try {
+      return await telegramPostJson(botToken, "sendPhoto", {
+        chat_id: chatId,
+        photo: url,
+        caption,
+        parse_mode: caption ? "HTML" : undefined,
+      });
+    } catch (e: any) {
+      const msg = String(e?.message || "");
+      if (
+        msg.toLowerCase().includes("wrong type of the web page content") ||
+        msg.toLowerCase().includes("failed to get http url content") ||
+        msg.includes("WEBPAGE_CURL_FAILED")
+      ) {
+        return telegramPostJson(botToken, "sendDocument", {
+          chat_id: chatId,
+          document: url,
+          caption,
+          parse_mode: caption ? "HTML" : undefined,
+          disable_content_type_detection: true,
+        });
+      }
+      throw e;
+    }
   }
 
-  // Videos: try sendVideo first, fallback to sendDocument (some videos fail as video)
+  // Videos: try sendVideo first, fallback to sendDocument
   try {
     return await telegramPostJson(botToken, "sendVideo", {
       chat_id: chatId,
-      video: mediaUrl,
+      video: url,
       caption,
       parse_mode: caption ? "HTML" : undefined,
       supports_streaming: true,
@@ -149,17 +178,19 @@ async function sendMediaByUrl(
   } catch (e: any) {
     const msg = String(e?.message || "");
 
-    // If Telegram couldn't fetch or couldn't treat as a video, try as document
     if (
       msg.includes("WEBPAGE_CURL_FAILED") ||
+      msg.toLowerCase().includes("failed to get http url content") ||
+      msg.toLowerCase().includes("wrong type of the web page content") ||
       msg.toLowerCase().includes("file is too big") ||
       msg.toLowerCase().includes("video_file_invalid")
     ) {
       return telegramPostJson(botToken, "sendDocument", {
         chat_id: chatId,
-        document: mediaUrl,
+        document: url,
         caption,
         parse_mode: caption ? "HTML" : undefined,
+        disable_content_type_detection: true,
       });
     }
 
@@ -173,15 +204,18 @@ async function sendMediaGroupByUrl(
   mediaUrls: string[],
   caption?: string
 ): Promise<any> {
-  const media = mediaUrls.slice(0, 10).map((url, idx) => {
-    const isVideo = isVideoUrl(url);
-    return {
-      type: isVideo ? "video" : "photo",
-      media: url,
-      caption: idx === 0 ? caption : undefined,
-      parse_mode: idx === 0 && caption ? "HTML" : undefined,
-    };
-  });
+  const media = mediaUrls
+    .slice(0, 10)
+    .map((rawUrl, idx) => {
+      const url = maybeForceDownload(rawUrl);
+      const isVideo = isVideoUrl(url);
+      return {
+        type: isVideo ? "video" : "photo",
+        media: url,
+        caption: idx === 0 ? caption : undefined,
+        parse_mode: idx === 0 && caption ? "HTML" : undefined,
+      };
+    });
 
   // Telegram expects a JSON-serialized array for `media`
   return telegramPostJson(botToken, "sendMediaGroup", {
