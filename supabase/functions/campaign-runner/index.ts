@@ -168,54 +168,28 @@ serve(async (req) => {
   );
 
   try {
-    // Use atomic lock to prevent concurrent processing
-    const lockToken = crypto.randomUUID();
-    const lockExpires = new Date(Date.now() + 120000).toISOString(); // 2 min lock
+    // Use atomic lock to prevent concurrent processing (expires-based)
+    const lockExpiresAt = new Date(Date.now() + 120000).toISOString(); // 2 min lock
     const now = new Date().toISOString();
 
-    // First, try to find an unlocked campaign (lock columns null)
-    let targetCampaign: any = null;
-
-    const { data: unlocked, error: unlockedError } = await supabase
+    // Find a campaign that is running and has no lock (or lock expired)
+    const { data: candidates, error: findError } = await supabase
       .from("campaigns")
       .select("*")
       .eq("status", "running")
-      .or("runner_lock_token.is.null,runner_lock_expires_at.is.null")
+      .or(`runner_lock_expires_at.is.null,runner_lock_expires_at.lt.${now}`)
       .order("updated_at", { ascending: true })
       .limit(1);
 
-    if (unlockedError) {
-      console.error("Error finding unlocked campaign:", unlockedError);
-      return new Response(JSON.stringify({ error: unlockedError.message }), {
+    if (findError) {
+      console.error("Error finding unlocked campaign:", findError);
+      return new Response(JSON.stringify({ error: findError.message }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    if (unlocked && unlocked.length > 0) {
-      targetCampaign = unlocked[0];
-    } else {
-      // Then, try to find a campaign whose lock is expired
-      const { data: expired, error: expiredError } = await supabase
-        .from("campaigns")
-        .select("*")
-        .eq("status", "running")
-        .lt("runner_lock_expires_at", now)
-        .order("updated_at", { ascending: true })
-        .limit(1);
-
-      if (expiredError) {
-        console.error("Error finding expired-lock campaign:", expiredError);
-        return new Response(JSON.stringify({ error: expiredError.message }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      if (expired && expired.length > 0) {
-        targetCampaign = expired[0];
-      }
-    }
+    const targetCampaign: any = candidates?.[0];
 
     if (!targetCampaign) {
       console.log("No running campaigns to process");
@@ -227,25 +201,16 @@ serve(async (req) => {
     console.log(`Found campaign ${targetCampaign.id}, attempting lock...`);
 
     // Atomically claim by updating only if lock conditions still match
-    let claimQuery = supabase
+    const { data: claimedRows, error: claimError } = await supabase
       .from("campaigns")
       .update({
-        runner_lock_token: lockToken,
-        runner_lock_expires_at: lockExpires,
+        runner_lock_expires_at: lockExpiresAt,
         updated_at: now,
       })
       .eq("id", targetCampaign.id)
-      .eq("status", "running");
-
-    if (targetCampaign.runner_lock_expires_at) {
-      // If we picked it because it's expired, enforce that
-      claimQuery = claimQuery.lt("runner_lock_expires_at", now);
-    } else {
-      // If we picked it because it's unlocked, enforce that
-      claimQuery = claimQuery.or("runner_lock_token.is.null,runner_lock_expires_at.is.null");
-    }
-
-    const { data: claimedRows, error: claimError } = await claimQuery.select("id");
+      .eq("status", "running")
+      .or(`runner_lock_expires_at.is.null,runner_lock_expires_at.lt.${now}`)
+      .select("id");
 
     if (claimError) {
       console.error("Error claiming campaign:", claimError);
@@ -255,8 +220,6 @@ serve(async (req) => {
       });
     }
 
-    // NOTE: PostgREST may return `null` data in some cases even when the update happened.
-    // So we validate the claim by fetching the campaign by the lock token.
     const claimed = Array.isArray(claimedRows) && claimedRows.length > 0;
     if (!claimed) {
       console.log("Campaign was claimed by another runner");
@@ -269,7 +232,7 @@ serve(async (req) => {
       .from("campaigns")
       .select("*")
       .eq("id", targetCampaign.id)
-      .eq("runner_lock_token", lockToken)
+      .eq("runner_lock_expires_at", lockExpiresAt)
       .maybeSingle();
 
     if (claimedFetchError || !claimedCampaign) {
@@ -280,7 +243,7 @@ serve(async (req) => {
       });
     }
 
-    console.log(`Locked campaign ${targetCampaign.id} with token ${lockToken}`);
+    console.log(`Locked campaign ${targetCampaign.id} until ${lockExpiresAt}`);
 
     const campaign = claimedCampaign;
     const campaignId = campaign.id;
@@ -305,7 +268,7 @@ serve(async (req) => {
         updated_at: new Date().toISOString()
       })
       .eq("id", campaignId)
-      .eq("runner_lock_token", lockToken);
+      .eq("runner_lock_expires_at", lockExpiresAt);
 
     if (reserveError) {
       console.error("Error reserving batch:", reserveError);
@@ -321,7 +284,6 @@ serve(async (req) => {
         status: "completed",
         progress: 100,
         completed_at: new Date().toISOString(),
-        runner_lock_token: null,
         runner_lock_expires_at: null,
       }).eq("id", campaignId);
 
@@ -342,7 +304,7 @@ serve(async (req) => {
       await supabase.from("campaigns").update({
         status: "failed",
         error_message: "Destino não encontrado",
-        runner_lock_token: null,
+        runner_lock_expires_at: null,
       }).eq("id", campaignId);
 
       return new Response(JSON.stringify({ error: "Destination not found" }), {
@@ -377,7 +339,7 @@ serve(async (req) => {
       await supabase.from("campaigns").update({
         status: "failed",
         error_message: "Nenhum bot conectado",
-        runner_lock_token: null,
+        runner_lock_expires_at: null,
       }).eq("id", campaignId);
 
       return new Response(JSON.stringify({ error: "No bot connected" }), {
@@ -433,7 +395,7 @@ serve(async (req) => {
         status: "completed",
         progress: 100,
         completed_at: new Date().toISOString(),
-        runner_lock_token: null,
+        runner_lock_expires_at: null,
       }).eq("id", campaignId);
 
       console.log(`Campaign ${campaignId} completed (no more media)`);
@@ -504,7 +466,7 @@ serve(async (req) => {
         error_count: errorCount,
         errors_log: errorsLog.slice(-50),
         progress: currentProgress,
-      }).eq("id", campaignId).eq("runner_lock_token", lockToken);
+      }).eq("id", campaignId).eq("runner_lock_expires_at", lockExpiresAt);
     }
 
     // Final update
@@ -523,7 +485,6 @@ serve(async (req) => {
       avg_send_time_ms: avgSendTime,
       status: isComplete ? "completed" : "running",
       completed_at: isComplete ? new Date().toISOString() : null,
-      runner_lock_token: null,
       runner_lock_expires_at: null,
     }).eq("id", campaignId);
 
