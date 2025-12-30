@@ -152,7 +152,7 @@ const LandingPage = () => {
         { text: "Modelos Vazados", included: true },
         { text: "Remarketing automático", included: true },
       ],
-      popular: true,
+      popular: false,
       cta: "Escolher Pro",
     },
     {
@@ -173,7 +173,7 @@ const LandingPage = () => {
         { text: "API de integração", included: true },
       ],
       popular: false,
-      cta: "Falar com consultor",
+      cta: "Escolher Agency",
     },
   ];
 
@@ -734,112 +734,77 @@ const LandingPage = () => {
             </p>
           </motion.div>
 
-          <div className="grid lg:grid-cols-4 gap-0 max-w-6xl mx-auto">
-            {plans.map((plan, index) => {
-              const isPopular = plan.popular;
-              const isAgency = plan.name === "Agency";
-              const isFree = plan.name === "Free";
-              
-              return (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.4, delay: index * 0.1 }}
-                  className={`relative ${isPopular ? 'z-10' : 'z-0'}`}
-                >
-                  <div className={`h-full border transition-all duration-300 ${
-                    isPopular 
-                      ? 'bg-white text-[#0a0a0a] border-white rounded-2xl shadow-2xl shadow-white/10 -my-4 py-4' 
-                      : 'bg-[#0a0a0a] border-[#1a1a1a] first:rounded-l-2xl last:rounded-r-2xl'
-                  }`}>
-                    {/* Popular indicator */}
-                    {isPopular && (
-                      <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                        <span className="bg-[#0a0a0a] text-white text-xs font-semibold px-4 py-1.5 rounded-full">
-                          Mais popular
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-6xl mx-auto">
+            {plans.map((plan, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: index * 0.1 }}
+              >
+                <div className="h-full bg-[#111] border border-[#222] rounded-xl hover:border-[#333] transition-colors">
+                  <div className="p-6">
+                    {/* Plan name */}
+                    <div className="mb-6">
+                      <h3 className="text-lg font-semibold mb-1 text-foreground">
+                        {plan.name}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        {plan.description}
+                      </p>
+                    </div>
+                    
+                    {/* Price */}
+                    <div className="mb-6">
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
+                          {plan.price}
+                        </span>
+                        <span className="text-sm text-muted-foreground">
+                          {plan.period}
                         </span>
                       </div>
-                    )}
-                    
-                    <div className="p-6 sm:p-8">
-                      {/* Plan name */}
-                      <div className="mb-6">
-                        <h3 className={`text-lg font-semibold mb-1 ${isPopular ? 'text-[#0a0a0a]' : 'text-foreground'}`}>
-                          {plan.name}
-                        </h3>
-                        <p className={`text-sm ${isPopular ? 'text-[#666]' : 'text-muted-foreground'}`}>
-                          {plan.description}
-                        </p>
-                      </div>
-                      
-                      {/* Price */}
-                      <div className="mb-8">
-                        <div className="flex items-baseline gap-1">
-                          <span className={`text-4xl sm:text-5xl font-bold tracking-tight ${isPopular ? 'text-[#0a0a0a]' : 'text-foreground'}`}>
-                            {plan.price}
-                          </span>
-                          <span className={`text-sm ${isPopular ? 'text-[#666]' : 'text-muted-foreground'}`}>
-                            {plan.period}
+                    </div>
+
+                    {/* CTA Button */}
+                    <Link to="/signup" className="block mb-6">
+                      <Button 
+                        variant="outline" 
+                        className="w-full h-11 font-medium text-sm border-[#333] text-foreground hover:bg-[#1a1a1a] hover:border-[#444] transition-all"
+                      >
+                        {plan.cta}
+                      </Button>
+                    </Link>
+
+                    {/* Features divider */}
+                    <div className="border-t border-[#222] mb-5" />
+
+                    {/* Features */}
+                    <div className="space-y-2.5">
+                      {plan.features.map((feature, i) => (
+                        <div key={i} className="flex items-start gap-2.5">
+                          {feature.included ? (
+                            <Check className="w-4 h-4 mt-0.5 flex-shrink-0 text-foreground" />
+                          ) : (
+                            <div className="w-4 h-4 mt-0.5 flex-shrink-0 flex items-center justify-center">
+                              <div className="w-2 h-[1.5px] bg-[#444]" />
+                            </div>
+                          )}
+                          <span className={`text-sm ${
+                            feature.included 
+                              ? 'text-foreground'
+                              : 'text-muted-foreground/40'
+                          }`}>
+                            {feature.text}
                           </span>
                         </div>
-                      </div>
-
-                      {/* CTA Button */}
-                      <Link 
-                        to={isAgency ? "#" : "/signup"} 
-                        className="block mb-8" 
-                        onClick={isAgency ? openWhatsApp : undefined}
-                      >
-                        <Button 
-                          variant={isPopular ? "default" : "outline"} 
-                          className={`w-full h-12 font-medium text-sm transition-all ${
-                            isPopular 
-                              ? 'bg-[#0a0a0a] text-white hover:bg-[#1a1a1a]'
-                              : 'border-[#333] text-foreground hover:bg-[#111] hover:border-[#444]'
-                          }`}
-                        >
-                          {plan.cta}
-                        </Button>
-                      </Link>
-
-                      {/* Features divider */}
-                      <div className={`border-t mb-6 ${isPopular ? 'border-[#e5e5e5]' : 'border-[#1a1a1a]'}`} />
-
-                      {/* Features */}
-                      <div className="space-y-3">
-                        <p className={`text-xs font-medium uppercase tracking-wider mb-4 ${
-                          isPopular ? 'text-[#999]' : 'text-muted-foreground'
-                        }`}>
-                          O que está incluso
-                        </p>
-                        {plan.features.map((feature, i) => (
-                          <div key={i} className="flex items-start gap-3">
-                            {feature.included ? (
-                              <Check className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
-                                isPopular ? 'text-[#0a0a0a]' : 'text-foreground'
-                              }`} />
-                            ) : (
-                              <div className={`w-4 h-4 mt-0.5 flex-shrink-0 flex items-center justify-center`}>
-                                <div className={`w-1 h-[2px] ${isPopular ? 'bg-[#ccc]' : 'bg-[#333]'}`} />
-                              </div>
-                            )}
-                            <span className={`text-sm ${
-                              feature.included 
-                                ? isPopular ? 'text-[#0a0a0a]' : 'text-foreground'
-                                : isPopular ? 'text-[#999]' : 'text-muted-foreground/50'
-                            }`}>
-                              {feature.text}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
+                      ))}
                     </div>
                   </div>
-                </motion.div>
-              );
-            })}
+                </div>
+              </motion.div>
+            ))}
           </div>
           
           {/* Bottom note */}
@@ -847,7 +812,7 @@ const LandingPage = () => {
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
-            className="text-center text-sm text-muted-foreground mt-12"
+            className="text-center text-sm text-muted-foreground mt-10"
           >
             Todos os planos incluem suporte técnico e atualizações. Cancele quando quiser.
           </motion.p>
