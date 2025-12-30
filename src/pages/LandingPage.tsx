@@ -831,7 +831,7 @@ const LandingPage = () => {
         <div className="container mx-auto px-4">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <img src="/logo-nexo.png" alt="Nexo" className="h-7" />
+              <img src="/logo-nexo.png" alt="Nexo" className="h-40" />
             </div>
             <div className="flex items-center gap-6 text-sm text-muted-foreground">
               <Link to="/login" className="hover:text-foreground transition-colors">
