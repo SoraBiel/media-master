@@ -304,144 +304,196 @@ const LandingPage = () => {
             initial={{ opacity: 0, y: 60 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 1.1 }}
-            className="max-w-4xl mx-auto"
+            className="max-w-5xl mx-auto"
           >
             <div className="relative">
               {/* Glow effect */}
-              <div className="absolute inset-0 bg-gradient-to-t from-primary/15 via-transparent to-transparent blur-2xl scale-95" />
+              <div className="absolute inset-0 bg-gradient-to-t from-cyan-500/10 via-transparent to-transparent blur-3xl scale-90" />
               
               {/* MacBook Frame */}
-              <div className="relative bg-zinc-900 rounded-t-2xl p-2 sm:p-3 border border-zinc-700/50">
+              <div className="relative bg-[#1a1a1a] rounded-t-2xl p-2 sm:p-3">
                 {/* Camera notch */}
-                <div className="absolute top-1.5 left-1/2 -translate-x-1/2 w-16 h-4 bg-zinc-800 rounded-b-lg flex items-center justify-center">
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-5 bg-[#1a1a1a] rounded-b-xl flex items-center justify-center z-10">
                   <div className="w-2 h-2 rounded-full bg-zinc-700" />
                 </div>
                 
                 {/* Screen content */}
-                <div className="bg-[#0a0f1a] rounded-lg overflow-hidden mt-2 border border-zinc-800">
+                <div className="bg-[#0d1117] rounded-lg overflow-hidden border border-zinc-800/50">
                   {/* Browser bar */}
-                  <div className="bg-zinc-900/90 px-3 py-2 flex items-center gap-2 border-b border-zinc-800">
-                    <div className="flex gap-1.5">
-                      <div className="w-2.5 h-2.5 rounded-full bg-red-500" />
-                      <div className="w-2.5 h-2.5 rounded-full bg-yellow-500" />
-                      <div className="w-2.5 h-2.5 rounded-full bg-green-500" />
+                  <div className="bg-[#161b22] px-4 py-2.5 flex items-center justify-center border-b border-zinc-800/50">
+                    <div className="absolute left-4 flex gap-2">
+                      <div className="w-3 h-3 rounded-full bg-[#ff5f57]" />
+                      <div className="w-3 h-3 rounded-full bg-[#febc2e]" />
+                      <div className="w-3 h-3 rounded-full bg-[#28c840]" />
                     </div>
-                    <div className="flex-1 mx-3">
-                      <div className="bg-zinc-800/80 rounded-md px-3 py-1 text-[10px] sm:text-xs text-zinc-400 flex items-center gap-2">
-                        <Shield className="w-3 h-3 text-green-500" />
-                        app.nexo.com/dashboard
+                    <div className="bg-[#0d1117] rounded-full px-4 py-1.5 flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-green-500 flex items-center justify-center">
+                        <Shield className="w-2 h-2 text-white" />
                       </div>
+                      <span className="text-zinc-400 text-[11px] sm:text-xs">app.nexotg.com/dashboard</span>
                     </div>
-                    <Button variant="default" size="sm" className="h-6 text-[10px] px-3 hidden sm:flex">
-                      + Novo Funil
-                    </Button>
                   </div>
                   
-                  {/* Dashboard content */}
-                  <div className="p-3 sm:p-5">
-                    {/* Welcome header */}
-                    <div className="mb-4">
-                      <h3 className="text-white text-sm sm:text-base font-semibold flex items-center gap-2">
-                        Olá, João! <span className="text-lg">👋</span>
-                      </h3>
-                      <p className="text-zinc-500 text-[10px] sm:text-xs">
-                        Acompanhe seus funis e conversões em tempo real.
-                      </p>
+                  {/* Dashboard with sidebar */}
+                  <div className="flex">
+                    {/* Sidebar */}
+                    <div className="hidden sm:flex flex-col items-center py-4 px-2 bg-[#0d1117] border-r border-zinc-800/50 gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-cyan-500/20 flex items-center justify-center">
+                        <Zap className="w-4 h-4 text-cyan-400" />
+                      </div>
+                      <div className="w-8 h-8 rounded-lg hover:bg-zinc-800/50 flex items-center justify-center cursor-pointer">
+                        <BarChart3 className="w-4 h-4 text-zinc-500" />
+                      </div>
+                      <div className="w-8 h-8 rounded-lg hover:bg-zinc-800/50 flex items-center justify-center cursor-pointer">
+                        <Users className="w-4 h-4 text-zinc-500" />
+                      </div>
+                      <div className="w-8 h-8 rounded-lg hover:bg-zinc-800/50 flex items-center justify-center cursor-pointer">
+                        <MessageCircle className="w-4 h-4 text-zinc-500" />
+                      </div>
+                      <div className="flex-1" />
+                      <div className="w-8 h-8 rounded-lg hover:bg-zinc-800/50 flex items-center justify-center cursor-pointer">
+                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500" />
+                      </div>
                     </div>
-                    
-                    {/* Stats grid */}
-                    <div className="grid grid-cols-6 gap-2 sm:gap-3 mb-4">
-                      {[
-                        { icon: "📊", value: "127", label: "Leads Hoje", color: "bg-blue-500/10 border-blue-500/20" },
-                        { icon: "🤖", value: "8", label: "Funis Ativos", color: "bg-purple-500/10 border-purple-500/20" },
-                        { icon: "💬", value: "43", label: "Sessões", color: "bg-cyan-500/10 border-cyan-500/20" },
-                        { icon: "📤", value: "892", label: "Msgs Enviadas", color: "bg-green-500/10 border-green-500/20" },
-                        { icon: "📈", value: "72%", label: "Conversão", color: "bg-yellow-500/10 border-yellow-500/20" },
-                        { icon: "✅", value: "OK", label: "Status", color: "bg-emerald-500/10 border-emerald-500/20" },
-                      ].map((stat, i) => (
+
+                    {/* Main content */}
+                    <div className="flex-1 p-4 sm:p-5">
+                      {/* Header with welcome and button */}
+                      <div className="flex items-start justify-between mb-5">
+                        <div>
+                          <h3 className="text-white text-sm sm:text-lg font-semibold flex items-center gap-2">
+                            Olá, João! <span className="text-xl">👋</span>
+                          </h3>
+                          <p className="text-zinc-500 text-[10px] sm:text-xs">
+                            Acompanhe seus funis e conversões em tempo real.
+                          </p>
+                        </div>
+                        <button className="bg-cyan-500 hover:bg-cyan-600 text-white text-[10px] sm:text-xs px-3 py-1.5 rounded-lg font-medium flex items-center gap-1.5 transition-colors">
+                          + Novo Funil
+                        </button>
+                      </div>
+                      
+                      {/* Stats cards */}
+                      <div className="grid grid-cols-6 gap-2 sm:gap-3 mb-5">
+                        {[
+                          { icon: BarChart3, iconBg: "bg-red-500/20", iconColor: "text-red-400", value: "127", label: "Leads Hoje" },
+                          { icon: Target, iconBg: "bg-blue-500/20", iconColor: "text-blue-400", value: "8", label: "Funis Ativos" },
+                          { icon: Users, iconBg: "bg-yellow-500/20", iconColor: "text-yellow-400", value: "43", label: "Sessões" },
+                          { icon: MessageCircle, iconBg: "bg-cyan-500/20", iconColor: "text-cyan-400", value: "892", label: "Mensagens" },
+                          { icon: TrendingUp, iconBg: "bg-purple-500/20", iconColor: "text-purple-400", value: "72%", label: "Conversão" },
+                          { icon: CheckCircle2, iconBg: "bg-green-500/20", iconColor: "text-green-400", value: "OK", label: "Status Bot" },
+                        ].map((stat, i) => (
+                          <motion.div
+                            key={i}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 1.3 + i * 0.08 }}
+                            className="bg-[#161b22] rounded-xl p-2.5 sm:p-3 border border-zinc-800/50"
+                          >
+                            <div className={`w-6 h-6 sm:w-7 sm:h-7 rounded-lg ${stat.iconBg} flex items-center justify-center mb-2`}>
+                              <stat.icon className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${stat.iconColor}`} />
+                            </div>
+                            <div className="text-white text-base sm:text-xl font-bold">{stat.value}</div>
+                            <div className="text-zinc-500 text-[8px] sm:text-[10px]">{stat.label}</div>
+                          </motion.div>
+                        ))}
+                      </div>
+
+                      {/* Bottom section - Table and Activity */}
+                      <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
+                        {/* Table - 3 columns */}
                         <motion.div
-                          key={i}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 1.3 + i * 0.08 }}
-                          className={`${stat.color} rounded-lg p-2 sm:p-3 border`}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: 1.8 }}
+                          className="sm:col-span-3 bg-[#161b22] rounded-xl border border-zinc-800/50 p-3 sm:p-4"
                         >
-                          <div className="text-base sm:text-lg mb-1">{stat.icon}</div>
-                          <div className="text-white text-sm sm:text-lg font-bold">{stat.value}</div>
-                          <div className="text-zinc-500 text-[8px] sm:text-[10px]">{stat.label}</div>
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="text-white text-xs sm:text-sm font-semibold flex items-center gap-2">
+                              <BarChart3 className="w-3.5 h-3.5 text-cyan-400" />
+                              Visão Geral dos Funis
+                            </div>
+                            <span className="text-cyan-400 text-[9px] sm:text-[10px] cursor-pointer hover:underline">Ver todos →</span>
+                          </div>
+                          
+                          {/* Table header */}
+                          <div className="grid grid-cols-5 gap-2 text-[8px] sm:text-[10px] text-zinc-500 uppercase tracking-wide pb-2 border-b border-zinc-800/50 mb-2">
+                            <span>Funil</span>
+                            <span>Bot</span>
+                            <span className="text-right">Leads</span>
+                            <span className="text-center">Conv.</span>
+                            <span className="text-right">Status</span>
+                          </div>
+                          
+                          {/* Table rows */}
+                          <div className="space-y-2">
+                            {[
+                              { name: "Vendas VIP", bot: "@vip_bot", leads: "45/32", conv: 79, status: "Ativo" },
+                              { name: "Captura Lead", bot: "@leads_bot", leads: "89/67", conv: 75, status: "Ativo" },
+                              { name: "Suporte Auto", bot: "@sup_bot", leads: "23/18", conv: 78, status: "Pausado" },
+                            ].map((row, i) => (
+                              <div key={i} className="grid grid-cols-5 gap-2 text-[9px] sm:text-[11px] py-1.5 items-center">
+                                <span className="text-white font-medium truncate">{row.name}</span>
+                                <span className="text-zinc-500 truncate">{row.bot}</span>
+                                <span className="text-zinc-400 text-right">{row.leads}</span>
+                                <div className="flex justify-center">
+                                  <span className={`px-1.5 py-0.5 rounded text-[8px] font-medium ${
+                                    row.conv >= 78 ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
+                                  }`}>
+                                    {row.conv}%
+                                  </span>
+                                </div>
+                                <span className={`text-right text-[8px] sm:text-[9px] ${
+                                  row.status === 'Ativo' ? 'text-cyan-400' : 'text-zinc-500'
+                                }`}>
+                                  {row.status}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
                         </motion.div>
-                      ))}
-                    </div>
 
-                    {/* Bottom section - Table and Activity */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {/* Table */}
-                      <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 1.8 }}
-                        className="bg-zinc-900/50 rounded-lg border border-zinc-800 p-3"
-                      >
-                        <div className="text-white text-xs font-semibold mb-2 flex items-center gap-1.5">
-                          <BarChart3 className="w-3 h-3 text-primary" />
-                          Visão Geral dos Funis
-                        </div>
-                        <div className="space-y-1.5">
-                          {[
-                            { name: "Vendas VIP", leads: "2450", rate: "12.4%" },
-                            { name: "Captação Lead", leads: "1820", rate: "8.2%" },
-                            { name: "Remarketing", leads: "956", rate: "15.7%" },
-                          ].map((row, i) => (
-                            <div key={i} className="flex items-center justify-between text-[9px] sm:text-[10px] py-1 border-b border-zinc-800/50 last:border-0">
-                              <span className="text-zinc-300">{row.name}</span>
-                              <div className="flex gap-3">
-                                <span className="text-zinc-500">{row.leads}</span>
-                                <span className="text-green-400">{row.rate}</span>
+                        {/* Activity - 2 columns */}
+                        <motion.div
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: 1.9 }}
+                          className="sm:col-span-2 bg-[#161b22] rounded-xl border border-zinc-800/50 p-3 sm:p-4"
+                        >
+                          <div className="text-white text-xs sm:text-sm font-semibold mb-3 flex items-center gap-2">
+                            <Clock className="w-3.5 h-3.5 text-cyan-400" />
+                            Atividade Recente
+                          </div>
+                          <div className="space-y-2.5">
+                            {[
+                              { color: "bg-green-500", text: "Novo lead: @maria_silva", time: "agora" },
+                              { color: "bg-yellow-500", text: "Mensagem enviada", time: "2min" },
+                              { color: "bg-blue-500", text: "Lead respondeu", time: "5min" },
+                              { color: "bg-cyan-500", text: "Funil concluído", time: "7min" },
+                            ].map((item, i) => (
+                              <div key={i} className="flex items-center justify-between text-[9px] sm:text-[11px]">
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-2 h-2 rounded-full ${item.color}`} />
+                                  <span className="text-zinc-300">{item.text}</span>
+                                </div>
+                                <span className="text-zinc-600">{item.time}</span>
                               </div>
-                            </div>
-                          ))}
-                        </div>
-                      </motion.div>
-
-                      {/* Activity */}
-                      <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 1.9 }}
-                        className="bg-zinc-900/50 rounded-lg border border-zinc-800 p-3"
-                      >
-                        <div className="text-white text-xs font-semibold mb-2 flex items-center gap-1.5">
-                          <Clock className="w-3 h-3 text-primary" />
-                          Atividade Recente
-                        </div>
-                        <div className="space-y-1.5">
-                          {[
-                            { icon: "🟢", text: "Novo lead @maria_silva", time: "2min" },
-                            { icon: "💰", text: "Pagamento confirmado", time: "5min" },
-                            { icon: "📨", text: "Mensagem entregue", time: "8min" },
-                          ].map((item, i) => (
-                            <div key={i} className="flex items-center justify-between text-[9px] sm:text-[10px] py-1 border-b border-zinc-800/50 last:border-0">
-                              <div className="flex items-center gap-1.5">
-                                <span>{item.icon}</span>
-                                <span className="text-zinc-300">{item.text}</span>
-                              </div>
-                              <span className="text-zinc-600">{item.time}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </motion.div>
+                            ))}
+                          </div>
+                        </motion.div>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
               
               {/* MacBook bottom/base */}
-              <div className="bg-gradient-to-b from-zinc-800 to-zinc-700 h-4 sm:h-5 rounded-b-xl mx-4">
-                <div className="w-20 sm:w-28 h-1 bg-zinc-600/50 rounded-full mx-auto mt-1.5" />
+              <div className="bg-gradient-to-b from-[#2a2a2a] to-[#1a1a1a] h-4 sm:h-5 rounded-b-xl mx-6 sm:mx-10">
+                <div className="w-24 sm:w-32 h-1 bg-zinc-600/30 rounded-full mx-auto mt-1.5" />
               </div>
               
               {/* Shadow */}
-              <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 w-[70%] h-6 bg-black/30 blur-xl rounded-full" />
+              <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 w-[60%] h-8 bg-black/40 blur-2xl rounded-full" />
             </div>
           </motion.div>
         </div>
