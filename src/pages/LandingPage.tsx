@@ -156,7 +156,7 @@ const LandingPage = () => {
             delay: 0.2
           }} className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-[1.15]">
               <span className="block">Automatize suas</span>
-              <span className="gradient-text block">publicações</span>
+              <span className="gradient-text block">​Vendas</span>
               <span className="block">no Telegram</span>
             </motion.h1>
 
