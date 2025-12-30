@@ -809,17 +809,7 @@ async function dispatchMediaInBackground(
               const message = String(innerError?.message || "");
               console.error(`Error sending item:`, message);
 
-              // As last resort, post the link in the group so nothing gets silently lost
-              try {
-                await sendTextMessage(
-                  botToken,
-                  chatId,
-                  `Não consegui enviar este vídeo como mídia. Link: ${chunk[i]}`
-                );
-              } catch {
-                // ignore
-              }
-
+              // Just log the error, don't send error messages to chat
               errorCount++;
               errorsLog.push({
                 index: offset + chunkIndex * packSize + i,
