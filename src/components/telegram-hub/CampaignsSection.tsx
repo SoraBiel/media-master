@@ -503,9 +503,9 @@ const CampaignsSection = () => {
 
       await supabase.from("campaigns").update(updates).eq("id", id);
       
-      // Trigger runner when resuming or starting
+      // Ao iniciar/retomar, use o dispatcher (ele é "resume-safe" e dispara o runner com o campaignId)
       if (newStatus === "running") {
-        await supabase.functions.invoke("campaign-runner", {});
+        await supabase.functions.invoke("campaign-dispatch", { body: { campaignId: id } });
       }
       
       const statusLabels: Record<string, string> = {
