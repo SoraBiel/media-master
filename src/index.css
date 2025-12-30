@@ -2,72 +2,78 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
 
 @layer base {
   :root {
-    --background: 222 47% 6%;
-    --foreground: 210 40% 98%;
+    /* Refined dark theme - professional and clean */
+    --background: 220 16% 8%;
+    --foreground: 220 10% 96%;
 
-    --card: 222 47% 8%;
-    --card-foreground: 210 40% 98%;
+    --card: 220 16% 10%;
+    --card-foreground: 220 10% 96%;
 
-    --popover: 222 47% 8%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 220 16% 10%;
+    --popover-foreground: 220 10% 96%;
 
-    --primary: 199 89% 48%;
-    --primary-foreground: 222 47% 6%;
+    /* Sophisticated cyan/teal primary - not typical AI purple */
+    --primary: 186 72% 46%;
+    --primary-foreground: 220 16% 6%;
 
-    --secondary: 222 47% 12%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 220 16% 14%;
+    --secondary-foreground: 220 10% 85%;
 
-    --muted: 222 47% 14%;
-    --muted-foreground: 215 20% 55%;
+    --muted: 220 14% 16%;
+    --muted-foreground: 220 10% 50%;
 
-    --accent: 199 89% 48%;
-    --accent-foreground: 222 47% 6%;
+    --accent: 186 72% 46%;
+    --accent-foreground: 220 16% 6%;
 
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 4 84% 58%;
+    --destructive-foreground: 0 0% 100%;
 
-    --success: 142 76% 36%;
-    --success-foreground: 210 40% 98%;
+    --success: 160 64% 42%;
+    --success-foreground: 0 0% 100%;
 
-    --warning: 38 92% 50%;
-    --warning-foreground: 222 47% 6%;
+    --warning: 36 96% 54%;
+    --warning-foreground: 220 16% 6%;
 
-    --border: 222 47% 16%;
-    --input: 222 47% 16%;
-    --ring: 199 89% 48%;
+    --border: 220 14% 18%;
+    --input: 220 14% 18%;
+    --ring: 186 72% 46%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
 
-    --sidebar-background: 222 47% 5%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 199 89% 48%;
-    --sidebar-primary-foreground: 222 47% 6%;
-    --sidebar-accent: 222 47% 12%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 222 47% 14%;
-    --sidebar-ring: 199 89% 48%;
+    /* Sidebar - slightly different shade for depth */
+    --sidebar-background: 220 18% 6%;
+    --sidebar-foreground: 220 10% 90%;
+    --sidebar-primary: 186 72% 46%;
+    --sidebar-primary-foreground: 220 16% 6%;
+    --sidebar-accent: 220 16% 12%;
+    --sidebar-accent-foreground: 220 10% 90%;
+    --sidebar-border: 220 14% 14%;
+    --sidebar-ring: 186 72% 46%;
 
-    /* Custom tokens */
-    --gradient-primary: linear-gradient(135deg, hsl(199 89% 48%) 0%, hsl(217 91% 60%) 100%);
-    --gradient-hero: linear-gradient(180deg, hsl(222 47% 8%) 0%, hsl(222 47% 4%) 100%);
-    --gradient-card: linear-gradient(145deg, hsl(222 47% 10% / 0.8) 0%, hsl(222 47% 6% / 0.6) 100%);
-    --gradient-glow: radial-gradient(ellipse at center, hsl(199 89% 48% / 0.15) 0%, transparent 70%);
-
-    --shadow-glow: 0 0 60px hsl(199 89% 48% / 0.2);
-    --shadow-card: 0 4px 24px hsl(222 47% 4% / 0.4);
-    --shadow-elevated: 0 8px 32px hsl(222 47% 4% / 0.6);
-
-    --telegram-blue: 199 89% 48%;
+    /* Telegram brand color */
+    --telegram-blue: 200 80% 50%;
     --telegram-dark: 200 35% 24%;
+
+    /* Professional gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(186 72% 46%) 0%, hsl(200 80% 50%) 100%);
+    --gradient-hero: linear-gradient(180deg, hsl(220 16% 10%) 0%, hsl(220 16% 6%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(220 16% 12% / 0.6) 0%, hsl(220 16% 8% / 0.4) 100%);
+    --gradient-subtle: linear-gradient(180deg, hsl(220 16% 10%) 0%, hsl(220 16% 8%) 100%);
+
+    /* Shadows - more subtle and refined */
+    --shadow-sm: 0 1px 2px hsl(220 16% 4% / 0.3);
+    --shadow-md: 0 4px 12px hsl(220 16% 4% / 0.25);
+    --shadow-lg: 0 8px 24px hsl(220 16% 4% / 0.3);
+    --shadow-glow: 0 0 40px hsl(186 72% 46% / 0.12);
   }
 
   .dark {
-    --background: 222 47% 6%;
-    --foreground: 210 40% 98%;
+    --background: 220 16% 8%;
+    --foreground: 220 10% 96%;
   }
 }
 
@@ -76,47 +82,49 @@
     @apply border-border;
   }
 
-  body {
-    @apply bg-background text-foreground font-sans antialiased;
-    font-family: "Inter", system-ui, sans-serif;
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
 
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    letter-spacing: -0.011em;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
     @apply font-semibold tracking-tight;
+    letter-spacing: -0.02em;
+  }
+
+  /* Better text selection */
+  ::selection {
+    background: hsl(var(--primary) / 0.25);
+    color: inherit;
   }
 }
 
 @layer components {
+  /* Glass card - subtle and professional */
   .glass-card {
-    @apply bg-card/50 backdrop-blur-xl border border-border/50 rounded-xl;
-    background: var(--gradient-card);
+    @apply bg-card/80 backdrop-blur-md border border-border rounded-lg;
+    box-shadow: var(--shadow-md);
   }
 
+  /* Refined glow effect - less aggressive */
   .glow-effect {
     position: relative;
+    transition: box-shadow 0.3s ease;
   }
 
-  .glow-effect::before {
-    content: "";
-    position: absolute;
-    inset: -1px;
-    background: var(--gradient-primary);
-    border-radius: inherit;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    z-index: -1;
-    filter: blur(8px);
+  .glow-effect:hover {
+    box-shadow: var(--shadow-glow);
   }
 
-  .glow-effect:hover::before {
-    opacity: 0.5;
-  }
-
+  /* Clean gradient text */
   .gradient-text {
     background: var(--gradient-primary);
     -webkit-background-clip: text;
@@ -124,51 +132,56 @@
     background-clip: text;
   }
 
+  /* Telegram brand gradient */
   .telegram-gradient {
-    background: linear-gradient(135deg, #229ed9 0%, #1e88e5 50%, #1976d2 100%);
+    background: linear-gradient(135deg, hsl(200 80% 50%) 0%, hsl(186 72% 46%) 100%);
   }
 
+  /* Professional animations */
   .animate-float {
     animation: float 6s ease-in-out infinite;
   }
 
-  .animate-pulse-glow {
-    animation: pulse-glow 2s ease-in-out infinite;
+  .animate-pulse-subtle {
+    animation: pulse-subtle 2.5s ease-in-out infinite;
   }
 
   .animate-slide-up {
-    animation: slide-up 0.5s ease-out;
+    animation: slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .animate-fade-in {
-    animation: fade-in 0.5s ease-out;
+    animation: fade-in 0.3s ease-out;
+  }
+
+  /* Focus ring - more refined */
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background;
   }
 }
 
 @keyframes float {
-  0%,
-  100% {
+  0%, 100% {
     transform: translateY(0px);
   }
   50% {
-    transform: translateY(-20px);
+    transform: translateY(-12px);
   }
 }
 
-@keyframes pulse-glow {
-  0%,
-  100% {
-    box-shadow: 0 0 20px hsl(199 89% 48% / 0.3);
+@keyframes pulse-subtle {
+  0%, 100% {
+    opacity: 1;
   }
   50% {
-    box-shadow: 0 0 40px hsl(199 89% 48% / 0.5);
+    opacity: 0.7;
   }
 }
 
 @keyframes slide-up {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(16px);
   }
   to {
     opacity: 1;
@@ -185,37 +198,86 @@
   }
 }
 
-/* Scrollbar styling */
+/* Refined scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: hsl(var(--background));
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
   background: hsl(var(--muted));
-  border-radius: 4px;
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground));
+  background: hsl(var(--muted-foreground) / 0.5);
 }
+
+/* Hide lovable badge */
 a[href*="lovable.dev"],
 iframe[src*="lovable.dev"],
 div[style*="Edit with Lovable"],
 .lovable-badge {
   display: none !important;
-
   opacity: 0 !important;
-
   visibility: hidden !important;
-
   pointer-events: none !important;
-
   position: absolute !important;
-
   z-index: -9999 !important;
+}
+
+/* Professional table styling */
+.table-professional {
+  @apply w-full text-sm;
+}
+
+.table-professional th {
+  @apply text-xs font-medium text-muted-foreground uppercase tracking-wider py-3;
+}
+
+.table-professional td {
+  @apply py-3 border-b border-border/50;
+}
+
+.table-professional tr:hover td {
+  @apply bg-muted/30;
+}
+
+/* Mobile-first touch targets */
+@media (max-width: 768px) {
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  button, 
+  a[role="button"],
+  [role="button"] {
+    min-height: 44px;
+  }
+}
+
+/* Smooth page transitions */
+.page-transition {
+  animation: page-enter 0.3s ease-out;
+}
+
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Code/mono styling */
+.font-mono {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
 }
