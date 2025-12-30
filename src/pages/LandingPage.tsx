@@ -216,92 +216,41 @@ const LandingPage = () => {
 
       {/* Hero Section */}
       <section className="pt-28 pb-8 sm:pt-36 sm:pb-16 relative overflow-hidden">
-        {/* Animated Background Elements */}
+        {/* Background */}
         <div className="absolute inset-0 bg-hero-pattern opacity-60" />
         <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-primary/10 rounded-full blur-[120px]" />
         
-        {/* Floating particles */}
-        <motion.div
-          className="absolute top-32 left-[10%] w-3 h-3 bg-primary/30 rounded-full"
-          animate={{ y: [0, -20, 0], opacity: [0.3, 0.8, 0.3] }}
-          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-        />
-        <motion.div
-          className="absolute top-48 right-[15%] w-2 h-2 bg-primary/40 rounded-full"
-          animate={{ y: [0, 15, 0], opacity: [0.4, 0.9, 0.4] }}
-          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
-        />
-        <motion.div
-          className="absolute top-64 left-[20%] w-4 h-4 bg-primary/20 rounded-full"
-          animate={{ y: [0, -25, 0], opacity: [0.2, 0.6, 0.2] }}
-          transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-        />
-        <motion.div
-          className="absolute top-40 right-[25%] w-2.5 h-2.5 bg-cyan-400/30 rounded-full"
-          animate={{ y: [0, 20, 0], x: [0, 10, 0], opacity: [0.3, 0.7, 0.3] }}
-          transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut", delay: 0.8 }}
-        />
-        
         <div className="container mx-auto px-4 relative">
           <div className="max-w-3xl mx-auto text-center">
-            {/* Badge with pulse animation */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5, type: "spring", stiffness: 200 }}
-            >
-              <Badge variant="secondary" className="mb-6 px-4 py-1.5 text-xs font-medium relative overflow-hidden">
-                <motion.div
-                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent"
-                  animate={{ x: ["-100%", "100%"] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "linear", repeatDelay: 3 }}
-                />
-                <Zap className="w-3 h-3 mr-1.5" />
-                +500 novos sellers essa semana
-              </Badge>
-            </motion.div>
-
-            {/* Headline with staggered animation */}
+            {/* Headline */}
             <motion.h1
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.2 }}
-              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-[1.1]"
+              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-[1.15]"
             >
-              <motion.span
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: 0.3 }}
-              >
-                Venda mais no{" "}
-              </motion.span>
-              <motion.span
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.6, delay: 0.5, type: "spring", stiffness: 150 }}
-                className="gradient-text inline-block"
-              >
-                piloto automático
-              </motion.span>
+              <span className="block">Automatize suas</span>
+              <span className="gradient-text block">publicações</span>
+              <span className="block">no Telegram</span>
             </motion.h1>
 
             {/* Subheadline */}
             <motion.p
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.6 }}
-              className="text-base sm:text-lg text-muted-foreground mb-8 max-w-xl mx-auto leading-relaxed"
+              transition={{ duration: 0.6, delay: 0.5 }}
+              className="text-sm sm:text-base text-muted-foreground mb-8 max-w-lg mx-auto leading-relaxed"
             >
-              A plataforma completa para vendedores digitais. Funis automatizados, 
-              pagamentos integrados e suporte 24h para você escalar suas vendas.
+              Envie mídias para grupos e canais de forma automática, com agendamento, 
+              anti-spam e controle total. Plataforma segura e fácil de usar.
             </motion.p>
 
-            {/* CTAs with hover effects */}
+            {/* CTAs */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.8 }}
-              className="flex flex-col sm:flex-row gap-3 justify-center mb-10"
+              transition={{ duration: 0.6, delay: 0.7 }}
+              className="flex flex-col sm:flex-row gap-3 justify-center mb-8"
             >
               <Link to="/signup">
                 <motion.div
@@ -309,136 +258,190 @@ const LandingPage = () => {
                   whileTap={{ scale: 0.98 }}
                   transition={{ type: "spring", stiffness: 400 }}
                 >
-                  <Button variant="gradient" size="lg" className="w-full sm:w-auto text-base relative overflow-hidden group">
-                    <motion.span
-                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-                      initial={{ x: "-100%" }}
-                      whileHover={{ x: "100%" }}
-                      transition={{ duration: 0.5 }}
-                    />
-                    Quero vender na Nexo
-                    <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
+                  <Button variant="gradient" size="lg" className="w-full sm:w-auto text-sm relative overflow-hidden group">
+                    Começar Agora
+                    <ArrowRight className="w-4 h-4 ml-1.5 group-hover:translate-x-1 transition-transform" />
                   </Button>
                 </motion.div>
               </Link>
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.98 }}
-                transition={{ type: "spring", stiffness: 400 }}
-              >
-                <Button 
-                  variant="outline" 
-                  size="lg" 
-                  onClick={openWhatsApp}
-                  className="w-full sm:w-auto group"
+              <Link to="/login">
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={{ type: "spring", stiffness: 400 }}
                 >
-                  <MessageCircle className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
-                  Falar com consultor
-                </Button>
-              </motion.div>
+                  <Button 
+                    variant="outline" 
+                    size="lg" 
+                    className="w-full sm:w-auto text-sm"
+                  >
+                    Já tenho conta
+                  </Button>
+                </motion.div>
+              </Link>
+            </motion.div>
+
+            {/* Stats */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.6, delay: 0.9 }}
+              className="flex items-center justify-center gap-8 sm:gap-12 mb-12"
+            >
+              <div className="text-center">
+                <div className="text-2xl sm:text-3xl font-bold text-foreground">50K+</div>
+                <div className="text-xs text-muted-foreground">Usuários Ativos</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl sm:text-3xl font-bold text-foreground">2M+</div>
+                <div className="text-xs text-muted-foreground">Mensagens/Mês</div>
+              </div>
             </motion.div>
           </div>
 
           {/* MacBook Mockup with Dashboard */}
           <motion.div
-            initial={{ opacity: 0, y: 60, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ duration: 0.8, delay: 1, type: "spring", stiffness: 100 }}
-            className="mt-8 sm:mt-12 max-w-5xl mx-auto px-4"
+            initial={{ opacity: 0, y: 60 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 1.1 }}
+            className="max-w-4xl mx-auto"
           >
             <div className="relative">
-              {/* Glow effect behind MacBook */}
-              <div className="absolute inset-0 bg-gradient-to-t from-primary/20 via-primary/5 to-transparent blur-3xl scale-90" />
+              {/* Glow effect */}
+              <div className="absolute inset-0 bg-gradient-to-t from-primary/15 via-transparent to-transparent blur-2xl scale-95" />
               
               {/* MacBook Frame */}
-              <motion.div
-                whileHover={{ scale: 1.02 }}
-                transition={{ type: "spring", stiffness: 200 }}
-                className="relative"
-              >
-                {/* Screen bezel */}
-                <div className="bg-gradient-to-b from-zinc-700 to-zinc-800 rounded-t-xl p-2 sm:p-3">
-                  {/* Camera */}
-                  <div className="absolute top-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-zinc-600" />
-                  
-                  {/* Screen content */}
-                  <div className="bg-background rounded-lg overflow-hidden border border-border/50 shadow-2xl">
-                    {/* Browser bar */}
-                    <div className="bg-muted/80 px-3 py-2 flex items-center gap-2 border-b border-border/50">
-                      <div className="flex gap-1.5">
-                        <div className="w-2.5 h-2.5 rounded-full bg-red-500/80" />
-                        <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/80" />
-                        <div className="w-2.5 h-2.5 rounded-full bg-green-500/80" />
-                      </div>
-                      <div className="flex-1 mx-4">
-                        <div className="bg-background/60 rounded-md px-3 py-1 text-[10px] sm:text-xs text-muted-foreground text-center">
-                          app.nexo.com/dashboard
-                        </div>
+              <div className="relative bg-zinc-900 rounded-t-2xl p-2 sm:p-3 border border-zinc-700/50">
+                {/* Camera notch */}
+                <div className="absolute top-1.5 left-1/2 -translate-x-1/2 w-16 h-4 bg-zinc-800 rounded-b-lg flex items-center justify-center">
+                  <div className="w-2 h-2 rounded-full bg-zinc-700" />
+                </div>
+                
+                {/* Screen content */}
+                <div className="bg-[#0a0f1a] rounded-lg overflow-hidden mt-2 border border-zinc-800">
+                  {/* Browser bar */}
+                  <div className="bg-zinc-900/90 px-3 py-2 flex items-center gap-2 border-b border-zinc-800">
+                    <div className="flex gap-1.5">
+                      <div className="w-2.5 h-2.5 rounded-full bg-red-500" />
+                      <div className="w-2.5 h-2.5 rounded-full bg-yellow-500" />
+                      <div className="w-2.5 h-2.5 rounded-full bg-green-500" />
+                    </div>
+                    <div className="flex-1 mx-3">
+                      <div className="bg-zinc-800/80 rounded-md px-3 py-1 text-[10px] sm:text-xs text-zinc-400 flex items-center gap-2">
+                        <Shield className="w-3 h-3 text-green-500" />
+                        app.nexo.com/dashboard
                       </div>
                     </div>
+                    <Button variant="default" size="sm" className="h-6 text-[10px] px-3 hidden sm:flex">
+                      + Novo Funil
+                    </Button>
+                  </div>
+                  
+                  {/* Dashboard content */}
+                  <div className="p-3 sm:p-5">
+                    {/* Welcome header */}
+                    <div className="mb-4">
+                      <h3 className="text-white text-sm sm:text-base font-semibold flex items-center gap-2">
+                        Olá, João! <span className="text-lg">👋</span>
+                      </h3>
+                      <p className="text-zinc-500 text-[10px] sm:text-xs">
+                        Acompanhe seus funis e conversões em tempo real.
+                      </p>
+                    </div>
                     
-                    {/* Dashboard Preview */}
-                    <div className="bg-background p-3 sm:p-4">
-                      <div className="grid grid-cols-4 gap-2 sm:gap-3 mb-3">
-                        {/* Stats cards */}
-                        {[
-                          { label: "Vendas hoje", value: "R$ 4.850", color: "text-green-400" },
-                          { label: "Conversão", value: "12.4%", color: "text-primary" },
-                          { label: "Leads", value: "847", color: "text-cyan-400" },
-                          { label: "Ticket médio", value: "R$ 89", color: "text-purple-400" },
-                        ].map((stat, i) => (
-                          <motion.div
-                            key={i}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 1.3 + i * 0.1 }}
-                            className="bg-muted/50 rounded-lg p-2 sm:p-3 border border-border/30"
-                          >
-                            <div className="text-[8px] sm:text-[10px] text-muted-foreground mb-1">{stat.label}</div>
-                            <div className={`text-xs sm:text-sm font-bold ${stat.color}`}>{stat.value}</div>
-                          </motion.div>
-                        ))}
-                      </div>
-                      
-                      {/* Chart placeholder */}
+                    {/* Stats grid */}
+                    <div className="grid grid-cols-6 gap-2 sm:gap-3 mb-4">
+                      {[
+                        { icon: "📊", value: "127", label: "Leads Hoje", color: "bg-blue-500/10 border-blue-500/20" },
+                        { icon: "🤖", value: "8", label: "Funis Ativos", color: "bg-purple-500/10 border-purple-500/20" },
+                        { icon: "💬", value: "43", label: "Sessões", color: "bg-cyan-500/10 border-cyan-500/20" },
+                        { icon: "📤", value: "892", label: "Msgs Enviadas", color: "bg-green-500/10 border-green-500/20" },
+                        { icon: "📈", value: "72%", label: "Conversão", color: "bg-yellow-500/10 border-yellow-500/20" },
+                        { icon: "✅", value: "OK", label: "Status", color: "bg-emerald-500/10 border-emerald-500/20" },
+                      ].map((stat, i) => (
+                        <motion.div
+                          key={i}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 1.3 + i * 0.08 }}
+                          className={`${stat.color} rounded-lg p-2 sm:p-3 border`}
+                        >
+                          <div className="text-base sm:text-lg mb-1">{stat.icon}</div>
+                          <div className="text-white text-sm sm:text-lg font-bold">{stat.value}</div>
+                          <div className="text-zinc-500 text-[8px] sm:text-[10px]">{stat.label}</div>
+                        </motion.div>
+                      ))}
+                    </div>
+
+                    {/* Bottom section - Table and Activity */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {/* Table */}
                       <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        transition={{ delay: 1.7 }}
-                        className="bg-muted/30 rounded-lg p-3 sm:p-4 border border-border/30"
+                        transition={{ delay: 1.8 }}
+                        className="bg-zinc-900/50 rounded-lg border border-zinc-800 p-3"
                       >
-                        <div className="flex items-end justify-between h-16 sm:h-24 gap-1 sm:gap-2">
-                          {[40, 65, 45, 80, 55, 90, 70, 85, 60, 95, 75, 88].map((height, i) => (
-                            <motion.div
-                              key={i}
-                              initial={{ height: 0 }}
-                              animate={{ height: `${height}%` }}
-                              transition={{ delay: 1.8 + i * 0.05, duration: 0.5, ease: "easeOut" }}
-                              className="flex-1 bg-gradient-to-t from-primary to-primary/50 rounded-t-sm"
-                            />
+                        <div className="text-white text-xs font-semibold mb-2 flex items-center gap-1.5">
+                          <BarChart3 className="w-3 h-3 text-primary" />
+                          Visão Geral dos Funis
+                        </div>
+                        <div className="space-y-1.5">
+                          {[
+                            { name: "Vendas VIP", leads: "2450", rate: "12.4%" },
+                            { name: "Captação Lead", leads: "1820", rate: "8.2%" },
+                            { name: "Remarketing", leads: "956", rate: "15.7%" },
+                          ].map((row, i) => (
+                            <div key={i} className="flex items-center justify-between text-[9px] sm:text-[10px] py-1 border-b border-zinc-800/50 last:border-0">
+                              <span className="text-zinc-300">{row.name}</span>
+                              <div className="flex gap-3">
+                                <span className="text-zinc-500">{row.leads}</span>
+                                <span className="text-green-400">{row.rate}</span>
+                              </div>
+                            </div>
                           ))}
                         </div>
-                        <div className="flex justify-between mt-2 text-[8px] sm:text-[10px] text-muted-foreground">
-                          <span>Jan</span>
-                          <span>Fev</span>
-                          <span>Mar</span>
-                          <span>Abr</span>
-                          <span>Mai</span>
-                          <span>Jun</span>
+                      </motion.div>
+
+                      {/* Activity */}
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 1.9 }}
+                        className="bg-zinc-900/50 rounded-lg border border-zinc-800 p-3"
+                      >
+                        <div className="text-white text-xs font-semibold mb-2 flex items-center gap-1.5">
+                          <Clock className="w-3 h-3 text-primary" />
+                          Atividade Recente
+                        </div>
+                        <div className="space-y-1.5">
+                          {[
+                            { icon: "🟢", text: "Novo lead @maria_silva", time: "2min" },
+                            { icon: "💰", text: "Pagamento confirmado", time: "5min" },
+                            { icon: "📨", text: "Mensagem entregue", time: "8min" },
+                          ].map((item, i) => (
+                            <div key={i} className="flex items-center justify-between text-[9px] sm:text-[10px] py-1 border-b border-zinc-800/50 last:border-0">
+                              <div className="flex items-center gap-1.5">
+                                <span>{item.icon}</span>
+                                <span className="text-zinc-300">{item.text}</span>
+                              </div>
+                              <span className="text-zinc-600">{item.time}</span>
+                            </div>
+                          ))}
                         </div>
                       </motion.div>
                     </div>
                   </div>
                 </div>
-                
-                {/* MacBook bottom */}
-                <div className="bg-gradient-to-b from-zinc-700 to-zinc-600 h-3 sm:h-4 rounded-b-xl">
-                  <div className="w-16 sm:w-24 h-1 bg-zinc-500/50 rounded-full mx-auto mt-1" />
-                </div>
-                
-                {/* MacBook base shadow */}
-                <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-[80%] h-4 bg-black/20 blur-xl rounded-full" />
-              </motion.div>
+              </div>
+              
+              {/* MacBook bottom/base */}
+              <div className="bg-gradient-to-b from-zinc-800 to-zinc-700 h-4 sm:h-5 rounded-b-xl mx-4">
+                <div className="w-20 sm:w-28 h-1 bg-zinc-600/50 rounded-full mx-auto mt-1.5" />
+              </div>
+              
+              {/* Shadow */}
+              <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 w-[70%] h-6 bg-black/30 blur-xl rounded-full" />
             </div>
           </motion.div>
         </div>
