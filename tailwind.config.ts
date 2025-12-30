@@ -132,8 +132,7 @@ export default {
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-        'hero-pattern': 'radial-gradient(ellipse at top, hsl(186 72% 46% / 0.08) 0%, transparent 50%)',
-        'grid-pattern': 'linear-gradient(hsl(var(--border) / 0.5) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--border) / 0.5) 1px, transparent 1px)',
+        'hero-pattern': 'radial-gradient(ellipse at top, hsl(199 89% 48% / 0.1) 0%, transparent 50%)',
       },
       boxShadow: {
         'glow': '0 0 40px hsl(var(--primary) / 0.15)',
