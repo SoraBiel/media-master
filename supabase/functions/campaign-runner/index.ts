@@ -168,16 +168,19 @@ serve(async (req) => {
   );
 
   try {
-    // Use atomic lock to prevent concurrent processing (expires-based)
-    const lockExpiresAt = new Date(Date.now() + 120000).toISOString(); // 2 min lock
+    // Use atomic lock to prevent concurrent processing.
+    // We lock using runner_lock_token and allow reclaim if the campaign hasn't been updated
+    // for a while (stale lock). This avoids relying on schema-cached columns.
+    const lockToken = crypto.randomUUID();
     const now = new Date().toISOString();
+    const staleBefore = new Date(Date.now() - 10 * 60 * 1000).toISOString(); // 10 min
 
-    // Find a campaign that is running and has no lock (or lock expired)
+    // Find a campaign that is running and has no lock (or lock is stale)
     const { data: candidates, error: findError } = await supabase
       .from("campaigns")
       .select("*")
       .eq("status", "running")
-      .or(`runner_lock_expires_at.is.null,runner_lock_expires_at.lt.${now}`)
+      .or(`runner_lock_token.is.null,updated_at.lt.${staleBefore}`)
       .order("updated_at", { ascending: true })
       .limit(1);
 
@@ -204,12 +207,12 @@ serve(async (req) => {
     const { data: claimedRows, error: claimError } = await supabase
       .from("campaigns")
       .update({
-        runner_lock_expires_at: lockExpiresAt,
+        runner_lock_token: lockToken,
         updated_at: now,
       })
       .eq("id", targetCampaign.id)
       .eq("status", "running")
-      .or(`runner_lock_expires_at.is.null,runner_lock_expires_at.lt.${now}`)
+      .or(`runner_lock_token.is.null,updated_at.lt.${staleBefore}`)
       .select("id");
 
     if (claimError) {
@@ -232,7 +235,7 @@ serve(async (req) => {
       .from("campaigns")
       .select("*")
       .eq("id", targetCampaign.id)
-      .eq("runner_lock_expires_at", lockExpiresAt)
+      .eq("runner_lock_token", lockToken)
       .maybeSingle();
 
     if (claimedFetchError || !claimedCampaign) {
@@ -243,7 +246,7 @@ serve(async (req) => {
       });
     }
 
-    console.log(`Locked campaign ${targetCampaign.id} until ${lockExpiresAt}`);
+    console.log(`Locked campaign ${targetCampaign.id} with token ${lockToken}`);
 
     const campaign = claimedCampaign;
     const campaignId = campaign.id;
@@ -263,12 +266,12 @@ serve(async (req) => {
     // Immediately update sent_count to reserve this batch (prevents duplicates)
     const { error: reserveError } = await supabase
       .from("campaigns")
-      .update({ 
+      .update({
         sent_count: endOffset,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .eq("id", campaignId)
-      .eq("runner_lock_expires_at", lockExpiresAt);
+      .eq("runner_lock_token", lockToken);
 
     if (reserveError) {
       console.error("Error reserving batch:", reserveError);
@@ -284,7 +287,7 @@ serve(async (req) => {
         status: "completed",
         progress: 100,
         completed_at: new Date().toISOString(),
-        runner_lock_expires_at: null,
+        runner_lock_token: null,
       }).eq("id", campaignId);
 
       console.log(`Campaign ${campaignId} completed`);
@@ -304,7 +307,7 @@ serve(async (req) => {
       await supabase.from("campaigns").update({
         status: "failed",
         error_message: "Destino não encontrado",
-        runner_lock_expires_at: null,
+        runner_lock_token: null,
       }).eq("id", campaignId);
 
       return new Response(JSON.stringify({ error: "Destination not found" }), {
@@ -339,7 +342,7 @@ serve(async (req) => {
       await supabase.from("campaigns").update({
         status: "failed",
         error_message: "Nenhum bot conectado",
-        runner_lock_expires_at: null,
+        runner_lock_token: null,
       }).eq("id", campaignId);
 
       return new Response(JSON.stringify({ error: "No bot connected" }), {
@@ -395,7 +398,7 @@ serve(async (req) => {
         status: "completed",
         progress: 100,
         completed_at: new Date().toISOString(),
-        runner_lock_expires_at: null,
+        runner_lock_token: null,
       }).eq("id", campaignId);
 
       console.log(`Campaign ${campaignId} completed (no more media)`);
@@ -466,7 +469,7 @@ serve(async (req) => {
         error_count: errorCount,
         errors_log: errorsLog.slice(-50),
         progress: currentProgress,
-      }).eq("id", campaignId).eq("runner_lock_expires_at", lockExpiresAt);
+      }).eq("id", campaignId).eq("runner_lock_token", lockToken);
     }
 
     // Final update
@@ -485,7 +488,7 @@ serve(async (req) => {
       avg_send_time_ms: avgSendTime,
       status: isComplete ? "completed" : "running",
       completed_at: isComplete ? new Date().toISOString() : null,
-      runner_lock_expires_at: null,
+      runner_lock_token: null,
     }).eq("id", campaignId);
 
     // Update user metrics if completed
