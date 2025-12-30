@@ -270,8 +270,29 @@ const CampaignsSection = () => {
     fetchUserMedia();
 
     if (user) {
-      const campaignsChannel = supabase.channel("campaigns_changes_hub")
-        .on("postgres_changes", { event: "*", schema: "public", table: "campaigns", filter: `user_id=eq.${user.id}` }, () => fetchCampaigns())
+      const campaignsChannel = supabase.channel("campaigns_realtime_hub")
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "campaigns", filter: `user_id=eq.${user.id}` }, (payload) => {
+          const newCamp = payload.new as any;
+          setCampaigns(prev => {
+            const exists = prev.some(c => c.id === newCamp.id);
+            if (exists) return prev;
+            return [{
+              ...newCamp,
+              errors_log: Array.isArray(newCamp.errors_log) ? newCamp.errors_log as CampaignErrorLog[] : undefined
+            }, ...prev];
+          });
+        })
+        .on("postgres_changes", { event: "UPDATE", schema: "public", table: "campaigns", filter: `user_id=eq.${user.id}` }, (payload) => {
+          const updated = payload.new as any;
+          setCampaigns(prev => prev.map(c => c.id === updated.id ? {
+            ...updated,
+            errors_log: Array.isArray(updated.errors_log) ? updated.errors_log as CampaignErrorLog[] : undefined
+          } : c));
+        })
+        .on("postgres_changes", { event: "DELETE", schema: "public", table: "campaigns", filter: `user_id=eq.${user.id}` }, (payload) => {
+          const deleted = payload.old as any;
+          setCampaigns(prev => prev.filter(c => c.id !== deleted.id));
+        })
         .subscribe();
       
       const mediaChannel = supabase.channel("admin_media_changes_hub")
