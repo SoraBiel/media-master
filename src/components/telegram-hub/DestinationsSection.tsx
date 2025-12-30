@@ -228,26 +228,27 @@ const DestinationsSection = () => {
   };
 
   const handleTestDestination = async (dest: Destination) => {
-    if (!dest.telegram_integration_id) {
-      toast({ title: "Defina o bot", description: "Este destino não está vinculado a um bot.", variant: "destructive" });
-      setEditingDestination(dest);
-      setIsEditDialogOpen(true);
-      return;
-    }
-
-    const bot = bots.find((b) => b.id === dest.telegram_integration_id);
-    if (!bot) {
-      toast({ title: "Bot não encontrado", variant: "destructive" });
-      return;
-    }
-
     setIsTesting(dest.id);
     try {
-      await sendMessage(bot.bot_token, dest.chat_id, "✅ Teste de conexão!");
-      await supabase.from("destinations").update({ status: "verified" }).eq("id", dest.id);
-      toast({ title: "Teste enviado!" });
+      const { data, error } = await supabase.functions.invoke("test-destination", {
+        body: { destinationId: dest.id }
+      });
+      
+      if (error) throw error;
+      
+      if (data.success) {
+        toast({ 
+          title: "✅ Teste enviado!", 
+          description: `Bot @${data.botInfo?.username} pode enviar para ${data.chatInfo?.title}` 
+        });
+      } else {
+        toast({ 
+          title: "Teste falhou", 
+          description: data.error, 
+          variant: "destructive" 
+        });
+      }
     } catch (error: any) {
-      await supabase.from("destinations").update({ status: "error" }).eq("id", dest.id);
       toast({ title: "Erro no teste", description: error.message, variant: "destructive" });
     } finally {
       setIsTesting(null);
