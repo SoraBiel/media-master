@@ -245,26 +245,44 @@ serve(async (req) => {
       claimQuery = claimQuery.or("runner_lock_token.is.null,runner_lock_expires_at.is.null");
     }
 
-    const { data: campaigns, error: campError } = await claimQuery.select("*");
+    const { data: claimedRows, error: claimError } = await claimQuery.select("id");
 
-    if (campError) {
-      console.error("Error claiming campaign:", campError);
-      return new Response(JSON.stringify({ error: campError.message }), {
+    if (claimError) {
+      console.error("Error claiming campaign:", claimError);
+      return new Response(JSON.stringify({ error: claimError.message }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    if (!campaigns || campaigns.length === 0) {
+    // NOTE: PostgREST may return `null` data in some cases even when the update happened.
+    // So we validate the claim by fetching the campaign by the lock token.
+    const claimed = Array.isArray(claimedRows) && claimedRows.length > 0;
+    if (!claimed) {
       console.log("Campaign was claimed by another runner");
       return new Response(JSON.stringify({ message: "Campaign already being processed" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    const { data: claimedCampaign, error: claimedFetchError } = await supabase
+      .from("campaigns")
+      .select("*")
+      .eq("id", targetCampaign.id)
+      .eq("runner_lock_token", lockToken)
+      .maybeSingle();
+
+    if (claimedFetchError || !claimedCampaign) {
+      console.error("Claim succeeded but failed to fetch claimed campaign:", claimedFetchError);
+      return new Response(JSON.stringify({ error: "Failed to confirm campaign lock" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     console.log(`Locked campaign ${targetCampaign.id} with token ${lockToken}`);
 
-    const campaign = campaigns[0];
+    const campaign = claimedCampaign;
     const campaignId = campaign.id;
     const userId = campaign.user_id;
     const mediaPackId = campaign.media_pack_id;
