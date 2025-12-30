@@ -301,199 +301,258 @@ const LandingPage = () => {
 
           {/* MacBook Mockup with Dashboard */}
           <motion.div
-            initial={{ opacity: 0, y: 60 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 1.1 }}
-            className="max-w-5xl mx-auto"
+            initial={{ opacity: 0, y: 80, rotateX: 10 }}
+            animate={{ opacity: 1, y: 0, rotateX: 0 }}
+            transition={{ duration: 1, delay: 1.1, ease: [0.16, 1, 0.3, 1] }}
+            className="max-w-5xl mx-auto perspective-1000"
           >
             <div className="relative">
-              {/* Glow effect */}
-              <div className="absolute inset-0 bg-gradient-to-t from-cyan-500/10 via-transparent to-transparent blur-3xl scale-90" />
+              {/* Multiple glow layers for depth */}
+              <div className="absolute -inset-4 bg-gradient-to-t from-cyan-500/20 via-blue-500/5 to-transparent blur-3xl opacity-60" />
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[60%] bg-cyan-500/10 blur-[100px] rounded-full" />
               
-              {/* MacBook Frame */}
-              <div className="relative bg-[#1a1a1a] rounded-t-2xl p-2 sm:p-3">
-                {/* Camera notch */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-5 bg-[#1a1a1a] rounded-b-xl flex items-center justify-center z-10">
-                  <div className="w-2 h-2 rounded-full bg-zinc-700" />
-                </div>
-                
-                {/* Screen content */}
-                <div className="bg-[#0d1117] rounded-lg overflow-hidden border border-zinc-800/50">
-                  {/* Browser bar */}
-                  <div className="bg-[#161b22] px-4 py-2.5 flex items-center justify-center border-b border-zinc-800/50">
-                    <div className="absolute left-4 flex gap-2">
-                      <div className="w-3 h-3 rounded-full bg-[#ff5f57]" />
-                      <div className="w-3 h-3 rounded-full bg-[#febc2e]" />
-                      <div className="w-3 h-3 rounded-full bg-[#28c840]" />
-                    </div>
-                    <div className="bg-[#0d1117] rounded-full px-4 py-1.5 flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-green-500 flex items-center justify-center">
-                        <Shield className="w-2 h-2 text-white" />
-                      </div>
-                      <span className="text-zinc-400 text-[11px] sm:text-xs">app.nexotg.com/dashboard</span>
-                    </div>
+              {/* MacBook Frame with realistic styling */}
+              <div className="relative">
+                {/* Screen bezel - top */}
+                <div className="bg-gradient-to-b from-[#2d2d2d] via-[#1f1f1f] to-[#1a1a1a] rounded-t-[18px] p-[10px] sm:p-[12px] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+                  {/* Camera notch */}
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[70px] sm:w-[80px] h-[22px] bg-[#1a1a1a] rounded-b-2xl flex items-center justify-center z-10 shadow-[inset_0_-2px_4px_rgba(0,0,0,0.3)]">
+                    <div className="w-[6px] h-[6px] rounded-full bg-[#3d3d3d] shadow-[inset_0_1px_2px_rgba(0,0,0,0.5)]" />
                   </div>
                   
-                  {/* Dashboard with sidebar */}
-                  <div className="flex">
-                    {/* Sidebar */}
-                    <div className="hidden sm:flex flex-col items-center py-4 px-2 bg-[#0d1117] border-r border-zinc-800/50 gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-cyan-500/20 flex items-center justify-center">
-                        <Zap className="w-4 h-4 text-cyan-400" />
-                      </div>
-                      <div className="w-8 h-8 rounded-lg hover:bg-zinc-800/50 flex items-center justify-center cursor-pointer">
-                        <BarChart3 className="w-4 h-4 text-zinc-500" />
-                      </div>
-                      <div className="w-8 h-8 rounded-lg hover:bg-zinc-800/50 flex items-center justify-center cursor-pointer">
-                        <Users className="w-4 h-4 text-zinc-500" />
-                      </div>
-                      <div className="w-8 h-8 rounded-lg hover:bg-zinc-800/50 flex items-center justify-center cursor-pointer">
-                        <MessageCircle className="w-4 h-4 text-zinc-500" />
-                      </div>
-                      <div className="flex-1" />
-                      <div className="w-8 h-8 rounded-lg hover:bg-zinc-800/50 flex items-center justify-center cursor-pointer">
-                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500" />
-                      </div>
-                    </div>
-
-                    {/* Main content */}
-                    <div className="flex-1 p-4 sm:p-5">
-                      {/* Header with welcome and button */}
-                      <div className="flex items-start justify-between mb-5">
-                        <div>
-                          <h3 className="text-white text-sm sm:text-lg font-semibold flex items-center gap-2">
-                            Olá, João! <span className="text-xl">👋</span>
-                          </h3>
-                          <p className="text-zinc-500 text-[10px] sm:text-xs">
-                            Acompanhe seus funis e conversões em tempo real.
-                          </p>
-                        </div>
-                        <button className="bg-cyan-500 hover:bg-cyan-600 text-white text-[10px] sm:text-xs px-3 py-1.5 rounded-lg font-medium flex items-center gap-1.5 transition-colors">
-                          + Novo Funil
-                        </button>
+                  {/* Screen with realistic border */}
+                  <div className="bg-[#0a0e14] rounded-[8px] overflow-hidden shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03),0_0_80px_rgba(0,0,0,0.5)]">
+                    {/* Browser chrome */}
+                    <div className="bg-gradient-to-b from-[#1c2128] to-[#161b22] px-4 py-2.5 flex items-center border-b border-[#21262d]">
+                      {/* Window controls */}
+                      <div className="flex gap-[6px] absolute left-4">
+                        <div className="w-[10px] h-[10px] rounded-full bg-[#ff5f57] shadow-[inset_0_-1px_1px_rgba(0,0,0,0.2)]" />
+                        <div className="w-[10px] h-[10px] rounded-full bg-[#febc2e] shadow-[inset_0_-1px_1px_rgba(0,0,0,0.2)]" />
+                        <div className="w-[10px] h-[10px] rounded-full bg-[#28c840] shadow-[inset_0_-1px_1px_rgba(0,0,0,0.2)]" />
                       </div>
                       
-                      {/* Stats cards */}
-                      <div className="grid grid-cols-6 gap-2 sm:gap-3 mb-5">
-                        {[
-                          { icon: BarChart3, iconBg: "bg-red-500/20", iconColor: "text-red-400", value: "127", label: "Leads Hoje" },
-                          { icon: Target, iconBg: "bg-blue-500/20", iconColor: "text-blue-400", value: "8", label: "Funis Ativos" },
-                          { icon: Users, iconBg: "bg-yellow-500/20", iconColor: "text-yellow-400", value: "43", label: "Sessões" },
-                          { icon: MessageCircle, iconBg: "bg-cyan-500/20", iconColor: "text-cyan-400", value: "892", label: "Mensagens" },
-                          { icon: TrendingUp, iconBg: "bg-purple-500/20", iconColor: "text-purple-400", value: "72%", label: "Conversão" },
-                          { icon: CheckCircle2, iconBg: "bg-green-500/20", iconColor: "text-green-400", value: "OK", label: "Status Bot" },
-                        ].map((stat, i) => (
-                          <motion.div
-                            key={i}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 1.3 + i * 0.08 }}
-                            className="bg-[#161b22] rounded-xl p-2.5 sm:p-3 border border-zinc-800/50"
-                          >
-                            <div className={`w-6 h-6 sm:w-7 sm:h-7 rounded-lg ${stat.iconBg} flex items-center justify-center mb-2`}>
-                              <stat.icon className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${stat.iconColor}`} />
-                            </div>
-                            <div className="text-white text-base sm:text-xl font-bold">{stat.value}</div>
-                            <div className="text-zinc-500 text-[8px] sm:text-[10px]">{stat.label}</div>
-                          </motion.div>
-                        ))}
+                      {/* URL bar */}
+                      <div className="flex-1 flex justify-center">
+                        <div className="bg-[#0d1117] rounded-lg px-4 py-1.5 flex items-center gap-2 border border-[#21262d] shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]">
+                          <div className="w-[14px] h-[14px] rounded-full bg-emerald-500/90 flex items-center justify-center">
+                            <Shield className="w-[8px] h-[8px] text-white" />
+                          </div>
+                          <span className="text-[#8b949e] text-[11px] sm:text-[12px] font-medium tracking-tight">app.nexotg.com/dashboard</span>
+                        </div>
+                      </div>
+                      
+                      {/* Right side placeholder */}
+                      <div className="w-[60px]" />
+                    </div>
+                    
+                    {/* Dashboard layout */}
+                    <div className="flex min-h-[280px] sm:min-h-[340px]">
+                      {/* Sidebar */}
+                      <div className="hidden sm:flex flex-col items-center py-5 px-3 bg-[#0d1117] border-r border-[#21262d] w-[52px]">
+                        {/* Logo */}
+                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center mb-5 shadow-lg shadow-cyan-500/20">
+                          <Zap className="w-4 h-4 text-white" />
+                        </div>
+                        
+                        {/* Nav items */}
+                        <div className="space-y-1 flex-1">
+                          <div className="w-9 h-9 rounded-lg bg-[#21262d] flex items-center justify-center">
+                            <BarChart3 className="w-[18px] h-[18px] text-cyan-400" />
+                          </div>
+                          <div className="w-9 h-9 rounded-lg hover:bg-[#161b22] flex items-center justify-center transition-colors">
+                            <Target className="w-[18px] h-[18px] text-[#484f58]" />
+                          </div>
+                          <div className="w-9 h-9 rounded-lg hover:bg-[#161b22] flex items-center justify-center transition-colors">
+                            <Users className="w-[18px] h-[18px] text-[#484f58]" />
+                          </div>
+                          <div className="w-9 h-9 rounded-lg hover:bg-[#161b22] flex items-center justify-center transition-colors">
+                            <MessageCircle className="w-[18px] h-[18px] text-[#484f58]" />
+                          </div>
+                        </div>
+                        
+                        {/* User avatar */}
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-[10px] font-bold text-white shadow-lg">
+                          JP
+                        </div>
                       </div>
 
-                      {/* Bottom section - Table and Activity */}
-                      <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
-                        {/* Table - 3 columns */}
-                        <motion.div
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={{ delay: 1.8 }}
-                          className="sm:col-span-3 bg-[#161b22] rounded-xl border border-zinc-800/50 p-3 sm:p-4"
-                        >
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="text-white text-xs sm:text-sm font-semibold flex items-center gap-2">
-                              <BarChart3 className="w-3.5 h-3.5 text-cyan-400" />
-                              Visão Geral dos Funis
-                            </div>
-                            <span className="text-cyan-400 text-[9px] sm:text-[10px] cursor-pointer hover:underline">Ver todos →</span>
+                      {/* Main content area */}
+                      <div className="flex-1 p-4 sm:p-5 bg-[#0d1117]">
+                        {/* Header */}
+                        <div className="flex items-start justify-between mb-5">
+                          <div>
+                            <motion.h3 
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: 1.4 }}
+                              className="text-[#f0f6fc] text-sm sm:text-[17px] font-semibold flex items-center gap-2"
+                            >
+                              Olá, João! <span className="text-lg">👋</span>
+                            </motion.h3>
+                            <motion.p 
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              transition={{ delay: 1.5 }}
+                              className="text-[#484f58] text-[10px] sm:text-[12px] mt-0.5"
+                            >
+                              Acompanhe seus funis e conversões em tempo real.
+                            </motion.p>
                           </div>
-                          
-                          {/* Table header */}
-                          <div className="grid grid-cols-5 gap-2 text-[8px] sm:text-[10px] text-zinc-500 uppercase tracking-wide pb-2 border-b border-zinc-800/50 mb-2">
-                            <span>Funil</span>
-                            <span>Bot</span>
-                            <span className="text-right">Leads</span>
-                            <span className="text-center">Conv.</span>
-                            <span className="text-right">Status</span>
-                          </div>
-                          
-                          {/* Table rows */}
-                          <div className="space-y-2">
-                            {[
-                              { name: "Vendas VIP", bot: "@vip_bot", leads: "45/32", conv: 79, status: "Ativo" },
-                              { name: "Captura Lead", bot: "@leads_bot", leads: "89/67", conv: 75, status: "Ativo" },
-                              { name: "Suporte Auto", bot: "@sup_bot", leads: "23/18", conv: 78, status: "Pausado" },
-                            ].map((row, i) => (
-                              <div key={i} className="grid grid-cols-5 gap-2 text-[9px] sm:text-[11px] py-1.5 items-center">
-                                <span className="text-white font-medium truncate">{row.name}</span>
-                                <span className="text-zinc-500 truncate">{row.bot}</span>
-                                <span className="text-zinc-400 text-right">{row.leads}</span>
-                                <div className="flex justify-center">
-                                  <span className={`px-1.5 py-0.5 rounded text-[8px] font-medium ${
-                                    row.conv >= 78 ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
-                                  }`}>
-                                    {row.conv}%
-                                  </span>
-                                </div>
-                                <span className={`text-right text-[8px] sm:text-[9px] ${
-                                  row.status === 'Ativo' ? 'text-cyan-400' : 'text-zinc-500'
-                                }`}>
-                                  {row.status}
-                                </span>
+                          <motion.button 
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: 1.6 }}
+                            className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-[10px] sm:text-[11px] px-3 py-2 rounded-lg font-semibold flex items-center gap-1.5 shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 transition-shadow"
+                          >
+                            <span className="text-[14px]">+</span> Novo Funil
+                          </motion.button>
+                        </div>
+                        
+                        {/* Stats grid with staggered animation */}
+                        <div className="grid grid-cols-6 gap-2 sm:gap-2.5 mb-5">
+                          {[
+                            { icon: BarChart3, bg: "from-red-500/20 to-red-600/10", iconColor: "text-red-400", value: "127", label: "Leads Hoje", border: "border-red-500/20" },
+                            { icon: Target, bg: "from-blue-500/20 to-blue-600/10", iconColor: "text-blue-400", value: "8", label: "Funis Ativos", border: "border-blue-500/20" },
+                            { icon: Users, bg: "from-amber-500/20 to-yellow-600/10", iconColor: "text-amber-400", value: "43", label: "Sessões", border: "border-amber-500/20" },
+                            { icon: MessageCircle, bg: "from-cyan-500/20 to-cyan-600/10", iconColor: "text-cyan-400", value: "892", label: "Mensagens", border: "border-cyan-500/20" },
+                            { icon: TrendingUp, bg: "from-purple-500/20 to-purple-600/10", iconColor: "text-purple-400", value: "72%", label: "Conversão", border: "border-purple-500/20" },
+                            { icon: CheckCircle2, bg: "from-emerald-500/20 to-green-600/10", iconColor: "text-emerald-400", value: "OK", label: "Status Bot", border: "border-emerald-500/20" },
+                          ].map((stat, i) => (
+                            <motion.div
+                              key={i}
+                              initial={{ opacity: 0, y: 15, scale: 0.95 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              transition={{ delay: 1.5 + i * 0.08, duration: 0.4 }}
+                              className={`bg-gradient-to-br ${stat.bg} rounded-xl p-2.5 sm:p-3 border ${stat.border} backdrop-blur-sm`}
+                            >
+                              <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-[#0d1117]/60 flex items-center justify-center mb-2 shadow-inner">
+                                <stat.icon className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${stat.iconColor}`} />
                               </div>
-                            ))}
-                          </div>
-                        </motion.div>
+                              <div className="text-[#f0f6fc] text-sm sm:text-lg font-bold tracking-tight">{stat.value}</div>
+                              <div className="text-[#484f58] text-[7px] sm:text-[9px] font-medium">{stat.label}</div>
+                            </motion.div>
+                          ))}
+                        </div>
 
-                        {/* Activity - 2 columns */}
-                        <motion.div
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={{ delay: 1.9 }}
-                          className="sm:col-span-2 bg-[#161b22] rounded-xl border border-zinc-800/50 p-3 sm:p-4"
-                        >
-                          <div className="text-white text-xs sm:text-sm font-semibold mb-3 flex items-center gap-2">
-                            <Clock className="w-3.5 h-3.5 text-cyan-400" />
-                            Atividade Recente
-                          </div>
-                          <div className="space-y-2.5">
-                            {[
-                              { color: "bg-green-500", text: "Novo lead: @maria_silva", time: "agora" },
-                              { color: "bg-yellow-500", text: "Mensagem enviada", time: "2min" },
-                              { color: "bg-blue-500", text: "Lead respondeu", time: "5min" },
-                              { color: "bg-cyan-500", text: "Funil concluído", time: "7min" },
-                            ].map((item, i) => (
-                              <div key={i} className="flex items-center justify-between text-[9px] sm:text-[11px]">
-                                <div className="flex items-center gap-2">
-                                  <div className={`w-2 h-2 rounded-full ${item.color}`} />
-                                  <span className="text-zinc-300">{item.text}</span>
+                        {/* Bottom panels */}
+                        <div className="grid grid-cols-1 sm:grid-cols-5 gap-2.5">
+                          {/* Funnel table */}
+                          <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 2.1 }}
+                            className="sm:col-span-3 bg-[#161b22] rounded-xl border border-[#21262d] p-3 sm:p-4"
+                          >
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="text-[#f0f6fc] text-[11px] sm:text-[13px] font-semibold flex items-center gap-2">
+                                <div className="w-5 h-5 rounded bg-cyan-500/20 flex items-center justify-center">
+                                  <BarChart3 className="w-3 h-3 text-cyan-400" />
                                 </div>
-                                <span className="text-zinc-600">{item.time}</span>
+                                Visão Geral dos Funis
                               </div>
-                            ))}
-                          </div>
-                        </motion.div>
+                              <span className="text-cyan-400 text-[9px] sm:text-[10px] font-medium cursor-pointer hover:underline">Ver todos →</span>
+                            </div>
+                            
+                            {/* Table header */}
+                            <div className="grid grid-cols-5 gap-2 text-[7px] sm:text-[9px] text-[#484f58] uppercase tracking-wider pb-2 border-b border-[#21262d] mb-2 font-semibold">
+                              <span>Funil</span>
+                              <span>Bot</span>
+                              <span className="text-right">Leads</span>
+                              <span className="text-center">Conv.</span>
+                              <span className="text-right">Status</span>
+                            </div>
+                            
+                            {/* Table rows */}
+                            <div className="space-y-1.5">
+                              {[
+                                { name: "Vendas VIP", bot: "@vip_bot", leads: "45/32", conv: 79, status: "Ativo" },
+                                { name: "Captura Lead", bot: "@leads_bot", leads: "89/67", conv: 75, status: "Ativo" },
+                                { name: "Suporte Auto", bot: "@sup_bot", leads: "23/18", conv: 78, status: "Pausado" },
+                              ].map((row, i) => (
+                                <motion.div 
+                                  key={i} 
+                                  initial={{ opacity: 0, x: -10 }}
+                                  animate={{ opacity: 1, x: 0 }}
+                                  transition={{ delay: 2.2 + i * 0.1 }}
+                                  className="grid grid-cols-5 gap-2 text-[8px] sm:text-[11px] py-2 items-center hover:bg-[#1c2128] rounded-lg px-1 transition-colors"
+                                >
+                                  <span className="text-[#f0f6fc] font-medium truncate">{row.name}</span>
+                                  <span className="text-[#484f58] truncate font-mono text-[8px] sm:text-[10px]">{row.bot}</span>
+                                  <span className="text-[#8b949e] text-right font-medium">{row.leads}</span>
+                                  <div className="flex justify-center">
+                                    <span className={`px-1.5 py-0.5 rounded-md text-[7px] sm:text-[9px] font-bold ${
+                                      row.conv >= 78 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'
+                                    }`}>
+                                      {row.conv}%
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-end">
+                                    <span className={`text-[7px] sm:text-[9px] font-medium flex items-center gap-1 ${
+                                      row.status === 'Ativo' ? 'text-cyan-400' : 'text-[#484f58]'
+                                    }`}>
+                                      <span className={`w-1.5 h-1.5 rounded-full ${row.status === 'Ativo' ? 'bg-cyan-400' : 'bg-[#484f58]'}`} />
+                                      {row.status}
+                                    </span>
+                                  </div>
+                                </motion.div>
+                              ))}
+                            </div>
+                          </motion.div>
+
+                          {/* Activity feed */}
+                          <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 2.3 }}
+                            className="sm:col-span-2 bg-[#161b22] rounded-xl border border-[#21262d] p-3 sm:p-4"
+                          >
+                            <div className="text-[#f0f6fc] text-[11px] sm:text-[13px] font-semibold mb-3 flex items-center gap-2">
+                              <div className="w-5 h-5 rounded bg-cyan-500/20 flex items-center justify-center">
+                                <Clock className="w-3 h-3 text-cyan-400" />
+                              </div>
+                              Atividade Recente
+                            </div>
+                            <div className="space-y-2">
+                              {[
+                                { color: "bg-emerald-500", ring: "ring-emerald-500/30", text: "Novo lead: @maria_silva", time: "agora" },
+                                { color: "bg-amber-500", ring: "ring-amber-500/30", text: "Mensagem enviada", time: "2min" },
+                                { color: "bg-blue-500", ring: "ring-blue-500/30", text: "Lead respondeu", time: "5min" },
+                                { color: "bg-cyan-500", ring: "ring-cyan-500/30", text: "Funil concluído", time: "7min" },
+                              ].map((item, i) => (
+                                <motion.div 
+                                  key={i} 
+                                  initial={{ opacity: 0, x: 10 }}
+                                  animate={{ opacity: 1, x: 0 }}
+                                  transition={{ delay: 2.4 + i * 0.1 }}
+                                  className="flex items-center justify-between text-[8px] sm:text-[11px] py-1.5 hover:bg-[#1c2128] rounded-lg px-1 transition-colors"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <div className={`w-2 h-2 rounded-full ${item.color} ring-2 ${item.ring}`} />
+                                    <span className="text-[#c9d1d9]">{item.text}</span>
+                                  </div>
+                                  <span className="text-[#484f58] text-[8px] sm:text-[10px]">{item.time}</span>
+                                </motion.div>
+                              ))}
+                            </div>
+                          </motion.div>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
+                
+                {/* MacBook hinge/bottom */}
+                <div className="relative">
+                  <div className="bg-gradient-to-b from-[#2d2d2d] to-[#252525] h-[6px] mx-2 rounded-b-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]" />
+                  <div className="bg-gradient-to-b from-[#3d3d3d] to-[#2a2a2a] h-[14px] sm:h-[18px] rounded-b-xl mx-8 sm:mx-14 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_4px_20px_rgba(0,0,0,0.4)]">
+                    <div className="w-[80px] sm:w-[100px] h-[3px] bg-[#1a1a1a] rounded-full mx-auto mt-[5px] sm:mt-[6px] shadow-[inset_0_1px_2px_rgba(0,0,0,0.4)]" />
+                  </div>
+                </div>
               </div>
               
-              {/* MacBook bottom/base */}
-              <div className="bg-gradient-to-b from-[#2a2a2a] to-[#1a1a1a] h-4 sm:h-5 rounded-b-xl mx-6 sm:mx-10">
-                <div className="w-24 sm:w-32 h-1 bg-zinc-600/30 rounded-full mx-auto mt-1.5" />
-              </div>
-              
-              {/* Shadow */}
-              <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 w-[60%] h-8 bg-black/40 blur-2xl rounded-full" />
+              {/* Realistic shadow */}
+              <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 w-[50%] h-[20px] bg-black/50 blur-2xl rounded-[100%]" />
+              <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-[70%] h-[8px] bg-black/30 blur-xl rounded-[100%]" />
             </div>
           </motion.div>
         </div>
