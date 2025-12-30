@@ -10,7 +10,6 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { useAdminSettings } from "@/hooks/useAdminSettings";
 import { usePaymentNotifications } from "@/hooks/usePaymentNotifications";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-
 interface DashboardLayoutProps {
   children: ReactNode;
 }
@@ -32,8 +31,16 @@ const DashboardLayout = ({
     hasActiveSubscription,
     currentPlan
   } = useSubscription();
-  const { settings: adminSettings, isLoading: isLoadingSettings } = useAdminSettings();
-  const { permissionStatus, isEnabled, toggleNotifications, isSupported } = usePaymentNotifications();
+  const {
+    settings: adminSettings,
+    isLoading: isLoadingSettings
+  } = useAdminSettings();
+  const {
+    permissionStatus,
+    isEnabled,
+    toggleNotifications,
+    isSupported
+  } = usePaymentNotifications();
   // Build navigation items dynamically based on subscription status
   const getNavItems = () => {
     const items = [{
@@ -41,7 +48,7 @@ const DashboardLayout = ({
       label: "Dashboard",
       path: "/dashboard"
     }];
-    
+
     // Pagamentos - right after Dashboard
     items.push({
       icon: Wallet,
@@ -64,13 +71,12 @@ const DashboardLayout = ({
         path: "/billing"
       });
     }
-    
     items.push({
       icon: MessageCircle,
       label: "Telegram",
       path: "/telegram"
     });
-    
+
     // Only show Funis if enabled by admin
     if (adminSettings.funnels_enabled) {
       items.push({
@@ -79,7 +85,7 @@ const DashboardLayout = ({
         path: "/funnels"
       });
     }
-    
+
     // Only show WhatsApp if enabled by admin
     if (adminSettings.whatsapp_enabled) {
       items.push({
@@ -88,7 +94,7 @@ const DashboardLayout = ({
         path: "/whatsapp"
       });
     }
-    
+
     // Only show Accounts if any account type is enabled
     if (adminSettings.tiktok_enabled || adminSettings.models_enabled) {
       items.push({
@@ -97,7 +103,7 @@ const DashboardLayout = ({
         path: "/accounts"
       });
     }
-    
+
     // Only show Telegram Groups if enabled by admin
     if (adminSettings.telegram_groups_enabled) {
       items.push({
@@ -106,14 +112,14 @@ const DashboardLayout = ({
         path: "/telegram-groups"
       });
     }
-    
+
     // Minhas Entregas (produtos comprados)
     items.push({
       icon: Package,
       label: "Minhas Entregas",
       path: "/delivery"
     });
-    
+
     // Automação de Publicações - logo após Minhas Entregas
     if (adminSettings.automation_module_enabled) {
       items.push({
@@ -122,17 +128,16 @@ const DashboardLayout = ({
         path: "/publication-automation"
       });
     }
-    
+
     // Integrações - before Admin
     items.push({
       icon: Plug,
       label: "Integrações",
       path: "/integrations"
     });
-    
     return items;
   };
-  
+
   // Only compute nav items when settings are loaded to prevent flash
   const navItems = useMemo(() => {
     if (isLoadingSettings) return [];
@@ -152,12 +157,7 @@ const DashboardLayout = ({
     label: "Revendedor",
     path: "/reseller"
   }];
-
-  const allNavItems = [
-    ...navItems,
-    ...(isVendor || isAdmin ? vendorItems : []),
-    ...(isAdmin ? adminItems : [])
-  ];
+  const allNavItems = [...navItems, ...(isVendor || isAdmin ? vendorItems : []), ...(isAdmin ? adminItems : [])];
   const handleSignOut = async () => {
     await signOut();
     navigate("/login");
@@ -181,90 +181,54 @@ const DashboardLayout = ({
     isMobile?: boolean;
   }) => {
     const showLabels = isMobile || !collapsed;
-    
-    return (
-      <>
+    return <>
         {/* Logo */}
         <div className="h-14 flex items-center justify-between px-3 border-b border-sidebar-border">
           <Link to="/dashboard" className="flex items-center" onClick={onItemClick}>
-            <img 
-              src="/logo-nexo.png" 
-              alt="Nexo" 
-              className={cn("transition-all", showLabels ? "h-8" : "h-7")} 
-            />
+            <img src="/logo-nexo.png" alt="Nexo" className="" />
           </Link>
-          {!isMobile && (
-            <Button 
-              variant="ghost" 
-              size="icon-sm" 
-              onClick={() => setCollapsed(!collapsed)} 
-              className="text-sidebar-foreground hover:bg-sidebar-accent"
-            >
+          {!isMobile && <Button variant="ghost" size="icon-sm" onClick={() => setCollapsed(!collapsed)} className="text-sidebar-foreground hover:bg-sidebar-accent">
               {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-            </Button>
-          )}
+            </Button>}
         </div>
 
         {/* Navigation */}
         <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto">
           {allNavItems.map(item => {
-            const isActive = location.pathname === item.path;
-            return (
-              <Link 
-                key={item.path} 
-                to={item.path} 
-                onClick={onItemClick} 
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-150",
-                  isActive 
-                    ? "bg-primary/15 text-primary border-l-2 border-primary" 
-                    : "text-sidebar-foreground hover:bg-sidebar-accent/80 hover:text-sidebar-accent-foreground border-l-2 border-transparent"
-                )}
-              >
+          const isActive = location.pathname === item.path;
+          return <Link key={item.path} to={item.path} onClick={onItemClick} className={cn("flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-150", isActive ? "bg-primary/15 text-primary border-l-2 border-primary" : "text-sidebar-foreground hover:bg-sidebar-accent/80 hover:text-sidebar-accent-foreground border-l-2 border-transparent")}>
                 <item.icon className={cn("flex-shrink-0", showLabels ? "w-4 h-4" : "w-5 h-5")} />
                 {showLabels && <span className="text-sm font-medium truncate">{item.label}</span>}
-              </Link>
-            );
-          })}
+              </Link>;
+        })}
         </nav>
 
         {/* Bottom Actions */}
         <div className="p-2 border-t border-sidebar-border space-y-0.5">
-          <button 
-            onClick={() => { onItemClick?.(); openSupport(); }} 
-            className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sidebar-foreground hover:bg-success/10 hover:text-success transition-colors w-full"
-          >
+          <button onClick={() => {
+          onItemClick?.();
+          openSupport();
+        }} className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sidebar-foreground hover:bg-success/10 hover:text-success transition-colors w-full">
             <Headphones className={cn("flex-shrink-0", showLabels ? "w-4 h-4" : "w-5 h-5")} />
             {showLabels && <span className="text-sm font-medium">Suporte</span>}
           </button>
-          <Link 
-            to="/settings" 
-            onClick={onItemClick} 
-            className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sidebar-foreground hover:bg-sidebar-accent/80 hover:text-sidebar-accent-foreground transition-colors"
-          >
+          <Link to="/settings" onClick={onItemClick} className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sidebar-foreground hover:bg-sidebar-accent/80 hover:text-sidebar-accent-foreground transition-colors">
             <Settings className={cn("flex-shrink-0", showLabels ? "w-4 h-4" : "w-5 h-5")} />
             {showLabels && <span className="text-sm font-medium">Configurações</span>}
           </Link>
-          <button 
-            onClick={() => { onItemClick?.(); handleSignOut(); }} 
-            className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sidebar-foreground hover:bg-destructive/10 hover:text-destructive transition-colors w-full"
-          >
+          <button onClick={() => {
+          onItemClick?.();
+          handleSignOut();
+        }} className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sidebar-foreground hover:bg-destructive/10 hover:text-destructive transition-colors w-full">
             <LogOut className={cn("flex-shrink-0", showLabels ? "w-4 h-4" : "w-5 h-5")} />
             {showLabels && <span className="text-sm font-medium">Sair</span>}
           </button>
         </div>
-      </>
-    );
+      </>;
   };
-  return (
-    <div className="min-h-screen bg-background flex">
+  return <div className="min-h-screen bg-background flex">
       {/* Desktop Sidebar */}
-      <aside 
-        className={cn(
-          "fixed left-0 top-0 h-full bg-sidebar border-r border-sidebar-border z-40 transition-all duration-200 hidden lg:flex flex-col",
-          collapsed ? "w-16" : "w-56"
-        )}
-      >
+      <aside className={cn("fixed left-0 top-0 h-full bg-sidebar border-r border-sidebar-border z-40 transition-all duration-200 hidden lg:flex flex-col", collapsed ? "w-16" : "w-56")}>
         <NavContent />
       </aside>
 
@@ -275,26 +239,10 @@ const DashboardLayout = ({
         </Link>
         
         <div className="flex items-center gap-1">
-          {isSupported && (
-            <Button 
-              variant="ghost" 
-              size="icon-sm" 
-              onClick={toggleNotifications}
-              className={cn(
-                "relative",
-                isEnabled && permissionStatus === 'granted' && "text-primary"
-              )}
-            >
-              {isEnabled && permissionStatus === 'granted' ? (
-                <Bell className="w-4 h-4" />
-              ) : (
-                <BellOff className="w-4 h-4" />
-              )}
-              {isEnabled && permissionStatus === 'granted' && (
-                <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-success rounded-full" />
-              )}
-            </Button>
-          )}
+          {isSupported && <Button variant="ghost" size="icon-sm" onClick={toggleNotifications} className={cn("relative", isEnabled && permissionStatus === 'granted' && "text-primary")}>
+              {isEnabled && permissionStatus === 'granted' ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
+              {isEnabled && permissionStatus === 'granted' && <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-success rounded-full" />}
+            </Button>}
           
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
@@ -320,45 +268,22 @@ const DashboardLayout = ({
           </h1>
 
           <div className="flex items-center gap-3">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={openSupport} 
-              className="text-success border-success/30 hover:bg-success/10 hover:border-success/50"
-            >
+            <Button variant="outline" size="sm" onClick={openSupport} className="text-success border-success/30 hover:bg-success/10 hover:border-success/50">
               <Headphones className="w-4 h-4 mr-1.5" />
               Suporte
             </Button>
             
-            {isSupported && (
-              <Tooltip>
+            {isSupported && <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon-sm" 
-                    onClick={toggleNotifications}
-                    className={cn(
-                      "relative",
-                      isEnabled && permissionStatus === 'granted' && "text-primary"
-                    )}
-                  >
-                    {isEnabled && permissionStatus === 'granted' ? (
-                      <Bell className="w-4 h-4" />
-                    ) : (
-                      <BellOff className="w-4 h-4" />
-                    )}
-                    {isEnabled && permissionStatus === 'granted' && (
-                      <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 bg-success rounded-full" />
-                    )}
+                  <Button variant="ghost" size="icon-sm" onClick={toggleNotifications} className={cn("relative", isEnabled && permissionStatus === 'granted' && "text-primary")}>
+                    {isEnabled && permissionStatus === 'granted' ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
+                    {isEnabled && permissionStatus === 'granted' && <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 bg-success rounded-full" />}
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  {isEnabled && permissionStatus === 'granted' 
-                    ? 'Notificações ativadas' 
-                    : 'Ativar notificações'}
+                  {isEnabled && permissionStatus === 'granted' ? 'Notificações ativadas' : 'Ativar notificações'}
                 </TooltipContent>
-              </Tooltip>
-            )}
+              </Tooltip>}
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -371,11 +296,9 @@ const DashboardLayout = ({
               <DropdownMenuContent align="end" className="w-52">
                 <DropdownMenuLabel className="flex items-center gap-2">
                   <span className="truncate">{profile?.full_name || "Minha Conta"}</span>
-                  {isAdmin && (
-                    <span className="text-2xs bg-primary/15 text-primary px-1.5 py-0.5 rounded-full font-medium">
+                  {isAdmin && <span className="text-2xs bg-primary/15 text-primary px-1.5 py-0.5 rounded-full font-medium">
                       Admin
-                    </span>
-                  )}
+                    </span>}
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => navigate("/settings")}>
@@ -403,8 +326,6 @@ const DashboardLayout = ({
         {/* Page Content */}
         <main className="p-3 sm:p-4 md:p-6 pt-[4.5rem] lg:pt-4 page-transition">{children}</main>
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default DashboardLayout;
