@@ -99,14 +99,18 @@ const LandingPage = () => {
       name: "Free",
       price: "R$ 0",
       period: "/7 dias",
-      description: "Teste grátis para conhecer a plataforma",
-      icon: Gift,
+      description: "Para testar a plataforma",
       features: [
-        "1 destino (grupo/canal)",
-        "Até 100 mídias/dia",
-        "Acesso à plataforma completa",
-        "Suporte por e-mail",
-        "Teste grátis por 7 dias",
+        { text: "1 destino (grupo/canal)", included: true },
+        { text: "100 mídias por dia", included: true },
+        { text: "Funis de venda básicos", included: true },
+        { text: "Dashboard de métricas", included: true },
+        { text: "Suporte por e-mail", included: true },
+        { text: "Agendamento de posts", included: false },
+        { text: "Model Hub / IA", included: false },
+        { text: "Modelos Vazados", included: false },
+        { text: "Remarketing automático", included: false },
+        { text: "API de integração", included: false },
       ],
       popular: false,
       cta: "Começar grátis",
@@ -115,14 +119,18 @@ const LandingPage = () => {
       name: "Basic",
       price: "R$ 49,90",
       period: "/mês",
-      description: "Para quem quer sair do zero",
-      icon: Zap,
+      description: "Para quem está começando",
       features: [
-        "3 destinos (grupos/canais)",
-        "Até 500 mídias/dia",
-        "Agendamento básico",
-        "Fluxo de chat padrão",
-        "Suporte prioritário (WhatsApp)",
+        { text: "3 destinos (grupos/canais)", included: true },
+        { text: "500 mídias por dia", included: true },
+        { text: "Funis de venda completos", included: true },
+        { text: "Dashboard de métricas", included: true },
+        { text: "Suporte via WhatsApp", included: true },
+        { text: "Agendamento de posts", included: true },
+        { text: "Fluxo de chat padrão", included: true },
+        { text: "Model Hub / IA", included: false },
+        { text: "Modelos Vazados", included: false },
+        { text: "API de integração", included: false },
       ],
       popular: false,
       cta: "Escolher Basic",
@@ -131,16 +139,18 @@ const LandingPage = () => {
       name: "Pro",
       price: "R$ 99,90",
       period: "/mês",
-      description: "Para escalar de verdade",
-      icon: Crown,
+      description: "Para escalar vendas",
       features: [
-        "10 destinos",
-        "Até 2.000 mídias/dia",
-        "Agendamento avançado",
-        "Fluxo de chat otimizado",
-        "Model Hub / IA",
-        "Modelos Vazados",
-        "Suporte 24/7 (WhatsApp)",
+        { text: "10 destinos (grupos/canais)", included: true },
+        { text: "2.000 mídias por dia", included: true },
+        { text: "Funis de venda avançados", included: true },
+        { text: "Dashboard completo", included: true },
+        { text: "Suporte 24/7 WhatsApp", included: true },
+        { text: "Agendamento avançado", included: true },
+        { text: "Fluxo de chat otimizado", included: true },
+        { text: "Model Hub / IA", included: true },
+        { text: "Modelos Vazados", included: true },
+        { text: "Remarketing automático", included: true },
       ],
       popular: true,
       cta: "Escolher Pro",
@@ -149,15 +159,18 @@ const LandingPage = () => {
       name: "Agency",
       price: "R$ 299,90",
       period: "/mês",
-      description: "Escala máxima, sem limites",
-      icon: Building2,
+      description: "Para operações em escala",
       features: [
-        "Destinos ilimitados",
-        "Mídias ilimitadas",
-        "Todas as ferramentas",
-        "Acesso à API",
-        "Gerente dedicado",
-        "Prioridade total",
+        { text: "Destinos ilimitados", included: true },
+        { text: "Mídias ilimitadas", included: true },
+        { text: "Todas as ferramentas", included: true },
+        { text: "Dashboard white-label", included: true },
+        { text: "Gerente de conta dedicado", included: true },
+        { text: "Agendamento ilimitado", included: true },
+        { text: "Fluxo de chat premium", included: true },
+        { text: "Model Hub / IA completo", included: true },
+        { text: "Acesso total Modelos", included: true },
+        { text: "API de integração", included: true },
       ],
       popular: false,
       cta: "Falar com consultor",
@@ -702,27 +715,26 @@ const LandingPage = () => {
       </section>
 
       {/* Pricing Section */}
-      <section id="pricing" className="py-16 sm:py-24">
+      <section id="pricing" className="py-20 sm:py-28 bg-[#0a0a0a]">
         <div className="container mx-auto px-4">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-center mb-12"
+            className="text-center mb-16"
           >
-            <Badge variant="secondary" className="mb-4 px-4 py-1.5">
-              <Sparkles className="w-3 h-3 mr-1.5" />
-              Planos para todos os tamanhos
-            </Badge>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4">
-              Escolha o plano ideal para você
+            <p className="text-sm font-medium text-muted-foreground tracking-widest uppercase mb-4">
+              Planos e preços
+            </p>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 tracking-tight">
+              Escolha o plano ideal
             </h2>
-            <p className="text-muted-foreground max-w-lg mx-auto">
-              Comece grátis e escale conforme seu negócio cresce.
+            <p className="text-muted-foreground max-w-md mx-auto text-base">
+              Comece gratuitamente e escale conforme seu negócio cresce
             </p>
           </motion.div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 max-w-6xl mx-auto">
+          <div className="grid lg:grid-cols-4 gap-0 max-w-6xl mx-auto">
             {plans.map((plan, index) => {
               const isPopular = plan.popular;
               const isAgency = plan.name === "Agency";
@@ -734,149 +746,111 @@ const LandingPage = () => {
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  transition={{ duration: 0.3, delay: index * 0.1 }}
-                  whileHover={{ y: -5 }}
-                  className={`relative ${isPopular ? 'lg:-mt-4 lg:mb-4' : ''}`}
+                  transition={{ duration: 0.4, delay: index * 0.1 }}
+                  className={`relative ${isPopular ? 'z-10' : 'z-0'}`}
                 >
-                  {/* Popular badge */}
-                  {isPopular && (
-                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
-                      <Badge className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white px-4 py-1 font-semibold shadow-lg shadow-cyan-500/25">
-                        <Star className="w-3 h-3 mr-1.5 fill-current" />
-                        Mais popular
-                      </Badge>
-                    </div>
-                  )}
-                  
-                  {/* Best value badge for Agency */}
-                  {isAgency && (
-                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
-                      <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-1 font-semibold shadow-lg shadow-purple-500/25">
-                        <Crown className="w-3 h-3 mr-1.5" />
-                        Premium
-                      </Badge>
-                    </div>
-                  )}
-                  
-                  <Card className={`h-full overflow-hidden transition-all duration-300 ${
+                  <div className={`h-full border transition-all duration-300 ${
                     isPopular 
-                      ? 'bg-gradient-to-b from-cyan-500/10 to-transparent border-cyan-500/50 ring-2 ring-cyan-500/30 shadow-xl shadow-cyan-500/10' 
-                      : isAgency 
-                        ? 'bg-gradient-to-b from-purple-500/10 to-transparent border-purple-500/50 hover:border-purple-500/70'
-                        : 'border-border/50 hover:border-primary/30 hover:shadow-lg'
+                      ? 'bg-white text-[#0a0a0a] border-white rounded-2xl shadow-2xl shadow-white/10 -my-4 py-4' 
+                      : 'bg-[#0a0a0a] border-[#1a1a1a] first:rounded-l-2xl last:rounded-r-2xl'
                   }`}>
-                    <CardContent className="p-5 sm:p-6 relative">
-                      {/* Background glow for popular */}
-                      {isPopular && (
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 rounded-full blur-3xl" />
-                      )}
-                      
-                      {/* Icon */}
-                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${
-                        isPopular 
-                          ? 'bg-gradient-to-br from-cyan-500 to-blue-500 shadow-lg shadow-cyan-500/30' 
-                          : isAgency 
-                            ? 'bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg shadow-purple-500/30'
-                            : isFree
-                              ? 'bg-green-500/20'
-                              : 'bg-primary/10'
-                      }`}>
-                        <plan.icon className={`w-6 h-6 ${
-                          isPopular || isAgency ? 'text-white' : isFree ? 'text-green-500' : 'text-primary'
-                        }`} />
+                    {/* Popular indicator */}
+                    {isPopular && (
+                      <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                        <span className="bg-[#0a0a0a] text-white text-xs font-semibold px-4 py-1.5 rounded-full">
+                          Mais popular
+                        </span>
                       </div>
-                      
-                      {/* Plan name and description */}
-                      <h3 className={`font-bold text-xl mb-1 ${isPopular ? 'text-cyan-400' : isAgency ? 'text-purple-400' : ''}`}>
-                        {plan.name}
-                      </h3>
-                      <p className="text-xs text-muted-foreground mb-4">{plan.description}</p>
+                    )}
+                    
+                    <div className="p-6 sm:p-8">
+                      {/* Plan name */}
+                      <div className="mb-6">
+                        <h3 className={`text-lg font-semibold mb-1 ${isPopular ? 'text-[#0a0a0a]' : 'text-foreground'}`}>
+                          {plan.name}
+                        </h3>
+                        <p className={`text-sm ${isPopular ? 'text-[#666]' : 'text-muted-foreground'}`}>
+                          {plan.description}
+                        </p>
+                      </div>
                       
                       {/* Price */}
-                      <div className="mb-5 pb-5 border-b border-border/50">
+                      <div className="mb-8">
                         <div className="flex items-baseline gap-1">
-                          <span className={`text-3xl sm:text-4xl font-bold ${
-                            isPopular ? 'text-cyan-400' : isAgency ? 'text-purple-400' : ''
-                          }`}>
+                          <span className={`text-4xl sm:text-5xl font-bold tracking-tight ${isPopular ? 'text-[#0a0a0a]' : 'text-foreground'}`}>
                             {plan.price}
                           </span>
-                          <span className="text-muted-foreground text-sm">{plan.period}</span>
+                          <span className={`text-sm ${isPopular ? 'text-[#666]' : 'text-muted-foreground'}`}>
+                            {plan.period}
+                          </span>
                         </div>
-                        {isFree && (
-                          <span className="text-xs text-green-500 font-medium">Sem cartão necessário</span>
-                        )}
                       </div>
 
-                      {/* Features */}
-                      <ul className="space-y-3 mb-6">
-                        {plan.features.map((feature, i) => (
-                          <li key={i} className="flex items-start gap-2.5 text-sm">
-                            <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${
-                              isPopular 
-                                ? 'bg-cyan-500/20' 
-                                : isAgency 
-                                  ? 'bg-purple-500/20'
-                                  : 'bg-green-500/20'
-                            }`}>
-                              <Check className={`w-3 h-3 ${
-                                isPopular ? 'text-cyan-400' : isAgency ? 'text-purple-400' : 'text-green-500'
-                              }`} />
-                            </div>
-                            <span className="text-muted-foreground">{feature}</span>
-                          </li>
-                        ))}
-                      </ul>
-
                       {/* CTA Button */}
-                      <Link to={isAgency ? "#" : "/signup"} className="block" onClick={isAgency ? openWhatsApp : undefined}>
+                      <Link 
+                        to={isAgency ? "#" : "/signup"} 
+                        className="block mb-8" 
+                        onClick={isAgency ? openWhatsApp : undefined}
+                      >
                         <Button 
                           variant={isPopular ? "default" : "outline"} 
-                          className={`w-full font-semibold transition-all ${
+                          className={`w-full h-12 font-medium text-sm transition-all ${
                             isPopular 
-                              ? 'bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40'
-                              : isAgency
-                                ? 'border-purple-500/50 text-purple-400 hover:bg-purple-500/10 hover:border-purple-500'
-                                : ''
+                              ? 'bg-[#0a0a0a] text-white hover:bg-[#1a1a1a]'
+                              : 'border-[#333] text-foreground hover:bg-[#111] hover:border-[#444]'
                           }`}
                         >
                           {plan.cta}
-                          {isPopular && <ArrowRight className="w-4 h-4 ml-1" />}
                         </Button>
                       </Link>
-                      
-                      {/* Extra info */}
-                      {isPopular && (
-                        <p className="text-[10px] text-center text-muted-foreground mt-3">
-                          ✓ 7 dias de garantia · Cancele quando quiser
+
+                      {/* Features divider */}
+                      <div className={`border-t mb-6 ${isPopular ? 'border-[#e5e5e5]' : 'border-[#1a1a1a]'}`} />
+
+                      {/* Features */}
+                      <div className="space-y-3">
+                        <p className={`text-xs font-medium uppercase tracking-wider mb-4 ${
+                          isPopular ? 'text-[#999]' : 'text-muted-foreground'
+                        }`}>
+                          O que está incluso
                         </p>
-                      )}
-                    </CardContent>
-                  </Card>
+                        {plan.features.map((feature, i) => (
+                          <div key={i} className="flex items-start gap-3">
+                            {feature.included ? (
+                              <Check className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
+                                isPopular ? 'text-[#0a0a0a]' : 'text-foreground'
+                              }`} />
+                            ) : (
+                              <div className={`w-4 h-4 mt-0.5 flex-shrink-0 flex items-center justify-center`}>
+                                <div className={`w-1 h-[2px] ${isPopular ? 'bg-[#ccc]' : 'bg-[#333]'}`} />
+                              </div>
+                            )}
+                            <span className={`text-sm ${
+                              feature.included 
+                                ? isPopular ? 'text-[#0a0a0a]' : 'text-foreground'
+                                : isPopular ? 'text-[#999]' : 'text-muted-foreground/50'
+                            }`}>
+                              {feature.text}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 </motion.div>
               );
             })}
           </div>
           
-          {/* Trust indicators */}
-          <motion.div
+          {/* Bottom note */}
+          <motion.p
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
-            className="flex flex-wrap items-center justify-center gap-6 mt-10 text-sm text-muted-foreground"
+            className="text-center text-sm text-muted-foreground mt-12"
           >
-            <div className="flex items-center gap-2">
-              <Shield className="w-4 h-4 text-green-500" />
-              <span>Pagamento seguro</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-primary" />
-              <span>Ativação imediata</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-green-500" />
-              <span>Cancele quando quiser</span>
-            </div>
-          </motion.div>
+            Todos os planos incluem suporte técnico e atualizações. Cancele quando quiser.
+          </motion.p>
         </div>
       </section>
 
