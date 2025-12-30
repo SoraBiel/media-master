@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 const TELEGRAM_API_BASE = "https://api.telegram.org/bot";
-const CHUNK_SIZE = 30; // Process 30 items per invocation to keep execution short
+const CHUNK_SIZE = 30; // Process 30 items per invocation
 
 function isVideoUrl(url: string): boolean {
   const lowerUrl = url.toLowerCase();
@@ -19,11 +19,23 @@ function encodeStoragePath(path: string): string {
   return path.split("/").map((part) => encodeURIComponent(part)).join("/");
 }
 
-function maybeForceDownload(url: string): string {
-  if (url.includes("/storage/v1/object/public/") && !url.includes("download=")) {
-    return `${url}${url.includes("?") ? "&" : "?"}download=1`;
-  }
-  return url;
+function getFileExtension(url: string): string {
+  const match = url.match(/\.([a-zA-Z0-9]+)(?:\?|$)/i);
+  return match ? match[1].toLowerCase() : "jpg";
+}
+
+function getMimeType(ext: string): string {
+  const mimeTypes: Record<string, string> = {
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    png: "image/png",
+    gif: "image/gif",
+    webp: "image/webp",
+    mp4: "video/mp4",
+    mov: "video/quicktime",
+    webm: "video/webm",
+  };
+  return mimeTypes[ext] || "application/octet-stream";
 }
 
 async function telegramPostJson(botToken: string, method: string, payload: Record<string, any>): Promise<any> {
@@ -58,105 +70,91 @@ async function telegramPostJson(botToken: string, method: string, payload: Recor
   throw new Error("Telegram API retry limit reached");
 }
 
-async function sendMediaByUrl(
+// Download and send via FormData (more reliable than URL)
+async function downloadAndSendMedia(
   botToken: string,
   chatId: string,
   mediaUrl: string,
-  caption?: string,
-  sendMode: string = "media"
-): Promise<any> {
-  const url = maybeForceDownload(mediaUrl);
-  const isVideo = isVideoUrl(url);
-
-  if (sendMode === "document") {
-    return telegramPostJson(botToken, "sendDocument", {
-      chat_id: chatId,
-      document: url,
-      caption,
-      parse_mode: caption ? "HTML" : undefined,
-      disable_content_type_detection: true,
-    });
-  }
-
-  if (!isVideo) {
-    try {
-      return await telegramPostJson(botToken, "sendPhoto", {
-        chat_id: chatId,
-        photo: url,
-        caption,
-        parse_mode: caption ? "HTML" : undefined,
-      });
-    } catch (e: any) {
-      const msg = String(e?.message || "");
-      if (
-        msg.toLowerCase().includes("wrong type of the web page content") ||
-        msg.toLowerCase().includes("failed to get http url content") ||
-        msg.includes("WEBPAGE_CURL_FAILED")
-      ) {
-        return telegramPostJson(botToken, "sendDocument", {
-          chat_id: chatId,
-          document: url,
-          caption,
-          parse_mode: caption ? "HTML" : undefined,
-          disable_content_type_detection: true,
-        });
-      }
-      throw e;
-    }
-  }
-
-  try {
-    return await telegramPostJson(botToken, "sendVideo", {
-      chat_id: chatId,
-      video: url,
-      caption,
-      parse_mode: caption ? "HTML" : undefined,
-      supports_streaming: true,
-    });
-  } catch (e: any) {
-    const msg = String(e?.message || "");
-    if (
-      msg.includes("WEBPAGE_CURL_FAILED") ||
-      msg.toLowerCase().includes("failed to get http url content") ||
-      msg.toLowerCase().includes("wrong type of the web page content") ||
-      msg.toLowerCase().includes("file is too big") ||
-      msg.toLowerCase().includes("video_file_invalid")
-    ) {
-      return telegramPostJson(botToken, "sendDocument", {
-        chat_id: chatId,
-        document: url,
-        caption,
-        parse_mode: caption ? "HTML" : undefined,
-        disable_content_type_detection: true,
-      });
-    }
-    throw e;
-  }
-}
-
-async function sendMediaGroupByUrl(
-  botToken: string,
-  chatId: string,
-  mediaUrls: string[],
   caption?: string
 ): Promise<any> {
-  const media = mediaUrls
-    .slice(0, 10)
-    .map((rawUrl, idx) => {
-      const url = maybeForceDownload(rawUrl);
-      const isVideo = isVideoUrl(url);
-      return {
-        type: isVideo ? "video" : "photo",
-        media: url,
-        caption: idx === 0 ? caption : undefined,
-        parse_mode: idx === 0 && caption ? "HTML" : undefined,
-      };
-    });
+  const isVideo = isVideoUrl(mediaUrl);
+  const ext = getFileExtension(mediaUrl);
+  const mimeType = getMimeType(ext);
+  const fileName = `media_${Date.now()}.${ext}`;
 
-  return telegramPostJson(botToken, "sendMediaGroup", {
-    chat_id: chatId,
-    media: JSON.stringify(media),
-  });
+  const response = await fetch(mediaUrl);
+  if (!response.ok) {
+    throw new Error(`Failed to download media: ${response.status}`);
+  }
+
+  const fileBlob = await response.blob();
+  
+  let method = isVideo ? "sendVideo" : "sendPhoto";
+  let fileField = isVideo ? "video" : "photo";
+
+  const formData = new FormData();
+  formData.append("chat_id", chatId);
+  formData.append(fileField, new File([fileBlob], fileName, { type: mimeType }));
+
+  if (caption) {
+    formData.append("caption", caption);
+    formData.append("parse_mode", "HTML");
+  }
+
+  if (isVideo) {
+    formData.append("supports_streaming", "true");
+  }
+
+  const url = `${TELEGRAM_API_BASE}${botToken}/${method}`;
+
+  for (let attempt = 0; attempt <= 2; attempt++) {
+    try {
+      const telegramResponse = await fetch(url, {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await telegramResponse.json();
+
+      if (!data.ok) {
+        if (data.error_code === 429) {
+          const retryAfter = data.parameters?.retry_after || 30;
+          console.log(`Rate limited, waiting ${retryAfter}s`);
+          await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
+          continue;
+        }
+
+        // Try as document if video/photo failed
+        if (data.description?.includes("file is too big") || 
+            data.description?.includes("video_file_invalid") ||
+            data.description?.includes("PHOTO_INVALID_DIMENSIONS")) {
+          console.log("Trying as document...");
+          const docFormData = new FormData();
+          docFormData.append("chat_id", chatId);
+          docFormData.append("document", new File([fileBlob], fileName, { type: mimeType }));
+          if (caption) {
+            docFormData.append("caption", caption);
+            docFormData.append("parse_mode", "HTML");
+          }
+
+          const docResponse = await fetch(`${TELEGRAM_API_BASE}${botToken}/sendDocument`, {
+            method: "POST",
+            body: docFormData,
+          });
+          const docData = await docResponse.json();
+          if (docData.ok) return docData.result;
+          throw new Error(docData.description || "Failed to send as document");
+        }
+
+        throw new Error(data.description || "Telegram API error");
+      }
+
+      return data.result;
+    } catch (error: any) {
+      if (attempt === 2) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
+  }
 }
 
 serve(async (req) => {
@@ -170,16 +168,26 @@ serve(async (req) => {
   );
 
   try {
-    // Find campaigns that need processing
+    // Use atomic lock to prevent concurrent processing
+    const lockToken = crypto.randomUUID();
+    const lockExpires = new Date(Date.now() + 60000).toISOString(); // 1 min lock
+
+    // Atomically claim a campaign that's running and not locked
     const { data: campaigns, error: campError } = await supabase
       .from("campaigns")
-      .select("*")
+      .update({ 
+        runner_lock_token: lockToken, 
+        runner_lock_expires_at: lockExpires,
+        updated_at: new Date().toISOString()
+      })
       .eq("status", "running")
+      .or(`runner_lock_expires_at.is.null,runner_lock_expires_at.lt.${new Date().toISOString()}`)
       .order("updated_at", { ascending: true })
-      .limit(1);
+      .limit(1)
+      .select("*");
 
     if (campError) {
-      console.error("Error fetching campaigns:", campError);
+      console.error("Error claiming campaign:", campError);
       return new Response(JSON.stringify({ error: campError.message }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -187,7 +195,7 @@ serve(async (req) => {
     }
 
     if (!campaigns || campaigns.length === 0) {
-      console.log("No running campaigns found");
+      console.log("No running campaigns to process");
       return new Response(JSON.stringify({ message: "No campaigns to process" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -197,25 +205,43 @@ serve(async (req) => {
     const campaignId = campaign.id;
     const userId = campaign.user_id;
     const mediaPackId = campaign.media_pack_id;
-    const delaySeconds = campaign.delay_seconds || 10;
+    const delaySeconds = campaign.delay_seconds || 2;
     const packSize = campaign.pack_size || 1;
-    const sendMode = campaign.send_mode || "media";
     const totalCount = campaign.total_count || 0;
 
-    let sentCount = campaign.sent_count || 0;
-    let successCount = campaign.success_count || 0;
-    let errorCount = campaign.error_count || 0;
-    const errorsLog: any[] = Array.isArray(campaign.errors_log) ? campaign.errors_log.slice(-100) : [];
-    const sendTimes: number[] = [];
+    // Use atomic counter - first reserve the batch by incrementing sent_count
+    const startOffset = campaign.sent_count || 0;
+    const endOffset = Math.min(startOffset + CHUNK_SIZE, totalCount);
+    const batchSize = endOffset - startOffset;
 
-    console.log(`Processing campaign ${campaignId}: ${sentCount}/${totalCount} sent`);
+    console.log(`Processing campaign ${campaignId}: batch ${startOffset}-${endOffset} of ${totalCount}`);
+
+    // Immediately update sent_count to reserve this batch (prevents duplicates)
+    const { error: reserveError } = await supabase
+      .from("campaigns")
+      .update({ 
+        sent_count: endOffset,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", campaignId)
+      .eq("runner_lock_token", lockToken);
+
+    if (reserveError) {
+      console.error("Error reserving batch:", reserveError);
+      return new Response(JSON.stringify({ error: "Failed to reserve batch" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // Check if already completed
-    if (sentCount >= totalCount) {
+    if (startOffset >= totalCount) {
       await supabase.from("campaigns").update({
         status: "completed",
         progress: 100,
         completed_at: new Date().toISOString(),
+        runner_lock_token: null,
+        runner_lock_expires_at: null,
       }).eq("id", campaignId);
 
       console.log(`Campaign ${campaignId} completed`);
@@ -235,6 +261,7 @@ serve(async (req) => {
       await supabase.from("campaigns").update({
         status: "failed",
         error_message: "Destino não encontrado",
+        runner_lock_token: null,
       }).eq("id", campaignId);
 
       return new Response(JSON.stringify({ error: "Destination not found" }), {
@@ -269,6 +296,7 @@ serve(async (req) => {
       await supabase.from("campaigns").update({
         status: "failed",
         error_message: "Nenhum bot conectado",
+        runner_lock_token: null,
       }).eq("id", campaignId);
 
       return new Response(JSON.stringify({ error: "No bot connected" }), {
@@ -279,8 +307,7 @@ serve(async (req) => {
 
     const chatId = destination.chat_id;
 
-    // Load media URLs for this chunk
-    const offset = sentCount;
+    // Load media URLs for this batch
     const mediaUrls: string[] = [];
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 
@@ -293,7 +320,7 @@ serve(async (req) => {
 
       if (mediaPack?.media_files) {
         const rawFiles = mediaPack.media_files as (string | { url: string })[];
-        const batchFiles = rawFiles.slice(offset, offset + CHUNK_SIZE);
+        const batchFiles = rawFiles.slice(startOffset, endOffset);
 
         for (const file of batchFiles) {
           const url = typeof file === "string" ? file : file.url;
@@ -304,8 +331,8 @@ serve(async (req) => {
       const { data: userFiles } = await supabase.storage
         .from("user-media")
         .list(userId, {
-          limit: CHUNK_SIZE,
-          offset: offset,
+          limit: batchSize,
+          offset: startOffset,
           sortBy: { column: "created_at", order: "desc" },
         });
 
@@ -325,6 +352,7 @@ serve(async (req) => {
         status: "completed",
         progress: 100,
         completed_at: new Date().toISOString(),
+        runner_lock_token: null,
       }).eq("id", campaignId);
 
       console.log(`Campaign ${campaignId} completed (no more media)`);
@@ -333,123 +361,89 @@ serve(async (req) => {
       });
     }
 
-    console.log(`Loaded ${mediaUrls.length} URLs for chunk starting at ${offset}`);
+    console.log(`Loaded ${mediaUrls.length} URLs for batch ${startOffset}-${endOffset}`);
 
-    // Process media in packs
+    // Process media
+    let successCount = campaign.success_count || 0;
+    let errorCount = campaign.error_count || 0;
+    const errorsLog: any[] = Array.isArray(campaign.errors_log) ? campaign.errors_log.slice(-50) : [];
+    const sendTimes: number[] = [];
+
+    const caption = startOffset === 0 ? campaign.caption : null;
+
+    // Process in packs
     const chunks: string[][] = [];
     for (let i = 0; i < mediaUrls.length; i += packSize) {
       chunks.push(mediaUrls.slice(i, i + packSize));
     }
-
-    const caption = sentCount === 0 ? campaign.caption : null;
 
     for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
       const chunk = chunks[chunkIndex];
       const startTime = Date.now();
       const captionForChunk = chunkIndex === 0 ? caption : null;
 
-      try {
-        const hasVideo = chunk.some((u) => isVideoUrl(u));
-
-        if (hasVideo || sendMode === "document" || chunk.length === 1) {
-          // Send one by one for videos, documents, or single items
-          for (let i = 0; i < chunk.length; i++) {
-            try {
-              await sendMediaByUrl(
-                botToken,
-                chatId,
-                chunk[i],
-                i === 0 ? (captionForChunk || undefined) : undefined,
-                hasVideo || sendMode === "document" ? sendMode : "media"
-              );
-              sentCount++;
-              successCount++;
-            } catch (innerError: any) {
-              console.error(`Error sending item:`, innerError.message);
-              errorCount++;
-              errorsLog.push({
-                index: offset + chunkIndex * packSize + i,
-                url: chunk[i].substring(0, 100),
-                error: String(innerError.message),
-                timestamp: new Date().toISOString(),
-              });
-              sentCount++;
-            }
-            if (i < chunk.length - 1) {
-              await new Promise((resolve) => setTimeout(resolve, 1200));
-            }
-          }
-        } else if (chunk.length <= 10) {
-          // Send as album
-          try {
-            await sendMediaGroupByUrl(botToken, chatId, chunk, captionForChunk || undefined);
-            sentCount += chunk.length;
-            successCount += chunk.length;
-          } catch (albumError: any) {
-            console.error(`Album failed, sending individually:`, albumError.message);
-            // Fallback to individual
-            for (let i = 0; i < chunk.length; i++) {
-              try {
-                await sendMediaByUrl(botToken, chatId, chunk[i], undefined, sendMode);
-                sentCount++;
-                successCount++;
-              } catch (innerError: any) {
-                errorCount++;
-                errorsLog.push({
-                  index: offset + chunkIndex * packSize + i,
-                  url: chunk[i].substring(0, 100),
-                  error: String(innerError.message),
-                  timestamp: new Date().toISOString(),
-                });
-                sentCount++;
-              }
-              await new Promise((resolve) => setTimeout(resolve, 800));
-            }
-          }
-        }
-
-        const endTime = Date.now();
-        sendTimes.push(endTime - startTime);
-
-      } catch (error: any) {
-        console.error(`Error processing chunk:`, error.message);
-        // Mark items as errors but continue
-        for (let i = 0; i < chunk.length; i++) {
+      for (let i = 0; i < chunk.length; i++) {
+        try {
+          await downloadAndSendMedia(
+            botToken,
+            chatId,
+            chunk[i],
+            i === 0 ? (captionForChunk || undefined) : undefined
+          );
+          successCount++;
+        } catch (error: any) {
+          console.error(`Error sending item ${startOffset + chunkIndex * packSize + i}:`, error.message);
           errorCount++;
           errorsLog.push({
-            index: offset + chunkIndex * packSize + i,
-            url: chunk[i].substring(0, 100),
-            error: String(error.message),
+            index: startOffset + chunkIndex * packSize + i,
+            url: chunk[i].substring(0, 80),
+            error: String(error.message).substring(0, 100),
             timestamp: new Date().toISOString(),
           });
-          sentCount++;
+        }
+
+        // Small delay between items
+        if (i < chunk.length - 1) {
+          await new Promise((resolve) => setTimeout(resolve, 800));
         }
       }
+
+      const endTime = Date.now();
+      sendTimes.push(endTime - startTime);
 
       // Delay between chunks
       if (chunkIndex < chunks.length - 1) {
         await new Promise(resolve => setTimeout(resolve, delaySeconds * 1000));
       }
+
+      // Update progress in real-time after each chunk
+      const currentProgress = Math.min(100, Math.round((endOffset / totalCount) * 100));
+      await supabase.from("campaigns").update({
+        success_count: successCount,
+        error_count: errorCount,
+        errors_log: errorsLog.slice(-50),
+        progress: currentProgress,
+      }).eq("id", campaignId).eq("runner_lock_token", lockToken);
     }
 
-    // Update campaign progress
-    const progress = Math.min(100, Math.round((sentCount / totalCount) * 100));
+    // Final update
+    const progress = Math.min(100, Math.round((endOffset / totalCount) * 100));
     const avgSendTime = sendTimes.length > 0 
       ? Math.round(sendTimes.reduce((a, b) => a + b, 0) / sendTimes.length)
       : campaign.avg_send_time_ms || 0;
 
-    const isComplete = sentCount >= totalCount;
+    const isComplete = endOffset >= totalCount;
 
     await supabase.from("campaigns").update({
-      sent_count: sentCount,
       success_count: successCount,
       error_count: errorCount,
-      errors_log: errorsLog.slice(-100),
+      errors_log: errorsLog.slice(-50),
       progress,
       avg_send_time_ms: avgSendTime,
       status: isComplete ? "completed" : "running",
       completed_at: isComplete ? new Date().toISOString() : null,
-      error_message: errorCount > 0 ? `${errorCount} erros durante o envio` : null,
+      runner_lock_token: null,
+      runner_lock_expires_at: null,
     }).eq("id", campaignId);
 
     // Update user metrics if completed
@@ -471,35 +465,29 @@ serve(async (req) => {
       }
     }
 
-    console.log(`Campaign ${campaignId} progress: ${progress}% (${sentCount}/${totalCount})`);
+    console.log(`Campaign ${campaignId} batch done: ${progress}% (${endOffset}/${totalCount})`);
 
-    // Self-invoke if there's more work to do (job runner pattern)
+    // Self-invoke immediately if there's more work
     if (!isComplete) {
       const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
       const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
-      // Schedule next run in 2 seconds (non-blocking)
-      setTimeout(async () => {
-        try {
-          await fetch(`${supabaseUrl}/functions/v1/campaign-runner`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${serviceRoleKey}`,
-            },
-            body: JSON.stringify({ trigger: "self-invoke" }),
-          });
-        } catch (e) {
-          console.log("Self-invoke failed, will be picked up by cron:", e);
-        }
-      }, 2000);
+      // Non-blocking invoke
+      fetch(`${supabaseUrl}/functions/v1/campaign-runner`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${serviceRoleKey}`,
+        },
+        body: JSON.stringify({ trigger: "self-invoke" }),
+      }).catch(() => {});
     }
 
     return new Response(JSON.stringify({
       success: true,
       campaignId,
       progress,
-      sentCount,
+      sentCount: endOffset,
       totalCount,
       isComplete,
     }), {
