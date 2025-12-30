@@ -467,12 +467,13 @@ const CampaignsSection = () => {
 
       if (error) throw error;
 
-      if (startImmediately && campaignData) {
-        await supabase.functions.invoke("campaign-dispatch", { body: { campaignId: campaignData.id } });
-        toast({ title: "Campanha iniciada!" });
-      } else {
-        toast({ title: "Campanha agendada!" });
-      }
+       if (startImmediately && campaignData) {
+         const { error: invokeError } = await supabase.functions.invoke("campaign-dispatch", { body: { campaignId: campaignData.id } });
+         if (invokeError) throw invokeError;
+         toast({ title: "Campanha iniciada!" });
+       } else {
+         toast({ title: "Campanha agendada!" });
+       }
 
       setIsDialogOpen(false);
       setNewCampaign({ name: "", destination_id: "", media_pack_id: "", use_user_media: false, delay_seconds: 10, send_mode: "media", caption: "", scheduled_start: "", scheduled_end: "", pack_size: 1 });
@@ -503,9 +504,10 @@ const CampaignsSection = () => {
 
       await supabase.from("campaigns").update(updates).eq("id", id);
       
-      // Ao iniciar/retomar, use o dispatcher (ele é "resume-safe" e dispara o runner com o campaignId)
+      // Ao iniciar/retomar, use o dispatcher (resume-safe)
       if (newStatus === "running") {
-        await supabase.functions.invoke("campaign-dispatch", { body: { campaignId: id } });
+        const { error: invokeError } = await supabase.functions.invoke("campaign-dispatch", { body: { campaignId: id } });
+        if (invokeError) throw invokeError;
       }
       
       const statusLabels: Record<string, string> = {
