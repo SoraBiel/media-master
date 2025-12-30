@@ -215,55 +215,231 @@ const LandingPage = () => {
       </header>
 
       {/* Hero Section */}
-      <section className="pt-28 pb-16 sm:pt-36 sm:pb-24 relative overflow-hidden">
-        {/* Background gradient */}
+      <section className="pt-28 pb-8 sm:pt-36 sm:pb-16 relative overflow-hidden">
+        {/* Animated Background Elements */}
         <div className="absolute inset-0 bg-hero-pattern opacity-60" />
         <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-primary/10 rounded-full blur-[120px]" />
         
+        {/* Floating particles */}
+        <motion.div
+          className="absolute top-32 left-[10%] w-3 h-3 bg-primary/30 rounded-full"
+          animate={{ y: [0, -20, 0], opacity: [0.3, 0.8, 0.3] }}
+          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+        />
+        <motion.div
+          className="absolute top-48 right-[15%] w-2 h-2 bg-primary/40 rounded-full"
+          animate={{ y: [0, 15, 0], opacity: [0.4, 0.9, 0.4] }}
+          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+        />
+        <motion.div
+          className="absolute top-64 left-[20%] w-4 h-4 bg-primary/20 rounded-full"
+          animate={{ y: [0, -25, 0], opacity: [0.2, 0.6, 0.2] }}
+          transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+        />
+        <motion.div
+          className="absolute top-40 right-[25%] w-2.5 h-2.5 bg-cyan-400/30 rounded-full"
+          animate={{ y: [0, 20, 0], x: [0, 10, 0], opacity: [0.3, 0.7, 0.3] }}
+          transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut", delay: 0.8 }}
+        />
+        
         <div className="container mx-auto px-4 relative">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="max-w-3xl mx-auto text-center"
-          >
-            {/* Badge */}
-            <Badge variant="secondary" className="mb-6 px-4 py-1.5 text-xs font-medium">
-              <Zap className="w-3 h-3 mr-1.5" />
-              +500 novos sellers essa semana
-            </Badge>
+          <div className="max-w-3xl mx-auto text-center">
+            {/* Badge with pulse animation */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5, type: "spring", stiffness: 200 }}
+            >
+              <Badge variant="secondary" className="mb-6 px-4 py-1.5 text-xs font-medium relative overflow-hidden">
+                <motion.div
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent"
+                  animate={{ x: ["-100%", "100%"] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "linear", repeatDelay: 3 }}
+                />
+                <Zap className="w-3 h-3 mr-1.5" />
+                +500 novos sellers essa semana
+              </Badge>
+            </motion.div>
 
-            {/* Headline */}
-            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-[1.1]">
-              Venda mais no{" "}
-              <span className="gradient-text">piloto automático</span>
-            </h1>
+            {/* Headline with staggered animation */}
+            <motion.h1
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.2 }}
+              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-[1.1]"
+            >
+              <motion.span
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+              >
+                Venda mais no{" "}
+              </motion.span>
+              <motion.span
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.6, delay: 0.5, type: "spring", stiffness: 150 }}
+                className="gradient-text inline-block"
+              >
+                piloto automático
+              </motion.span>
+            </motion.h1>
 
             {/* Subheadline */}
-            <p className="text-base sm:text-lg text-muted-foreground mb-8 max-w-xl mx-auto leading-relaxed">
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.6 }}
+              className="text-base sm:text-lg text-muted-foreground mb-8 max-w-xl mx-auto leading-relaxed"
+            >
               A plataforma completa para vendedores digitais. Funis automatizados, 
               pagamentos integrados e suporte 24h para você escalar suas vendas.
-            </p>
+            </motion.p>
 
-            {/* CTAs */}
-            <div className="flex flex-col sm:flex-row gap-3 justify-center mb-10">
+            {/* CTAs with hover effects */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.8 }}
+              className="flex flex-col sm:flex-row gap-3 justify-center mb-10"
+            >
               <Link to="/signup">
-                <Button variant="gradient" size="lg" className="w-full sm:w-auto text-base">
-                  Quero vender na Nexo
-                  <ArrowRight className="w-4 h-4 ml-1" />
-                </Button>
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={{ type: "spring", stiffness: 400 }}
+                >
+                  <Button variant="gradient" size="lg" className="w-full sm:w-auto text-base relative overflow-hidden group">
+                    <motion.span
+                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                      initial={{ x: "-100%" }}
+                      whileHover={{ x: "100%" }}
+                      transition={{ duration: 0.5 }}
+                    />
+                    Quero vender na Nexo
+                    <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
+                  </Button>
+                </motion.div>
               </Link>
-              <Button 
-                variant="outline" 
-                size="lg" 
-                onClick={openWhatsApp}
-                className="w-full sm:w-auto"
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.98 }}
+                transition={{ type: "spring", stiffness: 400 }}
               >
-                <MessageCircle className="w-4 h-4 mr-2" />
-                Falar com consultor
-              </Button>
-            </div>
+                <Button 
+                  variant="outline" 
+                  size="lg" 
+                  onClick={openWhatsApp}
+                  className="w-full sm:w-auto group"
+                >
+                  <MessageCircle className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
+                  Falar com consultor
+                </Button>
+              </motion.div>
+            </motion.div>
+          </div>
 
+          {/* MacBook Mockup with Dashboard */}
+          <motion.div
+            initial={{ opacity: 0, y: 60, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.8, delay: 1, type: "spring", stiffness: 100 }}
+            className="mt-8 sm:mt-12 max-w-5xl mx-auto px-4"
+          >
+            <div className="relative">
+              {/* Glow effect behind MacBook */}
+              <div className="absolute inset-0 bg-gradient-to-t from-primary/20 via-primary/5 to-transparent blur-3xl scale-90" />
+              
+              {/* MacBook Frame */}
+              <motion.div
+                whileHover={{ scale: 1.02 }}
+                transition={{ type: "spring", stiffness: 200 }}
+                className="relative"
+              >
+                {/* Screen bezel */}
+                <div className="bg-gradient-to-b from-zinc-700 to-zinc-800 rounded-t-xl p-2 sm:p-3">
+                  {/* Camera */}
+                  <div className="absolute top-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-zinc-600" />
+                  
+                  {/* Screen content */}
+                  <div className="bg-background rounded-lg overflow-hidden border border-border/50 shadow-2xl">
+                    {/* Browser bar */}
+                    <div className="bg-muted/80 px-3 py-2 flex items-center gap-2 border-b border-border/50">
+                      <div className="flex gap-1.5">
+                        <div className="w-2.5 h-2.5 rounded-full bg-red-500/80" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/80" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-green-500/80" />
+                      </div>
+                      <div className="flex-1 mx-4">
+                        <div className="bg-background/60 rounded-md px-3 py-1 text-[10px] sm:text-xs text-muted-foreground text-center">
+                          app.nexo.com/dashboard
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Dashboard Preview */}
+                    <div className="bg-background p-3 sm:p-4">
+                      <div className="grid grid-cols-4 gap-2 sm:gap-3 mb-3">
+                        {/* Stats cards */}
+                        {[
+                          { label: "Vendas hoje", value: "R$ 4.850", color: "text-green-400" },
+                          { label: "Conversão", value: "12.4%", color: "text-primary" },
+                          { label: "Leads", value: "847", color: "text-cyan-400" },
+                          { label: "Ticket médio", value: "R$ 89", color: "text-purple-400" },
+                        ].map((stat, i) => (
+                          <motion.div
+                            key={i}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 1.3 + i * 0.1 }}
+                            className="bg-muted/50 rounded-lg p-2 sm:p-3 border border-border/30"
+                          >
+                            <div className="text-[8px] sm:text-[10px] text-muted-foreground mb-1">{stat.label}</div>
+                            <div className={`text-xs sm:text-sm font-bold ${stat.color}`}>{stat.value}</div>
+                          </motion.div>
+                        ))}
+                      </div>
+                      
+                      {/* Chart placeholder */}
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 1.7 }}
+                        className="bg-muted/30 rounded-lg p-3 sm:p-4 border border-border/30"
+                      >
+                        <div className="flex items-end justify-between h-16 sm:h-24 gap-1 sm:gap-2">
+                          {[40, 65, 45, 80, 55, 90, 70, 85, 60, 95, 75, 88].map((height, i) => (
+                            <motion.div
+                              key={i}
+                              initial={{ height: 0 }}
+                              animate={{ height: `${height}%` }}
+                              transition={{ delay: 1.8 + i * 0.05, duration: 0.5, ease: "easeOut" }}
+                              className="flex-1 bg-gradient-to-t from-primary to-primary/50 rounded-t-sm"
+                            />
+                          ))}
+                        </div>
+                        <div className="flex justify-between mt-2 text-[8px] sm:text-[10px] text-muted-foreground">
+                          <span>Jan</span>
+                          <span>Fev</span>
+                          <span>Mar</span>
+                          <span>Abr</span>
+                          <span>Mai</span>
+                          <span>Jun</span>
+                        </div>
+                      </motion.div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* MacBook bottom */}
+                <div className="bg-gradient-to-b from-zinc-700 to-zinc-600 h-3 sm:h-4 rounded-b-xl">
+                  <div className="w-16 sm:w-24 h-1 bg-zinc-500/50 rounded-full mx-auto mt-1" />
+                </div>
+                
+                {/* MacBook base shadow */}
+                <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-[80%] h-4 bg-black/20 blur-xl rounded-full" />
+              </motion.div>
+            </div>
           </motion.div>
         </div>
       </section>
