@@ -120,6 +120,8 @@ export type Database = {
           name: string
           pack_size: number | null
           progress: number | null
+          runner_lock_expires_at: string | null
+          runner_lock_token: string | null
           scheduled_end: string | null
           scheduled_start: string | null
           send_mode: string | null
@@ -146,6 +148,8 @@ export type Database = {
           name: string
           pack_size?: number | null
           progress?: number | null
+          runner_lock_expires_at?: string | null
+          runner_lock_token?: string | null
           scheduled_end?: string | null
           scheduled_start?: string | null
           send_mode?: string | null
@@ -172,6 +176,8 @@ export type Database = {
           name?: string
           pack_size?: number | null
           progress?: number | null
+          runner_lock_expires_at?: string | null
+          runner_lock_token?: string | null
           scheduled_end?: string | null
           scheduled_start?: string | null
           send_mode?: string | null
@@ -2206,6 +2212,14 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: never; Returns: boolean }
+      reserve_campaign_batch: {
+        Args: { p_batch_size: number; p_campaign_id: string }
+        Returns: {
+          end_offset: number
+          start_offset: number
+          total_count: number
+        }[]
+      }
     }
     Enums: {
       app_role:
