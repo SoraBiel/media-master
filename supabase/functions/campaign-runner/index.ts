@@ -168,24 +168,20 @@ serve(async (req) => {
   );
 
   try {
-    // Use atomic lock to prevent concurrent processing.
-    // We lock using runner_lock_token and allow reclaim if the campaign hasn't been updated
-    // for a while (stale lock). This avoids relying on schema-cached columns.
-    const lockToken = crypto.randomUUID();
+    // Claim work using an atomic sent_count reservation.
+    // This avoids relying on extra lock columns that may not be available in all environments.
     const now = new Date().toISOString();
-    const staleBefore = new Date(Date.now() - 10 * 60 * 1000).toISOString(); // 10 min
 
-    // Find a campaign that is running and has no lock (or lock is stale)
+    // Find the oldest running campaign
     const { data: candidates, error: findError } = await supabase
       .from("campaigns")
       .select("*")
       .eq("status", "running")
-      .or(`runner_lock_token.is.null,updated_at.lt.${staleBefore}`)
       .order("updated_at", { ascending: true })
       .limit(1);
 
     if (findError) {
-      console.error("Error finding unlocked campaign:", findError);
+      console.error("Error finding running campaign:", findError);
       return new Response(JSON.stringify({ error: findError.message }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -201,93 +197,17 @@ serve(async (req) => {
       });
     }
 
-    console.log(`Found campaign ${targetCampaign.id}, attempting lock...`);
-
-    // Atomically claim by updating only if lock conditions still match
-    const { data: claimedRows, error: claimError } = await supabase
-      .from("campaigns")
-      .update({
-        runner_lock_token: lockToken,
-        updated_at: now,
-      })
-      .eq("id", targetCampaign.id)
-      .eq("status", "running")
-      .or(`runner_lock_token.is.null,updated_at.lt.${staleBefore}`)
-      .select("id");
-
-    if (claimError) {
-      console.error("Error claiming campaign:", claimError);
-      return new Response(JSON.stringify({ error: claimError.message }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const claimed = Array.isArray(claimedRows) && claimedRows.length > 0;
-    if (!claimed) {
-      console.log("Campaign was claimed by another runner");
-      return new Response(JSON.stringify({ message: "Campaign already being processed" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const { data: claimedCampaign, error: claimedFetchError } = await supabase
-      .from("campaigns")
-      .select("*")
-      .eq("id", targetCampaign.id)
-      .eq("runner_lock_token", lockToken)
-      .maybeSingle();
-
-    if (claimedFetchError || !claimedCampaign) {
-      console.error("Claim succeeded but failed to fetch claimed campaign:", claimedFetchError);
-      return new Response(JSON.stringify({ error: "Failed to confirm campaign lock" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    console.log(`Locked campaign ${targetCampaign.id} with token ${lockToken}`);
-
-    const campaign = claimedCampaign;
-    const campaignId = campaign.id;
-    const userId = campaign.user_id;
-    const mediaPackId = campaign.media_pack_id;
-    const delaySeconds = campaign.delay_seconds || 2;
-    const packSize = campaign.pack_size || 1;
-    const totalCount = campaign.total_count || 0;
-
-    // Use atomic counter - first reserve the batch by incrementing sent_count
-    const startOffset = campaign.sent_count || 0;
+    const campaignId = targetCampaign.id;
+    const totalCount = targetCampaign.total_count || 0;
+    const startOffset = targetCampaign.sent_count || 0;
     const endOffset = Math.min(startOffset + CHUNK_SIZE, totalCount);
-    const batchSize = endOffset - startOffset;
 
-    console.log(`Processing campaign ${campaignId}: batch ${startOffset}-${endOffset} of ${totalCount}`);
-
-    // Immediately update sent_count to reserve this batch (prevents duplicates)
-    const { error: reserveError } = await supabase
-      .from("campaigns")
-      .update({
-        sent_count: endOffset,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", campaignId)
-      .eq("runner_lock_token", lockToken);
-
-    if (reserveError) {
-      console.error("Error reserving batch:", reserveError);
-      return new Response(JSON.stringify({ error: "Failed to reserve batch" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Check if already completed
+    // If already complete, finalize and stop.
     if (startOffset >= totalCount) {
       await supabase.from("campaigns").update({
         status: "completed",
         progress: 100,
-        completed_at: new Date().toISOString(),
-        runner_lock_token: null,
+        completed_at: now,
       }).eq("id", campaignId);
 
       console.log(`Campaign ${campaignId} completed`);
@@ -295,6 +215,48 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    console.log(`Found campaign ${campaignId}, attempting to reserve batch...`);
+
+    // Atomically reserve this batch by advancing sent_count only if it matches what we read.
+    const { data: reservedRows, error: reserveError } = await supabase
+      .from("campaigns")
+      .update({
+        sent_count: endOffset,
+        updated_at: now,
+      })
+      .eq("id", campaignId)
+      .eq("status", "running")
+      .eq("sent_count", startOffset)
+      .select("*");
+
+    if (reserveError) {
+      console.error("Error reserving campaign batch:", reserveError);
+      return new Response(JSON.stringify({ error: reserveError.message }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const reserved = Array.isArray(reservedRows) && reservedRows.length > 0;
+
+    if (!reserved) {
+      console.log("Campaign batch was reserved by another runner");
+      return new Response(JSON.stringify({ message: "Campaign already being processed" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const campaign: any = reservedRows![0];
+
+    const userId = campaign.user_id;
+    const mediaPackId = campaign.media_pack_id;
+    const delaySeconds = campaign.delay_seconds || 2;
+    const packSize = campaign.pack_size || 1;
+
+    const batchSize = endOffset - startOffset;
+
+    console.log(`Processing campaign ${campaignId}: batch ${startOffset}-${endOffset} of ${totalCount}`);
 
     // Get destination
     const { data: destination } = await supabase
@@ -307,7 +269,6 @@ serve(async (req) => {
       await supabase.from("campaigns").update({
         status: "failed",
         error_message: "Destino não encontrado",
-        runner_lock_token: null,
       }).eq("id", campaignId);
 
       return new Response(JSON.stringify({ error: "Destination not found" }), {
@@ -342,7 +303,6 @@ serve(async (req) => {
       await supabase.from("campaigns").update({
         status: "failed",
         error_message: "Nenhum bot conectado",
-        runner_lock_token: null,
       }).eq("id", campaignId);
 
       return new Response(JSON.stringify({ error: "No bot connected" }), {
@@ -398,7 +358,6 @@ serve(async (req) => {
         status: "completed",
         progress: 100,
         completed_at: new Date().toISOString(),
-        runner_lock_token: null,
       }).eq("id", campaignId);
 
       console.log(`Campaign ${campaignId} completed (no more media)`);
@@ -469,7 +428,8 @@ serve(async (req) => {
         error_count: errorCount,
         errors_log: errorsLog.slice(-50),
         progress: currentProgress,
-      }).eq("id", campaignId).eq("runner_lock_token", lockToken);
+      }).eq("id", campaignId);
+
     }
 
     // Final update
@@ -488,7 +448,6 @@ serve(async (req) => {
       avg_send_time_ms: avgSendTime,
       status: isComplete ? "completed" : "running",
       completed_at: isComplete ? new Date().toISOString() : null,
-      runner_lock_token: null,
     }).eq("id", campaignId);
 
     // Update user metrics if completed
