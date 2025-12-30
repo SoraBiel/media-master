@@ -157,7 +157,7 @@ const LandingPage = () => {
           }} className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-[1.15]">
               <span className="block">Automatize suas</span>
               <span className="gradient-text block">​Vendas</span>
-              <span className="block">no Telegram</span>
+              <span className="block">no Digital</span>
             </motion.h1>
 
             {/* Subheadline */}
