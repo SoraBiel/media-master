@@ -449,6 +449,7 @@ const CampaignsSection = () => {
     }
 
     try {
+      // Sempre começa imediatamente
       const { data: campaignData, error } = await supabase.from("campaigns").insert({
         user_id: user.id,
         name: newCampaign.name,
@@ -457,23 +458,21 @@ const CampaignsSection = () => {
         delay_seconds: newCampaign.delay_seconds,
         send_mode: newCampaign.send_mode,
         caption: newCampaign.caption || null,
-        scheduled_start: startImmediately ? null : newCampaign.scheduled_start || null,
-        scheduled_end: startImmediately ? null : newCampaign.scheduled_end || null,
-        status: startImmediately ? "running" : "queued",
+        scheduled_start: null,
+        scheduled_end: null,
+        status: "running",
         total_count: totalCount,
-        started_at: startImmediately ? new Date().toISOString() : null,
+        started_at: new Date().toISOString(),
         pack_size: newCampaign.pack_size,
       }).select().single();
 
       if (error) throw error;
 
-       if (startImmediately && campaignData) {
-         const { error: invokeError } = await supabase.functions.invoke("campaign-dispatch", { body: { campaignId: campaignData.id } });
-         if (invokeError) throw invokeError;
-         toast({ title: "Campanha iniciada!" });
-       } else {
-         toast({ title: "Campanha agendada!" });
-       }
+      if (campaignData) {
+        const { error: invokeError } = await supabase.functions.invoke("campaign-dispatch", { body: { campaignId: campaignData.id } });
+        if (invokeError) throw invokeError;
+        toast({ title: "Campanha iniciada!" });
+      }
 
       setIsDialogOpen(false);
       setNewCampaign({ name: "", destination_id: "", media_pack_id: "", use_user_media: false, delay_seconds: 10, send_mode: "media", caption: "", scheduled_start: "", scheduled_end: "", pack_size: 1 });
