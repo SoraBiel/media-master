@@ -493,18 +493,28 @@ const CampaignsSection = () => {
 
   const handleUpdateStatus = async (id: string, newStatus: string) => {
     try {
-      const updates: any = { status: newStatus };
+      const updates: any = { 
+        status: newStatus,
+        runner_lock_token: null,
+        runner_lock_expires_at: null,
+      };
       if (newStatus === "running") updates.started_at = new Date().toISOString();
       if (newStatus === "completed") updates.completed_at = new Date().toISOString();
 
       await supabase.from("campaigns").update(updates).eq("id", id);
       
+      // Trigger runner when resuming or starting
       if (newStatus === "running") {
-        const campaign = campaigns.find(c => c.id === id);
-        if (campaign) await supabase.functions.invoke("campaign-dispatch", { body: { campaignId: campaign.id } });
+        await supabase.functions.invoke("campaign-runner", {});
       }
       
-      toast({ title: `Status atualizado para ${newStatus}` });
+      const statusLabels: Record<string, string> = {
+        running: "Em execução",
+        paused: "Pausado", 
+        completed: "Concluído",
+        failed: "Parado"
+      };
+      toast({ title: statusLabels[newStatus] || newStatus });
     } catch (error: any) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
     }
