@@ -603,7 +603,7 @@ const LandingPage = () => {
       </section>
 
       {/* Pricing Section */}
-      <section id="pricing" className="py-16 sm:py-24 bg-muted/30">
+      <section id="pricing" className="py-16 sm:py-24">
         <div className="container mx-auto px-4">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -623,60 +623,161 @@ const LandingPage = () => {
             </p>
           </motion.div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 max-w-6xl mx-auto">
-            {plans.map((plan, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.3, delay: index * 0.1 }}
-                className="relative"
-              >
-                {plan.popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
-                    <Badge className="bg-primary text-primary-foreground px-3">
-                      Mais popular
-                    </Badge>
-                  </div>
-                )}
-                <Card className={`h-full border-border/50 ${plan.popular ? 'border-primary ring-1 ring-primary' : ''}`}>
-                  <CardContent className="p-5 sm:p-6">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                      <plan.icon className="w-5 h-5 text-primary" />
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 max-w-6xl mx-auto">
+            {plans.map((plan, index) => {
+              const isPopular = plan.popular;
+              const isAgency = plan.name === "Agency";
+              const isFree = plan.name === "Free";
+              
+              return (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.3, delay: index * 0.1 }}
+                  whileHover={{ y: -5 }}
+                  className={`relative ${isPopular ? 'lg:-mt-4 lg:mb-4' : ''}`}
+                >
+                  {/* Popular badge */}
+                  {isPopular && (
+                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
+                      <Badge className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white px-4 py-1 font-semibold shadow-lg shadow-cyan-500/25">
+                        <Star className="w-3 h-3 mr-1.5 fill-current" />
+                        Mais popular
+                      </Badge>
                     </div>
-                    
-                    <h3 className="font-bold text-lg mb-1">{plan.name}</h3>
-                    <p className="text-xs text-muted-foreground mb-4">{plan.description}</p>
-                    
-                    <div className="mb-5">
-                      <span className="text-3xl font-bold">{plan.price}</span>
-                      <span className="text-muted-foreground text-sm">{plan.period}</span>
+                  )}
+                  
+                  {/* Best value badge for Agency */}
+                  {isAgency && (
+                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
+                      <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-1 font-semibold shadow-lg shadow-purple-500/25">
+                        <Crown className="w-3 h-3 mr-1.5" />
+                        Premium
+                      </Badge>
                     </div>
+                  )}
+                  
+                  <Card className={`h-full overflow-hidden transition-all duration-300 ${
+                    isPopular 
+                      ? 'bg-gradient-to-b from-cyan-500/10 to-transparent border-cyan-500/50 ring-2 ring-cyan-500/30 shadow-xl shadow-cyan-500/10' 
+                      : isAgency 
+                        ? 'bg-gradient-to-b from-purple-500/10 to-transparent border-purple-500/50 hover:border-purple-500/70'
+                        : 'border-border/50 hover:border-primary/30 hover:shadow-lg'
+                  }`}>
+                    <CardContent className="p-5 sm:p-6 relative">
+                      {/* Background glow for popular */}
+                      {isPopular && (
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 rounded-full blur-3xl" />
+                      )}
+                      
+                      {/* Icon */}
+                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${
+                        isPopular 
+                          ? 'bg-gradient-to-br from-cyan-500 to-blue-500 shadow-lg shadow-cyan-500/30' 
+                          : isAgency 
+                            ? 'bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg shadow-purple-500/30'
+                            : isFree
+                              ? 'bg-green-500/20'
+                              : 'bg-primary/10'
+                      }`}>
+                        <plan.icon className={`w-6 h-6 ${
+                          isPopular || isAgency ? 'text-white' : isFree ? 'text-green-500' : 'text-primary'
+                        }`} />
+                      </div>
+                      
+                      {/* Plan name and description */}
+                      <h3 className={`font-bold text-xl mb-1 ${isPopular ? 'text-cyan-400' : isAgency ? 'text-purple-400' : ''}`}>
+                        {plan.name}
+                      </h3>
+                      <p className="text-xs text-muted-foreground mb-4">{plan.description}</p>
+                      
+                      {/* Price */}
+                      <div className="mb-5 pb-5 border-b border-border/50">
+                        <div className="flex items-baseline gap-1">
+                          <span className={`text-3xl sm:text-4xl font-bold ${
+                            isPopular ? 'text-cyan-400' : isAgency ? 'text-purple-400' : ''
+                          }`}>
+                            {plan.price}
+                          </span>
+                          <span className="text-muted-foreground text-sm">{plan.period}</span>
+                        </div>
+                        {isFree && (
+                          <span className="text-xs text-green-500 font-medium">Sem cartão necessário</span>
+                        )}
+                      </div>
 
-                    <ul className="space-y-2.5 mb-6">
-                      {plan.features.map((feature, i) => (
-                        <li key={i} className="flex items-start gap-2 text-sm">
-                          <Check className="w-4 h-4 text-success mt-0.5 flex-shrink-0" />
-                          <span className="text-muted-foreground">{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
+                      {/* Features */}
+                      <ul className="space-y-3 mb-6">
+                        {plan.features.map((feature, i) => (
+                          <li key={i} className="flex items-start gap-2.5 text-sm">
+                            <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${
+                              isPopular 
+                                ? 'bg-cyan-500/20' 
+                                : isAgency 
+                                  ? 'bg-purple-500/20'
+                                  : 'bg-green-500/20'
+                            }`}>
+                              <Check className={`w-3 h-3 ${
+                                isPopular ? 'text-cyan-400' : isAgency ? 'text-purple-400' : 'text-green-500'
+                              }`} />
+                            </div>
+                            <span className="text-muted-foreground">{feature}</span>
+                          </li>
+                        ))}
+                      </ul>
 
-                    <Link to="/signup" className="block">
-                      <Button 
-                        variant={plan.popular ? "gradient" : "outline"} 
-                        className="w-full"
-                        size="sm"
-                      >
-                        {plan.cta}
-                      </Button>
-                    </Link>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
+                      {/* CTA Button */}
+                      <Link to={isAgency ? "#" : "/signup"} className="block" onClick={isAgency ? openWhatsApp : undefined}>
+                        <Button 
+                          variant={isPopular ? "default" : "outline"} 
+                          className={`w-full font-semibold transition-all ${
+                            isPopular 
+                              ? 'bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40'
+                              : isAgency
+                                ? 'border-purple-500/50 text-purple-400 hover:bg-purple-500/10 hover:border-purple-500'
+                                : ''
+                          }`}
+                        >
+                          {plan.cta}
+                          {isPopular && <ArrowRight className="w-4 h-4 ml-1" />}
+                        </Button>
+                      </Link>
+                      
+                      {/* Extra info */}
+                      {isPopular && (
+                        <p className="text-[10px] text-center text-muted-foreground mt-3">
+                          ✓ 7 dias de garantia · Cancele quando quiser
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              );
+            })}
           </div>
+          
+          {/* Trust indicators */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            className="flex flex-wrap items-center justify-center gap-6 mt-10 text-sm text-muted-foreground"
+          >
+            <div className="flex items-center gap-2">
+              <Shield className="w-4 h-4 text-green-500" />
+              <span>Pagamento seguro</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-primary" />
+              <span>Ativação imediata</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-green-500" />
+              <span>Cancele quando quiser</span>
+            </div>
+          </motion.div>
         </div>
       </section>
 
