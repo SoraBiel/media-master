@@ -51,6 +51,14 @@ function getMimeType(ext: string): string {
   return mimeTypes[ext] || "application/octet-stream";
 }
 
+function encodeStoragePath(path: string): string {
+  // Keep folder separators but encode each segment safely
+  return path
+    .split("/")
+    .map((part) => encodeURIComponent(part))
+    .join("/");
+}
+
 // Send using Telegrams ability to fetch the URL directly (low memory)
 async function telegramPostJson(
   botToken: string,
@@ -88,6 +96,18 @@ async function telegramPostJson(
   throw new Error("Telegram API retry limit reached");
 }
 
+async function sendTextMessage(
+  botToken: string,
+  chatId: string,
+  text: string
+): Promise<any> {
+  return telegramPostJson(botToken, "sendMessage", {
+    chat_id: chatId,
+    text,
+    disable_web_page_preview: true,
+  });
+}
+
 async function sendMediaByUrl(
   botToken: string,
   chatId: string,
@@ -97,35 +117,54 @@ async function sendMediaByUrl(
 ): Promise<any> {
   const isVideo = isVideoUrl(mediaUrl);
 
-  let method: string;
-  let field: string;
-
+  // If caller forces document, just do it.
   if (sendMode === "document") {
-    method = "sendDocument";
-    field = "document";
-  } else if (isVideo) {
-    method = "sendVideo";
-    field = "video";
-  } else {
-    method = "sendPhoto";
-    field = "photo";
+    return telegramPostJson(botToken, "sendDocument", {
+      chat_id: chatId,
+      document: mediaUrl,
+      caption,
+      parse_mode: caption ? "HTML" : undefined,
+    });
   }
 
-  const payload: Record<string, any> = {
-    chat_id: chatId,
-    [field]: mediaUrl,
-  };
-
-  if (caption) {
-    payload.caption = caption;
-    payload.parse_mode = "HTML";
+  // Photos
+  if (!isVideo) {
+    return telegramPostJson(botToken, "sendPhoto", {
+      chat_id: chatId,
+      photo: mediaUrl,
+      caption,
+      parse_mode: caption ? "HTML" : undefined,
+    });
   }
 
-  if (method === "sendVideo") {
-    payload.supports_streaming = true;
-  }
+  // Videos: try sendVideo first, fallback to sendDocument (some videos fail as video)
+  try {
+    return await telegramPostJson(botToken, "sendVideo", {
+      chat_id: chatId,
+      video: mediaUrl,
+      caption,
+      parse_mode: caption ? "HTML" : undefined,
+      supports_streaming: true,
+    });
+  } catch (e: any) {
+    const msg = String(e?.message || "");
 
-  return telegramPostJson(botToken, method, payload);
+    // If Telegram couldn't fetch or couldn't treat as a video, try as document
+    if (
+      msg.includes("WEBPAGE_CURL_FAILED") ||
+      msg.toLowerCase().includes("file is too big") ||
+      msg.toLowerCase().includes("video_file_invalid")
+    ) {
+      return telegramPostJson(botToken, "sendDocument", {
+        chat_id: chatId,
+        document: mediaUrl,
+        caption,
+        parse_mode: caption ? "HTML" : undefined,
+      });
+    }
+
+    throw e;
+  }
 }
 
 async function sendMediaGroupByUrl(
@@ -603,7 +642,7 @@ async function dispatchMediaInBackground(
 
         for (const file of validFiles) {
           // Public bucket: send direct URL so Telegram can fetch without us downloading
-          const publicUrl = `${supabaseUrl}/storage/v1/object/public/user-media/${userId}/${encodeURIComponent(file.name)}`;
+          const publicUrl = `${supabaseUrl}/storage/v1/object/public/user-media/${userId}/${encodeStoragePath(file.name)}`;
           mediaUrls.push(publicUrl);
         }
       }
@@ -645,7 +684,25 @@ async function dispatchMediaInBackground(
           const captionForChunk = (offset === 0 && chunkIndex === 0) ? caption : null;
 
           // Prefer URL-based sending to avoid memory spikes (Telegram fetches the file itself)
-          if (sendMode === "document") {
+          const hasVideo = chunk.some((u) => isVideoUrl(u));
+
+          // Videos (especially large ones) are more reliable one-by-one than albums
+          if (hasVideo) {
+            for (let i = 0; i < chunk.length; i++) {
+              await sendMediaByUrl(
+                botToken,
+                chatId,
+                chunk[i],
+                i === 0 ? (captionForChunk || undefined) : undefined,
+                sendMode
+              );
+              sentCount++;
+              successCount++;
+              if (i < chunk.length - 1) {
+                await new Promise((resolve) => setTimeout(resolve, 1200));
+              }
+            }
+          } else if (sendMode === "document") {
             for (let i = 0; i < chunk.length; i++) {
               await sendMediaByUrl(
                 botToken,
@@ -661,7 +718,13 @@ async function dispatchMediaInBackground(
               }
             }
           } else if (chunk.length === 1) {
-            await sendMediaByUrl(botToken, chatId, chunk[0], captionForChunk || undefined, sendMode);
+            await sendMediaByUrl(
+              botToken,
+              chatId,
+              chunk[0],
+              captionForChunk || undefined,
+              sendMode
+            );
             sentCount++;
             successCount++;
           } else if (chunk.length <= 10) {
@@ -691,30 +754,36 @@ async function dispatchMediaInBackground(
         } catch (error: any) {
           console.error(`Error sending chunk:`, error.message);
 
-          // Fallback: send individually by URL; only if it still fails, try download+upload
+          // Fallback: try individually by URL only (no download to avoid memory spikes with large videos)
           for (let i = 0; i < chunk.length; i++) {
             try {
               await sendMediaByUrl(botToken, chatId, chunk[i], undefined, sendMode);
               sentCount++;
               successCount++;
-              await new Promise((resolve) => setTimeout(resolve, 800));
-            } catch (urlErr: any) {
+              await new Promise((resolve) => setTimeout(resolve, 1200));
+            } catch (innerError: any) {
+              const message = String(innerError?.message || "");
+              console.error(`Error sending item:`, message);
+
+              // As last resort, post the link in the group so nothing gets silently lost
               try {
-                await downloadAndSendMedia(botToken, chatId, chunk[i], undefined, sendMode);
-                sentCount++;
-                successCount++;
-                await new Promise((resolve) => setTimeout(resolve, 1200));
-              } catch (innerError: any) {
-                console.error(`Error sending item:`, innerError.message);
-                errorCount++;
-                errorsLog.push({
-                  index: offset + chunkIndex * packSize + i,
-                  url: chunk[i].substring(0, 100),
-                  error: innerError.message,
-                  timestamp: new Date().toISOString(),
-                });
-                sentCount++;
+                await sendTextMessage(
+                  botToken,
+                  chatId,
+                  `Não consegui enviar este vídeo como mídia. Link: ${chunk[i]}`
+                );
+              } catch {
+                // ignore
               }
+
+              errorCount++;
+              errorsLog.push({
+                index: offset + chunkIndex * packSize + i,
+                url: chunk[i].substring(0, 100),
+                error: message,
+                timestamp: new Date().toISOString(),
+              });
+              sentCount++;
             }
           }
         }
