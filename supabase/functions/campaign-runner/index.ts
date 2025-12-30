@@ -170,20 +170,47 @@ serve(async (req) => {
   try {
     // Use atomic lock to prevent concurrent processing
     const lockToken = crypto.randomUUID();
-    const lockExpires = new Date(Date.now() + 60000).toISOString(); // 1 min lock
+    const lockExpires = new Date(Date.now() + 120000).toISOString(); // 2 min lock
+    const now = new Date().toISOString();
 
-    // Atomically claim a campaign that's running and not locked
+    // First, find a campaign that's running and not locked (or lock expired)
+    const { data: availableCampaigns, error: findError } = await supabase
+      .from("campaigns")
+      .select("*")
+      .eq("status", "running")
+      .or(`runner_lock_token.is.null,runner_lock_expires_at.is.null,runner_lock_expires_at.lt.${now}`)
+      .order("updated_at", { ascending: true })
+      .limit(1);
+
+    if (findError) {
+      console.error("Error finding campaign:", findError);
+      return new Response(JSON.stringify({ error: findError.message }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!availableCampaigns || availableCampaigns.length === 0) {
+      console.log("No running campaigns to process");
+      return new Response(JSON.stringify({ message: "No campaigns to process" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const targetCampaign = availableCampaigns[0];
+    console.log(`Found campaign ${targetCampaign.id}, attempting lock...`);
+
+    // Now atomically claim by updating only if lock conditions still match
     const { data: campaigns, error: campError } = await supabase
       .from("campaigns")
       .update({ 
         runner_lock_token: lockToken, 
         runner_lock_expires_at: lockExpires,
-        updated_at: new Date().toISOString()
+        updated_at: now
       })
+      .eq("id", targetCampaign.id)
       .eq("status", "running")
-      .or(`runner_lock_expires_at.is.null,runner_lock_expires_at.lt.${new Date().toISOString()}`)
-      .order("updated_at", { ascending: true })
-      .limit(1)
+      .or(`runner_lock_token.is.null,runner_lock_expires_at.is.null,runner_lock_expires_at.lt.${now}`)
       .select("*");
 
     if (campError) {
@@ -195,11 +222,13 @@ serve(async (req) => {
     }
 
     if (!campaigns || campaigns.length === 0) {
-      console.log("No running campaigns to process");
-      return new Response(JSON.stringify({ message: "No campaigns to process" }), {
+      console.log("Campaign was claimed by another runner");
+      return new Response(JSON.stringify({ message: "Campaign already being processed" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    console.log(`Locked campaign ${targetCampaign.id} with token ${lockToken}`);
 
     const campaign = campaigns[0];
     const campaignId = campaign.id;
