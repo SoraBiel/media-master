@@ -173,45 +173,79 @@ serve(async (req) => {
     const lockExpires = new Date(Date.now() + 120000).toISOString(); // 2 min lock
     const now = new Date().toISOString();
 
-    // First, find a campaign that's running and not locked (or lock expired)
-    const { data: availableCampaigns, error: findError } = await supabase
+    // First, try to find an unlocked campaign (lock columns null)
+    let targetCampaign: any = null;
+
+    const { data: unlocked, error: unlockedError } = await supabase
       .from("campaigns")
       .select("*")
       .eq("status", "running")
-      .or(`runner_lock_token.is.null,runner_lock_expires_at.is.null,runner_lock_expires_at.lt.${now}`)
+      .or("runner_lock_token.is.null,runner_lock_expires_at.is.null")
       .order("updated_at", { ascending: true })
       .limit(1);
 
-    if (findError) {
-      console.error("Error finding campaign:", findError);
-      return new Response(JSON.stringify({ error: findError.message }), {
+    if (unlockedError) {
+      console.error("Error finding unlocked campaign:", unlockedError);
+      return new Response(JSON.stringify({ error: unlockedError.message }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    if (!availableCampaigns || availableCampaigns.length === 0) {
+    if (unlocked && unlocked.length > 0) {
+      targetCampaign = unlocked[0];
+    } else {
+      // Then, try to find a campaign whose lock is expired
+      const { data: expired, error: expiredError } = await supabase
+        .from("campaigns")
+        .select("*")
+        .eq("status", "running")
+        .lt("runner_lock_expires_at", now)
+        .order("updated_at", { ascending: true })
+        .limit(1);
+
+      if (expiredError) {
+        console.error("Error finding expired-lock campaign:", expiredError);
+        return new Response(JSON.stringify({ error: expiredError.message }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (expired && expired.length > 0) {
+        targetCampaign = expired[0];
+      }
+    }
+
+    if (!targetCampaign) {
       console.log("No running campaigns to process");
       return new Response(JSON.stringify({ message: "No campaigns to process" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const targetCampaign = availableCampaigns[0];
     console.log(`Found campaign ${targetCampaign.id}, attempting lock...`);
 
-    // Now atomically claim by updating only if lock conditions still match
-    const { data: campaigns, error: campError } = await supabase
+    // Atomically claim by updating only if lock conditions still match
+    let claimQuery = supabase
       .from("campaigns")
-      .update({ 
-        runner_lock_token: lockToken, 
+      .update({
+        runner_lock_token: lockToken,
         runner_lock_expires_at: lockExpires,
-        updated_at: now
+        updated_at: now,
       })
       .eq("id", targetCampaign.id)
-      .eq("status", "running")
-      .or(`runner_lock_token.is.null,runner_lock_expires_at.is.null,runner_lock_expires_at.lt.${now}`)
-      .select("*");
+      .eq("status", "running");
+
+    if (targetCampaign.runner_lock_expires_at) {
+      // If we picked it because it's expired, enforce that
+      claimQuery = claimQuery.lt("runner_lock_expires_at", now);
+    } else {
+      // If we picked it because it's unlocked, enforce that
+      claimQuery = claimQuery.or("runner_lock_token.is.null,runner_lock_expires_at.is.null");
+    }
+
+    const { data: campaigns, error: campError } = await claimQuery.select("*");
 
     if (campError) {
       console.error("Error claiming campaign:", campError);
