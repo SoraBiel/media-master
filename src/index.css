@@ -6,74 +6,68 @@
 
 @layer base {
   :root {
-    /* Refined dark theme - professional and clean */
-    --background: 220 16% 8%;
-    --foreground: 220 10% 96%;
+    --background: 222 47% 6%;
+    --foreground: 210 40% 98%;
 
-    --card: 220 16% 10%;
-    --card-foreground: 220 10% 96%;
+    --card: 222 47% 8%;
+    --card-foreground: 210 40% 98%;
 
-    --popover: 220 16% 10%;
-    --popover-foreground: 220 10% 96%;
+    --popover: 222 47% 8%;
+    --popover-foreground: 210 40% 98%;
 
-    /* Sophisticated cyan/teal primary - not typical AI purple */
-    --primary: 186 72% 46%;
-    --primary-foreground: 220 16% 6%;
+    --primary: 199 89% 48%;
+    --primary-foreground: 222 47% 6%;
 
-    --secondary: 220 16% 14%;
-    --secondary-foreground: 220 10% 85%;
+    --secondary: 222 47% 12%;
+    --secondary-foreground: 210 40% 98%;
 
-    --muted: 220 14% 16%;
-    --muted-foreground: 220 10% 50%;
+    --muted: 222 47% 14%;
+    --muted-foreground: 215 20% 55%;
 
-    --accent: 186 72% 46%;
-    --accent-foreground: 220 16% 6%;
+    --accent: 199 89% 48%;
+    --accent-foreground: 222 47% 6%;
 
-    --destructive: 4 84% 58%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 210 40% 98%;
 
-    --success: 160 64% 42%;
-    --success-foreground: 0 0% 100%;
+    --success: 142 76% 36%;
+    --success-foreground: 210 40% 98%;
 
-    --warning: 36 96% 54%;
-    --warning-foreground: 220 16% 6%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 222 47% 6%;
 
-    --border: 220 14% 18%;
-    --input: 220 14% 18%;
-    --ring: 186 72% 46%;
+    --border: 222 47% 16%;
+    --input: 222 47% 16%;
+    --ring: 199 89% 48%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
-    /* Sidebar - slightly different shade for depth */
-    --sidebar-background: 220 18% 6%;
-    --sidebar-foreground: 220 10% 90%;
-    --sidebar-primary: 186 72% 46%;
-    --sidebar-primary-foreground: 220 16% 6%;
-    --sidebar-accent: 220 16% 12%;
-    --sidebar-accent-foreground: 220 10% 90%;
-    --sidebar-border: 220 14% 14%;
-    --sidebar-ring: 186 72% 46%;
+    --sidebar-background: 222 47% 5%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 199 89% 48%;
+    --sidebar-primary-foreground: 222 47% 6%;
+    --sidebar-accent: 222 47% 12%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 222 47% 14%;
+    --sidebar-ring: 199 89% 48%;
 
-    /* Telegram brand color */
-    --telegram-blue: 200 80% 50%;
+    /* Custom tokens */
+    --gradient-primary: linear-gradient(135deg, hsl(199 89% 48%) 0%, hsl(217 91% 60%) 100%);
+    --gradient-hero: linear-gradient(180deg, hsl(222 47% 8%) 0%, hsl(222 47% 4%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(222 47% 10% / 0.8) 0%, hsl(222 47% 6% / 0.6) 100%);
+    --gradient-glow: radial-gradient(ellipse at center, hsl(199 89% 48% / 0.15) 0%, transparent 70%);
+
+    --shadow-glow: 0 0 60px hsl(199 89% 48% / 0.2);
+    --shadow-card: 0 4px 24px hsl(222 47% 4% / 0.4);
+    --shadow-elevated: 0 8px 32px hsl(222 47% 4% / 0.6);
+
+    --telegram-blue: 199 89% 48%;
     --telegram-dark: 200 35% 24%;
-
-    /* Professional gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(186 72% 46%) 0%, hsl(200 80% 50%) 100%);
-    --gradient-hero: linear-gradient(180deg, hsl(220 16% 10%) 0%, hsl(220 16% 6%) 100%);
-    --gradient-card: linear-gradient(145deg, hsl(220 16% 12% / 0.6) 0%, hsl(220 16% 8% / 0.4) 100%);
-    --gradient-subtle: linear-gradient(180deg, hsl(220 16% 10%) 0%, hsl(220 16% 8%) 100%);
-
-    /* Shadows - more subtle and refined */
-    --shadow-sm: 0 1px 2px hsl(220 16% 4% / 0.3);
-    --shadow-md: 0 4px 12px hsl(220 16% 4% / 0.25);
-    --shadow-lg: 0 8px 24px hsl(220 16% 4% / 0.3);
-    --shadow-glow: 0 0 40px hsl(186 72% 46% / 0.12);
   }
 
   .dark {
-    --background: 220 16% 8%;
-    --foreground: 220 10% 96%;
+    --background: 222 47% 6%;
+    --foreground: 210 40% 98%;
   }
 }
 
