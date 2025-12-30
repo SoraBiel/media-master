@@ -50,3 +50,9 @@ verify_jwt = true
 
 [functions.social-post]
 verify_jwt = true
+
+[functions.test-destination]
+verify_jwt = true
+
+[functions.admin-update-email]
+verify_jwt = true

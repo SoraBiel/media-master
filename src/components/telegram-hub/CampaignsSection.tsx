@@ -49,6 +49,8 @@ import {
   Crown,
   FolderOpen,
   ChevronDown,
+  Zap,
+  Bot,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
@@ -149,6 +151,8 @@ const CampaignsSection = () => {
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedMediaIds, setSelectedMediaIds] = useState<Set<string>>(new Set());
   const [isDeletingMultiple, setIsDeletingMultiple] = useState(false);
+  const [isTestingDestination, setIsTestingDestination] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; error?: string; botInfo?: any; chatInfo?: any } | null>(null);
   
   const [newCampaign, setNewCampaign] = useState({
     name: "",
@@ -1019,13 +1023,57 @@ const CampaignsSection = () => {
                   </div>
                   <div className="space-y-2">
                     <Label>Destino</Label>
-                    <Select value={newCampaign.destination_id} onValueChange={(value) => setNewCampaign({ ...newCampaign, destination_id: value })}>
-                      <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                      <SelectContent>
-                        {destinations.map((dest) => (<SelectItem key={dest.id} value={dest.id}><div className="flex items-center gap-2"><Target className="w-4 h-4" />{dest.name}</div></SelectItem>))}
-                      </SelectContent>
-                    </Select>
+                    <div className="flex gap-2">
+                      <Select value={newCampaign.destination_id} onValueChange={(value) => { setNewCampaign({ ...newCampaign, destination_id: value }); setTestResult(null); }}>
+                        <SelectTrigger className="flex-1"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                        <SelectContent>
+                          {destinations.map((dest) => (<SelectItem key={dest.id} value={dest.id}><div className="flex items-center gap-2"><Target className="w-4 h-4" />{dest.name}</div></SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        type="button"
+                        variant={testResult?.success ? "success" : "outline"}
+                        size="icon"
+                        disabled={!newCampaign.destination_id || isTestingDestination}
+                        onClick={async () => {
+                          setIsTestingDestination(true);
+                          setTestResult(null);
+                          try {
+                            const { data, error } = await supabase.functions.invoke("test-destination", {
+                              body: { destinationId: newCampaign.destination_id }
+                            });
+                            if (error) throw error;
+                            setTestResult(data);
+                            if (data.success) {
+                              toast({ title: "Teste OK!", description: `Bot @${data.botInfo?.username} pode enviar para ${data.chatInfo?.title}` });
+                            } else {
+                              toast({ title: "Teste falhou", description: data.error, variant: "destructive" });
+                            }
+                          } catch (error: any) {
+                            setTestResult({ success: false, error: error.message });
+                            toast({ title: "Erro no teste", description: error.message, variant: "destructive" });
+                          } finally {
+                            setIsTestingDestination(false);
+                          }
+                        }}
+                        title="Testar destino antes de criar"
+                      >
+                        {isTestingDestination ? <RefreshCw className="w-4 h-4 animate-spin" /> : testResult?.success ? <CheckCircle2 className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
+                      </Button>
+                    </div>
                     {destinations.length === 0 && <p className="text-xs text-warning">Adicione destinos na aba "Destinos"</p>}
+                    {testResult && !testResult.success && (
+                      <p className="text-xs text-destructive flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
+                        {testResult.error}
+                      </p>
+                    )}
+                    {testResult?.success && (
+                      <p className="text-xs text-success flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" />
+                        Bot @{testResult.botInfo?.username} verificado • {testResult.chatInfo?.title}
+                      </p>
+                    )}
                   </div>
                   
                   <div className="space-y-2">
