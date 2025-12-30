@@ -64,8 +64,6 @@ async function downloadAndSendMedia(
   const mimeType = getMimeType(ext);
   const fileName = `media_${Date.now()}.${ext}`;
   
-  console.log(`Downloading media from: ${mediaUrl.substring(0, 80)}...`);
-  
   // Download the file
   const response = await fetch(mediaUrl);
   if (!response.ok) {
@@ -73,7 +71,6 @@ async function downloadAndSendMedia(
   }
   
   const fileBlob = await response.blob();
-  console.log(`Downloaded file: ${fileName}, size: ${fileBlob.size} bytes, type: ${mimeType}`);
   
   // Determine which method to use
   let method: string;
@@ -115,7 +112,6 @@ async function downloadAndSendMedia(
       });
       
       const data = await telegramResponse.json();
-      console.log(`Telegram ${method} response (attempt ${attempt + 1}):`, JSON.stringify(data).substring(0, 300));
       
       if (!data.ok) {
         // Rate limit
@@ -152,7 +148,6 @@ async function downloadAndSendMedia(
       return data.result;
     } catch (error: any) {
       if (attempt === 2) throw error;
-      console.log(`Attempt ${attempt + 1} failed, retrying...`);
       await new Promise(resolve => setTimeout(resolve, 2000));
     }
   }
@@ -165,8 +160,6 @@ async function sendMediaGroupFormData(
   mediaUrls: string[],
   caption?: string
 ): Promise<any> {
-  console.log(`Preparing album with ${mediaUrls.length} items using FormData`);
-  
   const formData = new FormData();
   formData.append("chat_id", chatId);
   
@@ -181,7 +174,6 @@ async function sendMediaGroupFormData(
     const fileName = `media_${i}_${Date.now()}.${ext}`;
     
     // Download the file
-    console.log(`Downloading item ${i + 1}/${mediaUrls.length}: ${url.substring(0, 60)}...`);
     const response = await fetch(url);
     if (!response.ok) {
       throw new Error(`Failed to download media ${i}: ${response.status}`);
@@ -210,7 +202,6 @@ async function sendMediaGroupFormData(
       });
       
       const data = await response.json();
-      console.log(`Telegram sendMediaGroup response (attempt ${attempt + 1}):`, JSON.stringify(data).substring(0, 300));
       
       if (!data.ok) {
         if (data.error_code === 429) {
@@ -225,7 +216,6 @@ async function sendMediaGroupFormData(
       return data.result;
     } catch (error: any) {
       if (attempt === 2) throw error;
-      console.log(`Attempt ${attempt + 1} failed, retrying...`);
       await new Promise(resolve => setTimeout(resolve, 2000));
     }
   }
@@ -339,102 +329,36 @@ serve(async (req) => {
       });
     }
 
-    // Collect media URLs
-    let mediaUrls: string[] = [];
+    // Get total count of media files WITHOUT loading all URLs yet
+    let totalMediaCount = 0;
+    let mediaPackId: string | null = campaign.media_pack_id;
     
-    if (campaign.media_pack_id) {
-      // Using admin media pack
-      const { data: mediaPack, error: mediaError } = await supabaseClient
+    if (mediaPackId) {
+      // Get count from admin media pack
+      const { data: mediaPack } = await supabaseClient
         .from("admin_media")
-        .select("*")
-        .eq("id", campaign.media_pack_id)
+        .select("media_files, file_count")
+        .eq("id", mediaPackId)
         .single();
-
-      if (mediaError || !mediaPack) {
-        console.error("Media pack not found:", mediaError);
-        await supabaseClient.from("campaigns").update({
-          status: "failed",
-          error_message: "Pacote de mídia não encontrado",
-        }).eq("id", campaignId);
-        
-        return new Response(JSON.stringify({ error: "Pacote de mídia não encontrado" }), {
-          status: 404,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      // Extract media URLs - use signed URLs for storage files
-      const rawMediaFiles = mediaPack.media_files as (string | { url: string })[] || [];
       
-      for (const file of rawMediaFiles) {
-        const url = typeof file === 'string' ? file : file.url;
-        if (!url) continue;
-        
-        // Create signed URL for storage files
-        if (url.includes('/storage/v1/object/public/')) {
-          const match = url.match(/\/storage\/v1\/object\/public\/([^/]+)\/(.+)/);
-          if (match) {
-            const [, bucket, path] = match;
-            const { data: signedUrlData } = await supabaseClient.storage
-              .from(bucket)
-              .createSignedUrl(decodeURIComponent(path), 3600);
-            
-            if (signedUrlData?.signedUrl) {
-              mediaUrls.push(signedUrlData.signedUrl);
-              continue;
-            }
-          }
-        }
-        mediaUrls.push(url);
+      if (mediaPack) {
+        // Use file_count if available, otherwise count from array
+        totalMediaCount = mediaPack.file_count || (Array.isArray(mediaPack.media_files) ? mediaPack.media_files.length : 0);
       }
-
-      console.log(`Using admin media pack: ${mediaPack.name} with ${mediaUrls.length} files`);
+      console.log(`Media pack has ${totalMediaCount} files`);
     } else {
-      // Using user's own media
-      console.log(`Fetching user media from storage for user: ${user.id}`);
-      
-      const { data: userFiles, error: storageError } = await supabaseClient.storage
+      // Count user files
+      const { data: userFiles } = await supabaseClient.storage
         .from("user-media")
-        .list(user.id, {
-          limit: 1000,
-          sortBy: { column: "created_at", order: "desc" },
-        });
-
-      if (storageError) {
-        console.error("Error fetching user media:", storageError);
-        await supabaseClient.from("campaigns").update({
-          status: "failed",
-          error_message: "Erro ao buscar mídias do usuário",
-        }).eq("id", campaignId);
-        
-        return new Response(JSON.stringify({ error: "Erro ao buscar mídias" }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      const validFiles = (userFiles || []).filter(f => 
+        .list(user.id, { limit: 100000 });
+      
+      totalMediaCount = (userFiles || []).filter(f => 
         f.name !== ".emptyFolderPlaceholder" && !f.name.startsWith(".")
-      );
-
-      // Generate signed URLs
-      for (const file of validFiles) {
-        const { data: signedUrlData, error: signedError } = await supabaseClient.storage
-          .from("user-media")
-          .createSignedUrl(`${user.id}/${file.name}`, 3600);
-        
-        if (signedUrlData?.signedUrl && !signedError) {
-          mediaUrls.push(signedUrlData.signedUrl);
-        } else {
-          console.warn(`Failed to create signed URL for ${file.name}:`, signedError);
-        }
-      }
-
-      console.log(`Using user's own media: ${mediaUrls.length} files`);
+      ).length;
+      console.log(`User has ${totalMediaCount} media files`);
     }
 
-    if (mediaUrls.length === 0) {
-      console.error("No media files found");
+    if (totalMediaCount === 0) {
       await supabaseClient.from("campaigns").update({
         status: "failed",
         error_message: "Nenhum arquivo de mídia encontrado",
@@ -447,26 +371,33 @@ serve(async (req) => {
     }
 
     const packSize = campaign.pack_size || 1;
-    console.log(`Dispatching ${mediaUrls.length} media files with pack_size=${packSize}`);
+    console.log(`Will dispatch ${totalMediaCount} media files with pack_size=${packSize}`);
 
-    // Start background dispatch
+    // Update campaign with total count
+    await supabaseClient.from("campaigns").update({
+      total_count: totalMediaCount,
+      status: "running",
+      started_at: new Date().toISOString(),
+    }).eq("id", campaignId);
+
+    // Start background dispatch - pass only IDs and configs, not the data
     EdgeRuntime.waitUntil(dispatchMediaInBackground(
-      supabaseClient,
       campaignId,
-      mediaUrls,
+      mediaPackId,
+      user.id,
       telegramIntegration.bot_token,
       destination.chat_id,
       campaign.delay_seconds || 10,
       campaign.caption,
-      user.id,
       packSize,
-      campaign.send_mode || "media"
+      campaign.send_mode || "media",
+      totalMediaCount
     ));
 
     return new Response(JSON.stringify({ 
       success: true, 
-      message: `Iniciando envio de ${mediaUrls.length} mídias em packs de ${packSize}`,
-      total: mediaUrls.length,
+      message: `Iniciando envio de ${totalMediaCount} mídias em packs de ${packSize}`,
+      total: totalMediaCount,
       packSize
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -482,148 +413,258 @@ serve(async (req) => {
 });
 
 async function dispatchMediaInBackground(
-  supabase: any,
   campaignId: string,
-  mediaFiles: string[],
+  mediaPackId: string | null,
+  userId: string,
   botToken: string,
   chatId: string,
   delaySeconds: number,
   caption: string | null,
-  userId: string,
   packSize: number = 1,
-  sendMode: string = "media"
+  sendMode: string = "media",
+  totalMediaCount: number
 ) {
+  // Create a new Supabase client for background processing
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+  );
+
   let sentCount = 0;
   let successCount = 0;
   let errorCount = 0;
   const errorsLog: { index: number; url: string; error: string; timestamp: string }[] = [];
   const sendTimes: number[] = [];
+  
+  // Process in batches to avoid memory issues with large media packs
+  const BATCH_SIZE = 100; // Process 100 files at a time
+  let offset = 0;
 
-  console.log(`Background dispatch started for campaign ${campaignId} with ${mediaFiles.length} files, packSize=${packSize}`);
+  console.log(`Background dispatch started for campaign ${campaignId} with ${totalMediaCount} files, packSize=${packSize}`);
 
-  // Chunk the media files
-  const chunks: string[][] = [];
-  for (let i = 0; i < mediaFiles.length; i += packSize) {
-    chunks.push(mediaFiles.slice(i, i + packSize));
-  }
-
-  console.log(`Created ${chunks.length} chunks from ${mediaFiles.length} files`);
-
-  for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
-    // Check if campaign is still running
-    const { data: currentCampaign } = await supabase
-      .from("campaigns")
-      .select("status")
-      .eq("id", campaignId)
-      .single();
-    
-    if (currentCampaign?.status !== "running") {
-      console.log(`Campaign ${campaignId} stopped at chunk ${chunkIndex + 1}/${chunks.length}`);
-      break;
-    }
-
-    const chunk = chunks[chunkIndex];
-    const startTime = Date.now();
-    
-    try {
-      console.log(`Sending chunk ${chunkIndex + 1}/${chunks.length} with ${chunk.length} items`);
+  try {
+    while (offset < totalMediaCount) {
+      // Check if campaign is still running
+      const { data: currentCampaign } = await supabase
+        .from("campaigns")
+        .select("status")
+        .eq("id", campaignId)
+        .single();
       
-      const captionForChunk = chunkIndex === 0 ? caption : null;
+      if (currentCampaign?.status !== "running") {
+        console.log(`Campaign ${campaignId} stopped at offset ${offset}`);
+        break;
+      }
+
+      // Load batch of media URLs
+      const mediaUrls: string[] = [];
+      const batchEnd = Math.min(offset + BATCH_SIZE, totalMediaCount);
       
-      if (chunk.length === 1) {
-        // Send single item
-        await downloadAndSendMedia(botToken, chatId, chunk[0], captionForChunk || undefined, sendMode);
-        sentCount++;
-        successCount++;
-      } else if (chunk.length <= 10) {
-        // Send as album (max 10 items per album)
-        await sendMediaGroupFormData(botToken, chatId, chunk, captionForChunk || undefined);
-        sentCount += chunk.length;
-        successCount += chunk.length;
+      console.log(`Loading batch ${offset}-${batchEnd} of ${totalMediaCount}`);
+
+      if (mediaPackId) {
+        // Load from admin media pack
+        const { data: mediaPack } = await supabase
+          .from("admin_media")
+          .select("media_files")
+          .eq("id", mediaPackId)
+          .single();
+
+        if (mediaPack?.media_files) {
+          const rawMediaFiles = mediaPack.media_files as (string | { url: string })[];
+          const batchFiles = rawMediaFiles.slice(offset, batchEnd);
+          
+          for (const file of batchFiles) {
+            const url = typeof file === 'string' ? file : file.url;
+            if (!url) continue;
+            
+            // Create signed URL for storage files
+            if (url.includes('/storage/v1/object/public/')) {
+              const match = url.match(/\/storage\/v1\/object\/public\/([^/]+)\/(.+)/);
+              if (match) {
+                const [, bucket, path] = match;
+                const { data: signedUrlData } = await supabase.storage
+                  .from(bucket)
+                  .createSignedUrl(decodeURIComponent(path), 3600);
+                
+                if (signedUrlData?.signedUrl) {
+                  mediaUrls.push(signedUrlData.signedUrl);
+                  continue;
+                }
+              }
+            }
+            mediaUrls.push(url);
+          }
+        }
       } else {
-        // Split into sub-albums of 10
-        for (let subI = 0; subI < chunk.length; subI += 10) {
-          const subChunk = chunk.slice(subI, subI + 10);
-          await sendMediaGroupFormData(botToken, chatId, subChunk, subI === 0 ? captionForChunk || undefined : undefined);
-          sentCount += subChunk.length;
-          successCount += subChunk.length;
-          if (subI + 10 < chunk.length) {
-            await new Promise(resolve => setTimeout(resolve, 2000));
+        // Load from user storage
+        const { data: userFiles } = await supabase.storage
+          .from("user-media")
+          .list(userId, {
+            limit: BATCH_SIZE,
+            offset: offset,
+            sortBy: { column: "created_at", order: "desc" },
+          });
+
+        const validFiles = (userFiles || []).filter(f => 
+          f.name !== ".emptyFolderPlaceholder" && !f.name.startsWith(".")
+        );
+
+        for (const file of validFiles) {
+          const { data: signedUrlData } = await supabase.storage
+            .from("user-media")
+            .createSignedUrl(`${userId}/${file.name}`, 3600);
+          
+          if (signedUrlData?.signedUrl) {
+            mediaUrls.push(signedUrlData.signedUrl);
           }
         }
       }
 
-      const endTime = Date.now();
-      sendTimes.push(endTime - startTime);
-      
-      console.log(`Successfully sent chunk ${chunkIndex + 1}/${chunks.length}`);
+      if (mediaUrls.length === 0) {
+        console.log(`No media URLs loaded for batch ${offset}-${batchEnd}, skipping`);
+        offset = batchEnd;
+        continue;
+      }
 
-    } catch (error: any) {
-      console.error(`Error sending chunk ${chunkIndex + 1}:`, error.message);
-      
-      // Try sending individually if album failed
-      if (chunk.length > 1) {
-        console.log("Album failed, trying to send individually...");
-        for (let i = 0; i < chunk.length; i++) {
-          try {
-            await downloadAndSendMedia(botToken, chatId, chunk[i], 
-              (i === 0 && chunkIndex === 0) ? caption || undefined : undefined, sendMode);
+      console.log(`Loaded ${mediaUrls.length} URLs for batch, starting dispatch`);
+
+      // Chunk the batch into packs
+      const chunks: string[][] = [];
+      for (let i = 0; i < mediaUrls.length; i += packSize) {
+        chunks.push(mediaUrls.slice(i, i + packSize));
+      }
+
+      // Process chunks
+      for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+        // Check status periodically
+        if (chunkIndex % 10 === 0) {
+          const { data: statusCheck } = await supabase
+            .from("campaigns")
+            .select("status")
+            .eq("id", campaignId)
+            .single();
+          
+          if (statusCheck?.status !== "running") {
+            console.log(`Campaign stopped during chunk processing`);
+            break;
+          }
+        }
+
+        const chunk = chunks[chunkIndex];
+        const startTime = Date.now();
+        
+        try {
+          const captionForChunk = (offset === 0 && chunkIndex === 0) ? caption : null;
+          
+          if (chunk.length === 1) {
+            // Send single item
+            await downloadAndSendMedia(botToken, chatId, chunk[0], captionForChunk || undefined, sendMode);
             sentCount++;
             successCount++;
-            await new Promise(resolve => setTimeout(resolve, 1500));
-          } catch (innerError: any) {
-            console.error(`Error sending individual item ${i}:`, innerError.message);
-            errorCount++;
-            errorsLog.push({
-              index: chunkIndex * packSize + i,
-              url: chunk[i].substring(0, 100),
-              error: innerError.message,
-              timestamp: new Date().toISOString(),
-            });
-            sentCount++;
+          } else if (chunk.length <= 10) {
+            // Send as album (max 10 items per album)
+            await sendMediaGroupFormData(botToken, chatId, chunk, captionForChunk || undefined);
+            sentCount += chunk.length;
+            successCount += chunk.length;
+          } else {
+            // Split into sub-albums of 10
+            for (let subI = 0; subI < chunk.length; subI += 10) {
+              const subChunk = chunk.slice(subI, subI + 10);
+              await sendMediaGroupFormData(botToken, chatId, subChunk, subI === 0 ? captionForChunk || undefined : undefined);
+              sentCount += subChunk.length;
+              successCount += subChunk.length;
+              if (subI + 10 < chunk.length) {
+                await new Promise(resolve => setTimeout(resolve, 2000));
+              }
+            }
+          }
+
+          const endTime = Date.now();
+          sendTimes.push(endTime - startTime);
+
+        } catch (error: any) {
+          console.error(`Error sending chunk:`, error.message);
+          
+          // Try sending individually if album failed
+          if (chunk.length > 1) {
+            for (let i = 0; i < chunk.length; i++) {
+              try {
+                await downloadAndSendMedia(botToken, chatId, chunk[i], undefined, sendMode);
+                sentCount++;
+                successCount++;
+                await new Promise(resolve => setTimeout(resolve, 1500));
+              } catch (innerError: any) {
+                console.error(`Error sending individual item:`, innerError.message);
+                errorCount++;
+                errorsLog.push({
+                  index: offset + chunkIndex * packSize + i,
+                  url: chunk[i].substring(0, 100),
+                  error: innerError.message,
+                  timestamp: new Date().toISOString(),
+                });
+                sentCount++;
+              }
+            }
+          } else {
+            errorCount += chunk.length;
+            for (let i = 0; i < chunk.length; i++) {
+              errorsLog.push({
+                index: offset + chunkIndex * packSize + i,
+                url: chunk[i].substring(0, 100),
+                error: error.message,
+                timestamp: new Date().toISOString(),
+              });
+            }
+            sentCount += chunk.length;
           }
         }
-      } else {
-        errorCount += chunk.length;
-        for (let i = 0; i < chunk.length; i++) {
-          errorsLog.push({
-            index: chunkIndex * packSize + i,
-            url: chunk[i].substring(0, 100),
-            error: error.message,
-            timestamp: new Date().toISOString(),
-          });
+
+        // Update progress every 5 chunks or at the end
+        if (chunkIndex % 5 === 0 || chunkIndex === chunks.length - 1) {
+          const avgSendTime = sendTimes.length > 0 
+            ? Math.round(sendTimes.reduce((a, b) => a + b, 0) / sendTimes.length)
+            : 0;
+
+          const progress = Math.round((sentCount / totalMediaCount) * 100);
+          await supabase.from("campaigns").update({
+            sent_count: sentCount,
+            progress,
+            success_count: successCount,
+            error_count: errorCount,
+            errors_log: errorsLog.slice(-100), // Keep last 100 errors
+            avg_send_time_ms: avgSendTime,
+          }).eq("id", campaignId);
+
+          console.log(`Progress: ${progress}% (${sentCount}/${totalMediaCount})`);
         }
-        sentCount += chunk.length;
+
+        // Wait before next chunk
+        if (chunkIndex < chunks.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, delaySeconds * 1000));
+        }
+      }
+
+      // Move to next batch
+      offset = batchEnd;
+      
+      // Small delay between batches
+      if (offset < totalMediaCount) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
-
-    // Calculate average send time
-    const avgSendTime = sendTimes.length > 0 
-      ? Math.round(sendTimes.reduce((a, b) => a + b, 0) / sendTimes.length)
-      : 0;
-
-    // Update progress
-    const progress = Math.round((sentCount / mediaFiles.length) * 100);
+  } catch (fatalError: any) {
+    console.error(`Fatal error in campaign dispatch:`, fatalError);
     await supabase.from("campaigns").update({
-      sent_count: sentCount,
-      progress,
-      success_count: successCount,
-      error_count: errorCount,
-      errors_log: errorsLog,
-      avg_send_time_ms: avgSendTime,
+      status: "failed",
+      error_message: `Erro fatal: ${fatalError.message}`,
+      completed_at: new Date().toISOString(),
     }).eq("id", campaignId);
-
-    console.log(`Progress: ${progress}% (${sentCount}/${mediaFiles.length})`);
-
-    // Wait before next chunk
-    if (chunkIndex < chunks.length - 1) {
-      console.log(`Waiting ${delaySeconds} seconds before next chunk...`);
-      await new Promise(resolve => setTimeout(resolve, delaySeconds * 1000));
-    }
+    return;
   }
 
   // Mark campaign as completed
-  const finalStatus = errorCount === mediaFiles.length ? "failed" : "completed";
+  const finalStatus = errorCount === totalMediaCount ? "failed" : "completed";
   const avgSendTime = sendTimes.length > 0 
     ? Math.round(sendTimes.reduce((a, b) => a + b, 0) / sendTimes.length)
     : 0;
@@ -632,9 +673,10 @@ async function dispatchMediaInBackground(
     status: finalStatus,
     completed_at: new Date().toISOString(),
     progress: 100,
+    sent_count: sentCount,
     success_count: successCount,
     error_count: errorCount,
-    errors_log: errorsLog,
+    errors_log: errorsLog.slice(-100),
     avg_send_time_ms: avgSendTime,
     error_message: errorCount > 0 ? `${errorCount} erros durante o envio` : null,
   }).eq("id", campaignId);
@@ -656,7 +698,7 @@ async function dispatchMediaInBackground(
       })
       .eq("user_id", userId);
   } catch (e) {
-    console.log("Metrics update failed, skipping:", e);
+    console.log("Metrics update failed, skipping");
   }
 
   console.log(`Campaign ${campaignId} completed: ${successCount} sent, ${errorCount} errors`);
