@@ -97,83 +97,74 @@ const LandingPage = () => {
   const plans = [
     {
       name: "Free",
-      price: "R$ 0",
-      period: "/7 dias",
-      description: "Para testar a plataforma",
+      price: "R$ 0,00",
+      period: "/mês",
+      description: "Para conhecer a estrutura por dentro. Teste grátis por 7 dias",
       features: [
-        { text: "1 destino (grupo/canal)", included: true },
-        { text: "100 mídias por dia", included: true },
-        { text: "Funis de venda básicos", included: true },
-        { text: "Dashboard de métricas", included: true },
-        { text: "Suporte por e-mail", included: true },
-        { text: "Agendamento de posts", included: false },
-        { text: "Model Hub / IA", included: false },
-        { text: "Modelos Vazados", included: false },
-        { text: "Remarketing automático", included: false },
-        { text: "API de integração", included: false },
+        "1 destino",
+        "100 mídias/mês",
+        "1 destino (grupo)",
+        "Até 100 mídias/dia",
+        "Acesso à plataforma",
+        "Suporte por e-mail",
+        "Teste grátis por 7 dias",
       ],
       popular: false,
-      cta: "Começar grátis",
     },
     {
       name: "Basic",
       price: "R$ 49,90",
       period: "/mês",
-      description: "Para quem está começando",
+      description: "Para quem quer sair do zero e começar certo",
       features: [
-        { text: "3 destinos (grupos/canais)", included: true },
-        { text: "500 mídias por dia", included: true },
-        { text: "Funis de venda completos", included: true },
-        { text: "Dashboard de métricas", included: true },
-        { text: "Suporte via WhatsApp", included: true },
-        { text: "Agendamento de posts", included: true },
-        { text: "Fluxo de chat padrão", included: true },
-        { text: "Model Hub / IA", included: false },
-        { text: "Modelos Vazados", included: false },
-        { text: "API de integração", included: false },
+        "3 destinos",
+        "500 mídias/mês",
+        "Agendamento",
+        "3 destinos (grupos)",
+        "500 mídias/dia",
+        "Agendamento básico",
+        "Fluxo de chat padrão",
+        "Suporte prioritário (WhatsApp)",
       ],
       popular: false,
-      cta: "Escolher Basic",
     },
     {
       name: "Pro",
       price: "R$ 99,90",
       period: "/mês",
-      description: "Para escalar vendas",
+      description: "Para quem quer ganhar velocidade e escalar",
       features: [
-        { text: "10 destinos (grupos/canais)", included: true },
-        { text: "2.000 mídias por dia", included: true },
-        { text: "Funis de venda avançados", included: true },
-        { text: "Dashboard completo", included: true },
-        { text: "Suporte 24/7 WhatsApp", included: true },
-        { text: "Agendamento avançado", included: true },
-        { text: "Fluxo de chat otimizado", included: true },
-        { text: "Model Hub / IA", included: true },
-        { text: "Modelos Vazados", included: true },
-        { text: "Remarketing automático", included: true },
+        "10 destinos",
+        "2.000 mídias/mês",
+        "Agendamento",
+        "Model Hub",
+        "10 destinos",
+        "2.000 mídias/dia",
+        "Agendamento avançado",
+        "Fluxos de chat otimizado",
+        "Model Hub / IA",
+        "Modelos Vazados",
+        "Suporte 24/7 (WhatsApp)",
       ],
-      popular: false,
-      cta: "Escolher Pro",
+      popular: true,
     },
     {
       name: "Agency",
       price: "R$ 299,90",
       period: "/mês",
-      description: "Para operações em escala",
+      description: "Escala máxima, sem limite",
       features: [
-        { text: "Destinos ilimitados", included: true },
-        { text: "Mídias ilimitadas", included: true },
-        { text: "Todas as ferramentas", included: true },
-        { text: "Dashboard white-label", included: true },
-        { text: "Gerente de conta dedicado", included: true },
-        { text: "Agendamento ilimitado", included: true },
-        { text: "Fluxo de chat premium", included: true },
-        { text: "Model Hub / IA completo", included: true },
-        { text: "Acesso total Modelos", included: true },
-        { text: "API de integração", included: true },
+        "∞ destinos",
+        "∞ mídias/mês",
+        "Agendamento",
+        "Model Hub",
+        "Destinos ilimitados",
+        "Mídias ilimitadas",
+        "Todas as ferramentas liberadas",
+        "API access",
+        "Gerente dedicado",
       ],
       popular: false,
-      cta: "Escolher Agency",
     },
   ];
 
@@ -715,107 +706,100 @@ const LandingPage = () => {
       </section>
 
       {/* Pricing Section */}
-      <section id="pricing" className="py-20 sm:py-28 bg-[#0a0a0a]">
+      <section id="pricing" className="py-20 sm:py-28 bg-[#0a0a0f]">
         <div className="container mx-auto px-4">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-center mb-16"
+            className="text-center mb-14"
           >
-            <p className="text-sm font-medium text-muted-foreground tracking-widest uppercase mb-4">
-              Planos e preços
-            </p>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 tracking-tight">
-              Escolha o plano ideal
+              Planos para cada <span className="text-cyan-400">necessidade</span>
             </h2>
-            <p className="text-muted-foreground max-w-md mx-auto text-base">
-              Comece gratuitamente e escale conforme seu negócio cresce
+            <p className="text-muted-foreground max-w-lg mx-auto text-base">
+              Escolha o plano ideal para o seu negócio. Upgrade ou downgrade a qualquer momento.
             </p>
           </motion.div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-6xl mx-auto">
-            {plans.map((plan, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: index * 0.1 }}
-              >
-                <div className="h-full bg-[#111] border border-[#222] rounded-xl hover:border-[#333] transition-colors">
-                  <div className="p-6">
-                    {/* Plan name */}
-                    <div className="mb-6">
-                      <h3 className="text-lg font-semibold mb-1 text-foreground">
-                        {plan.name}
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        {plan.description}
-                      </p>
+            {plans.map((plan, index) => {
+              const isPopular = plan.popular;
+              
+              return (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.4, delay: index * 0.1 }}
+                  className="relative"
+                >
+                  {/* Popular badge */}
+                  {isPopular && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
+                      <span className="bg-cyan-500 text-white text-xs font-semibold px-4 py-1.5 rounded-full whitespace-nowrap">
+                        Mais Popular
+                      </span>
                     </div>
-                    
-                    {/* Price */}
-                    <div className="mb-6">
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
-                          {plan.price}
-                        </span>
-                        <span className="text-sm text-muted-foreground">
-                          {plan.period}
-                        </span>
+                  )}
+                  
+                  <div className={`h-full bg-[#0d1117] border rounded-xl transition-colors ${
+                    isPopular ? 'border-cyan-500/50' : 'border-[#1e2430] hover:border-[#2a3140]'
+                  }`}>
+                    <div className="p-6">
+                      {/* Plan name */}
+                      <div className="mb-5">
+                        <h3 className="text-lg font-semibold mb-2 text-foreground">
+                          {plan.name}
+                        </h3>
+                        <p className="text-xs text-muted-foreground leading-relaxed min-h-[32px]">
+                          {plan.description}
+                        </p>
                       </div>
-                    </div>
-
-                    {/* CTA Button */}
-                    <Link to="/signup" className="block mb-6">
-                      <Button 
-                        variant="outline" 
-                        className="w-full h-11 font-medium text-sm border-[#333] text-foreground hover:bg-[#1a1a1a] hover:border-[#444] transition-all"
-                      >
-                        {plan.cta}
-                      </Button>
-                    </Link>
-
-                    {/* Features divider */}
-                    <div className="border-t border-[#222] mb-5" />
-
-                    {/* Features */}
-                    <div className="space-y-2.5">
-                      {plan.features.map((feature, i) => (
-                        <div key={i} className="flex items-start gap-2.5">
-                          {feature.included ? (
-                            <Check className="w-4 h-4 mt-0.5 flex-shrink-0 text-foreground" />
-                          ) : (
-                            <div className="w-4 h-4 mt-0.5 flex-shrink-0 flex items-center justify-center">
-                              <div className="w-2 h-[1.5px] bg-[#444]" />
-                            </div>
-                          )}
-                          <span className={`text-sm ${
-                            feature.included 
-                              ? 'text-foreground'
-                              : 'text-muted-foreground/40'
-                          }`}>
-                            {feature.text}
+                      
+                      {/* Price */}
+                      <div className="mb-6">
+                        <div className="flex items-baseline gap-0.5">
+                          <span className="text-sm text-muted-foreground">R$</span>
+                          <span className="text-4xl font-bold tracking-tight text-foreground">
+                            {plan.price.replace('R$ ', '')}
                           </span>
+                          <span className="text-sm text-muted-foreground">{plan.period}</span>
                         </div>
-                      ))}
+                      </div>
+
+                      {/* Features */}
+                      <div className="space-y-2.5 mb-6">
+                        {plan.features.map((feature, i) => (
+                          <div key={i} className="flex items-start gap-2">
+                            <Check className="w-4 h-4 mt-0.5 flex-shrink-0 text-cyan-400" />
+                            <span className="text-sm text-muted-foreground">
+                              {feature}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* CTA Button */}
+                      <Link to="/signup" className="block">
+                        <Button 
+                          variant={isPopular ? "default" : "outline"}
+                          className={`w-full h-11 font-medium text-sm transition-all ${
+                            isPopular 
+                              ? 'bg-cyan-500 hover:bg-cyan-600 text-white border-0'
+                              : 'border-[#2a3140] text-foreground hover:bg-[#151b26] hover:border-[#3a4150]'
+                          }`}
+                        >
+                          Selecionar
+                        </Button>
+                      </Link>
                     </div>
                   </div>
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              );
+            })}
           </div>
-          
-          {/* Bottom note */}
-          <motion.p
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            className="text-center text-sm text-muted-foreground mt-10"
-          >
-            Todos os planos incluem suporte técnico e atualizações. Cancele quando quiser.
-          </motion.p>
         </div>
       </section>
 
