@@ -1227,6 +1227,239 @@ export type Database = {
         }
         Relationships: []
       }
+      smart_link_buttons: {
+        Row: {
+          click_count: number | null
+          created_at: string
+          event_name: string | null
+          funnel_id: string | null
+          funnel_tag: string | null
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          page_id: string
+          position: number
+          title: string
+          updated_at: string
+          url: string | null
+          user_id: string
+        }
+        Insert: {
+          click_count?: number | null
+          created_at?: string
+          event_name?: string | null
+          funnel_id?: string | null
+          funnel_tag?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          page_id: string
+          position?: number
+          title: string
+          updated_at?: string
+          url?: string | null
+          user_id: string
+        }
+        Update: {
+          click_count?: number | null
+          created_at?: string
+          event_name?: string | null
+          funnel_id?: string | null
+          funnel_tag?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          page_id?: string
+          position?: number
+          title?: string
+          updated_at?: string
+          url?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "smart_link_buttons_funnel_id_fkey"
+            columns: ["funnel_id"]
+            isOneToOne: false
+            referencedRelation: "funnels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "smart_link_buttons_page_id_fkey"
+            columns: ["page_id"]
+            isOneToOne: false
+            referencedRelation: "smart_link_pages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      smart_link_clicks: {
+        Row: {
+          button_id: string
+          clicked_at: string
+          country: string | null
+          id: string
+          ip_address: string | null
+          page_id: string
+          referrer: string | null
+          user_agent: string | null
+          utm_campaign: string | null
+          utm_content: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          utm_term: string | null
+        }
+        Insert: {
+          button_id: string
+          clicked_at?: string
+          country?: string | null
+          id?: string
+          ip_address?: string | null
+          page_id: string
+          referrer?: string | null
+          user_agent?: string | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+        }
+        Update: {
+          button_id?: string
+          clicked_at?: string
+          country?: string | null
+          id?: string
+          ip_address?: string | null
+          page_id?: string
+          referrer?: string | null
+          user_agent?: string | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "smart_link_clicks_button_id_fkey"
+            columns: ["button_id"]
+            isOneToOne: false
+            referencedRelation: "smart_link_buttons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "smart_link_clicks_page_id_fkey"
+            columns: ["page_id"]
+            isOneToOne: false
+            referencedRelation: "smart_link_pages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      smart_link_pages: {
+        Row: {
+          avatar_url: string | null
+          background_color: string | null
+          button_style: string | null
+          created_at: string
+          description: string | null
+          google_analytics_id: string | null
+          id: string
+          is_active: boolean | null
+          meta_pixel_id: string | null
+          slug: string
+          text_color: string | null
+          tiktok_pixel_id: string | null
+          title: string
+          total_views: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          background_color?: string | null
+          button_style?: string | null
+          created_at?: string
+          description?: string | null
+          google_analytics_id?: string | null
+          id?: string
+          is_active?: boolean | null
+          meta_pixel_id?: string | null
+          slug: string
+          text_color?: string | null
+          tiktok_pixel_id?: string | null
+          title: string
+          total_views?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          background_color?: string | null
+          button_style?: string | null
+          created_at?: string
+          description?: string | null
+          google_analytics_id?: string | null
+          id?: string
+          is_active?: boolean | null
+          meta_pixel_id?: string | null
+          slug?: string
+          text_color?: string | null
+          tiktok_pixel_id?: string | null
+          title?: string
+          total_views?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      smart_link_views: {
+        Row: {
+          id: string
+          page_id: string
+          referrer: string | null
+          user_agent: string | null
+          utm_campaign: string | null
+          utm_content: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          utm_term: string | null
+          viewed_at: string
+        }
+        Insert: {
+          id?: string
+          page_id: string
+          referrer?: string | null
+          user_agent?: string | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+          viewed_at?: string
+        }
+        Update: {
+          id?: string
+          page_id?: string
+          referrer?: string | null
+          user_agent?: string | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+          viewed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "smart_link_views_page_id_fkey"
+            columns: ["page_id"]
+            isOneToOne: false
+            referencedRelation: "smart_link_pages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       social_accounts: {
         Row: {
           access_token: string | null
