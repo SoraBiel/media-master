@@ -94,12 +94,12 @@ const SmartLinkButtonEditor = ({ button, onSave, onClose }: SmartLinkButtonEdito
 
           <div className="space-y-2">
             <Label htmlFor="funnel">Iniciar Funil (opcional)</Label>
-            <Select value={funnelId} onValueChange={setFunnelId}>
+            <Select value={funnelId || "none"} onValueChange={(val) => setFunnelId(val === "none" ? "" : val)}>
               <SelectTrigger>
                 <SelectValue placeholder="Nenhum funil" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Nenhum funil</SelectItem>
+                <SelectItem value="none">Nenhum funil</SelectItem>
                 {funnels.map((funnel) => (
                   <SelectItem key={funnel.id} value={funnel.id}>
                     {funnel.name}
