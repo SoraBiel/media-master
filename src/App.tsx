@@ -97,6 +97,21 @@ const App = () => (
                   </FeatureProtectedRoute>
                 </ProtectedRoute>
               } />
+              <Route path="/smart-links" element={
+                <ProtectedRoute>
+                  <FeatureProtectedRoute featureKey="smart_links_enabled">
+                    <SmartLinksPage />
+                  </FeatureProtectedRoute>
+                </ProtectedRoute>
+              } />
+              <Route path="/smart-links/:pageId" element={
+                <ProtectedRoute>
+                  <FeatureProtectedRoute featureKey="smart_links_enabled">
+                    <SmartLinkEditorPage />
+                  </FeatureProtectedRoute>
+                </ProtectedRoute>
+              } />
+              <Route path="/@:slug" element={<SmartLinkPublicPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
             <BackgroundUploadIndicator />
