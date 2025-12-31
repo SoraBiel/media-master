@@ -1,0 +1,306 @@
+import { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { Loader2 } from "lucide-react";
+
+interface SmartLinkButtonWithCount {
+  id: string;
+  title: string;
+  url: string | null;
+  icon: string | null;
+  is_active: boolean;
+  funnel_id: string | null;
+  funnel_tag: string | null;
+  position: number;
+  click_count: number;
+}
+
+interface SmartLinkPage {
+  id: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  avatar_url: string | null;
+  background_color: string;
+  text_color: string;
+  button_style: string;
+  meta_pixel_id: string | null;
+  google_analytics_id: string | null;
+  tiktok_pixel_id: string | null;
+}
+
+
+const SmartLinkPublicPage = () => {
+  const { slug } = useParams<{ slug: string }>();
+  const [page, setPage] = useState<SmartLinkPage | null>(null);
+  const [buttons, setButtons] = useState<SmartLinkButtonWithCount[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+
+  useEffect(() => {
+    const fetchPage = async () => {
+      if (!slug) {
+        setNotFound(true);
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        // Fetch page by slug
+        const { data: pageData, error: pageError } = await supabase
+          .from("smart_link_pages")
+          .select("*")
+          .eq("slug", slug)
+          .eq("is_active", true)
+          .single();
+
+        if (pageError || !pageData) {
+          setNotFound(true);
+          setIsLoading(false);
+          return;
+        }
+
+        setPage(pageData as SmartLinkPage);
+
+        // Fetch buttons
+        const { data: buttonsData } = await supabase
+          .from("smart_link_buttons")
+          .select("*")
+          .eq("page_id", pageData.id)
+          .eq("is_active", true)
+          .order("position", { ascending: true });
+
+        setButtons((buttonsData as SmartLinkButton[]) || []);
+
+        // Record page view
+        const urlParams = new URLSearchParams(window.location.search);
+        await supabase.from("smart_link_views").insert({
+          page_id: pageData.id,
+          utm_source: urlParams.get("utm_source"),
+          utm_medium: urlParams.get("utm_medium"),
+          utm_campaign: urlParams.get("utm_campaign"),
+          utm_content: urlParams.get("utm_content"),
+          utm_term: urlParams.get("utm_term"),
+          referrer: document.referrer || null,
+          user_agent: navigator.userAgent,
+        });
+
+        // Update total_views counter
+        await supabase
+          .from("smart_link_pages")
+          .update({ total_views: (pageData.total_views || 0) + 1 })
+          .eq("id", pageData.id);
+
+      } catch (error) {
+        console.error("Error fetching page:", error);
+        setNotFound(true);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPage();
+  }, [slug]);
+
+  const handleButtonClick = async (button: SmartLinkButton) => {
+    if (!page) return;
+
+    // Record click
+    const urlParams = new URLSearchParams(window.location.search);
+    await supabase.from("smart_link_clicks").insert({
+      button_id: button.id,
+      page_id: page.id,
+      utm_source: urlParams.get("utm_source"),
+      utm_medium: urlParams.get("utm_medium"),
+      utm_campaign: urlParams.get("utm_campaign"),
+      utm_content: urlParams.get("utm_content"),
+      utm_term: urlParams.get("utm_term"),
+      referrer: document.referrer || null,
+      user_agent: navigator.userAgent,
+    });
+
+    // Update click counter
+    await supabase
+      .from("smart_link_buttons")
+      .update({ click_count: (button.click_count || 0) + 1 })
+      .eq("id", button.id);
+
+    // If button has a funnel, redirect to Telegram bot with tag
+    if (button.funnel_id) {
+      // TODO: Implement funnel start logic
+      // For now, just open the URL if exists
+      if (button.url) {
+        window.open(button.url, "_blank");
+      }
+    } else if (button.url) {
+      // Append UTM parameters to outbound links
+      const targetUrl = new URL(button.url);
+      urlParams.forEach((value, key) => {
+        if (!targetUrl.searchParams.has(key)) {
+          targetUrl.searchParams.set(key, value);
+        }
+      });
+      window.open(targetUrl.toString(), "_blank");
+    }
+  };
+
+  const getButtonClasses = (style: string) => {
+    const baseClasses = "w-full py-3.5 px-6 font-medium transition-all duration-200 hover:scale-[1.02] hover:shadow-lg flex items-center justify-center gap-2";
+    
+    switch (style) {
+      case "pill":
+        return `${baseClasses} rounded-full`;
+      case "square":
+        return `${baseClasses} rounded-none`;
+      case "outline":
+        return `${baseClasses} rounded-lg bg-transparent border-2`;
+      case "rounded":
+      default:
+        return `${baseClasses} rounded-lg`;
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (notFound || !page) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
+        <h1 className="text-2xl font-bold mb-2">Página não encontrada</h1>
+        <p className="text-muted-foreground">Esta Smart Link não existe ou foi desativada.</p>
+      </div>
+    );
+  }
+
+  // Determine if text color is light or dark for button backgrounds
+  const isLightText = page.text_color.toLowerCase() !== "#000000" && 
+    page.text_color.toLowerCase() !== "#000" &&
+    parseInt(page.text_color.replace("#", ""), 16) > 0xffffff / 2;
+
+  return (
+    <>
+      <Helmet>
+        <title>{page.title}</title>
+        {page.description && <meta name="description" content={page.description} />}
+        <meta property="og:title" content={page.title} />
+        {page.description && <meta property="og:description" content={page.description} />}
+        <meta property="og:type" content="website" />
+        
+        {/* Meta Pixel */}
+        {page.meta_pixel_id && (
+          <script>{`
+            !function(f,b,e,v,n,t,s)
+            {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+            n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+            if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+            n.queue=[];t=b.createElement(e);t.async=!0;
+            t.src=v;s=b.getElementsByTagName(e)[0];
+            s.parentNode.insertBefore(t,s)}(window, document,'script',
+            'https://connect.facebook.net/en_US/fbevents.js');
+            fbq('init', '${page.meta_pixel_id}');
+            fbq('track', 'PageView');
+          `}</script>
+        )}
+
+        {/* Google Analytics */}
+        {page.google_analytics_id && (
+          <>
+            <script async src={`https://www.googletagmanager.com/gtag/js?id=${page.google_analytics_id}`}></script>
+            <script>{`
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', '${page.google_analytics_id}');
+            `}</script>
+          </>
+        )}
+
+        {/* TikTok Pixel */}
+        {page.tiktok_pixel_id && (
+          <script>{`
+            !function (w, d, t) {
+              w.TiktokAnalyticsObject=t;var ttq=w[t]=w[t]||[];ttq.methods=["page","track","identify","instances","debug","on","off","once","ready","alias","group","enableCookie","disableCookie"],ttq.setAndDefer=function(t,e){t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}};for(var i=0;i<ttq.methods.length;i++)ttq.setAndDefer(ttq,ttq.methods[i]);ttq.instance=function(t){for(var e=ttq._i[t]||[],n=0;n<ttq.methods.length;n++)ttq.setAndDefer(e,ttq.methods[n]);return e},ttq.load=function(e,n){var i="https://analytics.tiktok.com/i18n/pixel/events.js";ttq._i=ttq._i||{},ttq._i[e]=[],ttq._i[e]._u=i,ttq._t=ttq._t||{},ttq._t[e]=+new Date,ttq._o=ttq._o||{},ttq._o[e]=n||{};var o=document.createElement("script");o.type="text/javascript",o.async=!0,o.src=i+"?sdkid="+e+"&lib="+t;var a=document.getElementsByTagName("script")[0];a.parentNode.insertBefore(o,a)};
+              ttq.load('${page.tiktok_pixel_id}');
+              ttq.page();
+            }(window, document, 'ttq');
+          `}</script>
+        )}
+      </Helmet>
+
+      <div
+        className="min-h-screen flex flex-col items-center p-4 py-8 sm:py-12"
+        style={{ backgroundColor: page.background_color }}
+      >
+        <div className="w-full max-w-md mx-auto space-y-6">
+          {/* Profile */}
+          <div className="text-center space-y-3">
+            {page.avatar_url && (
+              <img
+                src={page.avatar_url}
+                alt={page.title}
+                className="w-24 h-24 rounded-full mx-auto object-cover border-4"
+                style={{ borderColor: page.text_color + "40" }}
+              />
+            )}
+            <h1
+              className="text-2xl font-bold"
+              style={{ color: page.text_color }}
+            >
+              {page.title}
+            </h1>
+            {page.description && (
+              <p
+                className="text-sm opacity-80"
+                style={{ color: page.text_color }}
+              >
+                {page.description}
+              </p>
+            )}
+          </div>
+
+          {/* Buttons */}
+          <div className="space-y-3">
+            {buttons.map((button) => (
+              <button
+                key={button.id}
+                onClick={() => handleButtonClick(button)}
+                className={getButtonClasses(page.button_style)}
+                style={{
+                  backgroundColor: page.button_style === "outline" 
+                    ? "transparent" 
+                    : page.text_color,
+                  color: page.button_style === "outline" 
+                    ? page.text_color 
+                    : page.background_color,
+                  borderColor: page.button_style === "outline" 
+                    ? page.text_color 
+                    : undefined,
+                }}
+              >
+                {button.title}
+              </button>
+            ))}
+          </div>
+
+          {/* Footer */}
+          <div className="text-center pt-8">
+            <a
+              href="/"
+              className="text-xs opacity-50 hover:opacity-75 transition-opacity"
+              style={{ color: page.text_color }}
+            >
+              Feito com Nexo
+            </a>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
+
+export default SmartLinkPublicPage;
