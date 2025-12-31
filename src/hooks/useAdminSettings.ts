@@ -12,6 +12,7 @@ export interface AdminSettings {
   whatsapp_enabled: boolean;
   telegram_groups_enabled: boolean;
   automation_module_enabled: boolean;
+  smart_links_enabled: boolean;
 }
 
 export interface SettingsHistoryEntry {
@@ -34,6 +35,7 @@ const defaultSettings: AdminSettings = {
   whatsapp_enabled: true,
   telegram_groups_enabled: true,
   automation_module_enabled: true,
+  smart_links_enabled: true,
 };
 
 const settingLabels: Record<keyof AdminSettings, string> = {
@@ -46,6 +48,7 @@ const settingLabels: Record<keyof AdminSettings, string> = {
   whatsapp_enabled: "WhatsApp",
   telegram_groups_enabled: "Grupos Telegram",
   automation_module_enabled: "Automação de Publicações",
+  smart_links_enabled: "Smart Links",
 };
 
 export const getSettingLabel = (key: string): string => {

@@ -33,6 +33,9 @@ import IntegrationsPage from "./pages/IntegrationsPage";
 import PaymentsPage from "./pages/PaymentsPage";
 import MyPurchasesPage from "./pages/MyPurchasesPage";
 import PublicationAutomationPage from "./pages/PublicationAutomationPage";
+import SmartLinksPage from "./pages/SmartLinksPage";
+import SmartLinkEditorPage from "./pages/SmartLinkEditorPage";
+import SmartLinkPublicPage from "./pages/SmartLinkPublicPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
