@@ -117,50 +117,79 @@ const SmartLinksPage = () => {
                   Nova Página
                 </Button>
               </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Criar Smart Link</DialogTitle>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader className="text-center pb-2">
+                  <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+                    <Link2 className="w-6 h-6 text-primary" />
+                  </div>
+                  <DialogTitle className="text-xl">Criar Smart Link</DialogTitle>
                   <DialogDescription>
-                    Crie uma nova página de links personalizada
+                    Configure sua nova página de links personalizada
                   </DialogDescription>
                 </DialogHeader>
 
-                <div className="space-y-4 py-4">
+                <div className="space-y-5 py-4">
                   <div className="space-y-2">
-                    <Label htmlFor="title">Título da Página</Label>
+                    <Label htmlFor="title" className="text-sm font-medium">
+                      Título da Página
+                    </Label>
                     <Input
                       id="title"
-                      placeholder="Meus Links"
+                      placeholder="Ex: Meus Links, Portfólio, Contatos..."
                       value={newPageTitle}
                       onChange={(e) => setNewPageTitle(e.target.value)}
+                      className="h-11"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="slug">URL Personalizada</Label>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground whitespace-nowrap">
-                        {getBaseUrl()}/@
-                      </span>
+                    <Label htmlFor="slug" className="text-sm font-medium">
+                      URL Personalizada
+                    </Label>
+                    <div className="relative">
+                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-mono">
+                        {getBaseUrl().replace(/https?:\/\//, '')}/@
+                      </div>
                       <Input
                         id="slug"
                         placeholder="meulink"
                         value={newPageSlug}
                         onChange={(e) => setNewPageSlug(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))}
+                        className="h-11 pl-[calc(100%-8rem)] font-mono"
+                        style={{ paddingLeft: `${getBaseUrl().replace(/https?:\/\//, '').length * 7.5 + 36}px` }}
                       />
                     </div>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                      <span className="inline-block w-1 h-1 rounded-full bg-muted-foreground/50" />
                       Use letras minúsculas, números, hífen ou underscore
                     </p>
                   </div>
                 </div>
 
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
+                <DialogFooter className="flex-col sm:flex-row gap-2 pt-2">
+                  <Button 
+                    variant="ghost" 
+                    onClick={() => setIsCreateOpen(false)}
+                    className="sm:flex-1"
+                  >
                     Cancelar
                   </Button>
-                  <Button onClick={handleCreate} disabled={isCreating}>
-                    {isCreating ? "Criando..." : "Criar Página"}
+                  <Button 
+                    onClick={handleCreate} 
+                    disabled={isCreating || !newPageTitle.trim() || !newPageSlug.trim()}
+                    className="sm:flex-1 gap-2"
+                  >
+                    {isCreating ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                        Criando...
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="w-4 h-4" />
+                        Criar Página
+                      </>
+                    )}
                   </Button>
                 </DialogFooter>
               </DialogContent>
