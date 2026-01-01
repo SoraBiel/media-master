@@ -146,22 +146,20 @@ const SmartLinksPage = () => {
                     <Label htmlFor="slug" className="text-sm font-medium">
                       URL Personalizada
                     </Label>
-                    <div className="relative">
-                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-mono">
-                        {getBaseUrl().replace(/https?:\/\//, '')}/@
-                      </div>
+                    <div className="flex items-center gap-0 rounded-md border border-input bg-background overflow-hidden focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                      <span className="px-3 py-2.5 text-sm text-muted-foreground bg-muted/50 border-r border-input whitespace-nowrap">
+                        /@
+                      </span>
                       <Input
                         id="slug"
                         placeholder="meulink"
                         value={newPageSlug}
                         onChange={(e) => setNewPageSlug(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))}
-                        className="h-11 pl-[calc(100%-8rem)] font-mono"
-                        style={{ paddingLeft: `${getBaseUrl().replace(/https?:\/\//, '').length * 7.5 + 36}px` }}
+                        className="h-11 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none"
                       />
                     </div>
-                    <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                      <span className="inline-block w-1 h-1 rounded-full bg-muted-foreground/50" />
-                      Use letras minúsculas, números, hífen ou underscore
+                    <p className="text-xs text-muted-foreground">
+                      Letras minúsculas, números, hífen ou underscore
                     </p>
                   </div>
                 </div>
