@@ -139,14 +139,8 @@ const DashboardLayout = ({
       });
     }
 
-    // Indique & Ganhe
-    if (adminSettings.referrals_enabled) {
-      items.push({
-        icon: Gift,
-        label: "Indique & Ganhe",
-        path: "/referrals"
-      });
-    }
+    // Indique & Ganhe - only show for users with 'indicador' role
+    // This is controlled separately via the indicadorItems below
 
     // Integrações - before Admin
     items.push({
@@ -177,12 +171,19 @@ const DashboardLayout = ({
     path: "/reseller"
   }];
 
-  // Indicador-only items
-  const indicadorItems = [{
-    icon: TrendingUp,
-    label: "Painel Indicador",
-    path: "/indicador"
-  }];
+  // Indicador-only items (includes both referral page and stats panel)
+  const indicadorItems = [
+    {
+      icon: Gift,
+      label: "Indique & Ganhe",
+      path: "/referrals"
+    },
+    {
+      icon: TrendingUp,
+      label: "Painel Indicador",
+      path: "/indicador"
+    }
+  ];
   const allNavItems = [...navItems, ...(isIndicador ? indicadorItems : []), ...(isVendor || isAdmin ? vendorItems : []), ...(isAdmin ? adminItems : [])];
   const handleSignOut = async () => {
     await signOut();

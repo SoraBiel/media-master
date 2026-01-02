@@ -176,24 +176,42 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // If signup was successful and we have a referral code, create the referral record
     if (!error && data?.user && referralCode) {
       try {
-        // Find the referrer by their referral code (first 8 chars of user_id)
-        const { data: referrerProfiles } = await supabase
+        // The referral code is the first 8 chars of user_id (uppercase)
+        // We need to find a user whose user_id starts with this code (case-insensitive)
+        const codeToMatch = referralCode.toLowerCase();
+        
+        // Fetch all profiles and filter client-side since ILIKE doesn't work well with UUIDs
+        const { data: allProfiles } = await supabase
           .from("profiles")
-          .select("user_id")
-          .ilike("user_id", `${referralCode}%`);
+          .select("user_id");
 
-        if (referrerProfiles && referrerProfiles.length > 0) {
-          const referrerId = referrerProfiles[0].user_id;
-          
-          // Prevent self-referral
-          if (referrerId !== data.user.id) {
-            // Create referral record
-            await supabase.from("referrals").insert({
-              referrer_id: referrerId,
-              referred_id: data.user.id,
-              referral_code: referralCode,
-              status: "pending",
-            });
+        if (allProfiles) {
+          // Find the referrer whose user_id starts with the referral code
+          const referrerProfile = allProfiles.find(p => 
+            p.user_id.substring(0, 8).toLowerCase() === codeToMatch
+          );
+
+          if (referrerProfile) {
+            const referrerId = referrerProfile.user_id;
+            
+            // Prevent self-referral
+            if (referrerId !== data.user.id) {
+              // Create referral record
+              const { error: refError } = await supabase.from("referrals").insert({
+                referrer_id: referrerId,
+                referred_id: data.user.id,
+                referral_code: referralCode.toUpperCase(),
+                status: "pending",
+              });
+              
+              if (refError) {
+                console.error("Error creating referral record:", refError);
+              } else {
+                console.log("Referral created successfully:", referrerId, "->", data.user.id);
+              }
+            }
+          } else {
+            console.log("Referrer not found for code:", referralCode);
           }
         }
       } catch (refError) {
