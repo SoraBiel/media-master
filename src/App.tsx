@@ -38,8 +38,8 @@ import SmartLinkEditorPage from "./pages/SmartLinkEditorPage";
 import SmartLinkPublicPage from "./pages/SmartLinkPublicPage";
 import ReferralsPage from "./pages/ReferralsPage";
 import ReferralRedirectPage from "./pages/ReferralRedirectPage";
-import IndicadorPage from "./pages/IndicadorPage";
 import NotFound from "./pages/NotFound";
+import { Navigate } from "react-router-dom";
 
 const queryClient = new QueryClient();
 
@@ -122,11 +122,8 @@ const App = () => (
                   </FeatureProtectedRoute>
                 </ProtectedRoute>
               } />
-              <Route path="/indicador" element={
-                <ProtectedRoute>
-                  <IndicadorPage />
-                </ProtectedRoute>
-              } />
+              {/* Redirect old /indicador to /referrals */}
+              <Route path="/indicador" element={<Navigate to="/referrals" replace />} />
               <Route path="/r/:code" element={<ReferralRedirectPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
