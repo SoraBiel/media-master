@@ -130,6 +130,8 @@ const UserDetailsPage = () => {
   const [selectedRole, setSelectedRole] = useState<string>("");
   const [isAddingRole, setIsAddingRole] = useState(false);
   const [isRemovingRole, setIsRemovingRole] = useState<string | null>(null);
+  const [indicadorCommission, setIndicadorCommission] = useState<string>("25");
+  const [userCommission, setUserCommission] = useState<number | null>(null);
 
   useEffect(() => {
     if (userId) {
@@ -183,6 +185,15 @@ const UserDetailsPage = () => {
         .eq("user_id", userId);
 
       setUserRoles(rolesData || []);
+
+      // Fetch user commission if indicador
+      const { data: commissionData } = await supabase
+        .from("user_referral_commissions")
+        .select("commission_percent")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      setUserCommission(commissionData?.commission_percent ?? null);
     } catch (error) {
       console.error("Error fetching user data:", error);
     } finally {
@@ -210,11 +221,29 @@ const UserDetailsPage = () => {
           throw error;
         }
       } else {
+        // If role is indicador, also save commission
+        if (selectedRole === "indicador") {
+          const commissionValue = parseFloat(indicadorCommission) || 25;
+          const { error: commError } = await supabase
+            .from("user_referral_commissions")
+            .upsert({
+              user_id: userId,
+              commission_percent: commissionValue,
+            }, { onConflict: "user_id" });
+
+          if (commError) {
+            console.error("Error saving commission:", commError);
+          } else {
+            setUserCommission(commissionValue);
+          }
+        }
+
         toast({
           title: "Cargo adicionado",
           description: `Cargo ${AVAILABLE_ROLES.find(r => r.value === selectedRole)?.label} adicionado com sucesso.`,
         });
         setSelectedRole("");
+        setIndicadorCommission("25");
         // Refresh roles
         const { data: rolesData } = await supabase
           .from("user_roles")
@@ -653,36 +682,63 @@ const UserDetailsPage = () => {
                 <CardTitle>Cargos do Usuário ({userRoles.length})</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Add Role */}
-                <div className="flex gap-2">
-                  <Select value={selectedRole} onValueChange={setSelectedRole}>
-                    <SelectTrigger className="w-[200px]">
-                      <SelectValue placeholder="Selecionar cargo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {AVAILABLE_ROLES.filter(
-                        (r) => !userRoles.some((ur) => ur.role === r.value)
-                      ).map((role) => (
-                        <SelectItem key={role.value} value={role.value}>
-                          {role.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    onClick={handleAddRole}
-                    disabled={!selectedRole || isAddingRole}
-                    size="sm"
-                  >
-                    {isAddingRole ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <>
-                        <Plus className="w-4 h-4 mr-1" />
-                        Adicionar
-                      </>
+              {/* Add Role */}
+                <div className="flex flex-col gap-3">
+                  <div className="flex gap-2">
+                    <Select value={selectedRole} onValueChange={setSelectedRole}>
+                      <SelectTrigger className="w-[200px]">
+                        <SelectValue placeholder="Selecionar cargo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {AVAILABLE_ROLES.filter(
+                          (r) => !userRoles.some((ur) => ur.role === r.value)
+                        ).map((role) => (
+                          <SelectItem key={role.value} value={role.value}>
+                            {role.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    
+                    {selectedRole === "indicador" && (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          value={indicadorCommission}
+                          onChange={(e) => setIndicadorCommission(e.target.value)}
+                          className="w-20"
+                          min="1"
+                          max="100"
+                          placeholder="%"
+                        />
+                        <span className="text-sm text-muted-foreground">% comissão</span>
+                      </div>
                     )}
-                  </Button>
+                    
+                    <Button
+                      onClick={handleAddRole}
+                      disabled={!selectedRole || isAddingRole}
+                      size="sm"
+                    >
+                      {isAddingRole ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <>
+                          <Plus className="w-4 h-4 mr-1" />
+                          Adicionar
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                  
+                  {/* Show current commission if user is indicador */}
+                  {userRoles.some(r => r.role === "indicador") && userCommission !== null && (
+                    <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
+                      <p className="text-sm font-medium text-primary">
+                        💰 Comissão configurada: <span className="font-bold">{userCommission}%</span>
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Current Roles */}
