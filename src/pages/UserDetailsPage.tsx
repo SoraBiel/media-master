@@ -22,6 +22,9 @@ import {
   Ban,
   UserCheck,
   Shield,
+  Plus,
+  Trash2,
+  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +47,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -84,6 +94,22 @@ interface UserActivity {
   details: any;
 }
 
+interface UserRole {
+  id: string;
+  role: string;
+}
+
+const AVAILABLE_ROLES = [
+  { value: "admin", label: "Admin" },
+  { value: "user", label: "Usuário" },
+  { value: "vendor", label: "Revendedor" },
+  { value: "vendor_instagram", label: "Revendedor Instagram" },
+  { value: "vendor_tiktok", label: "Revendedor TikTok" },
+  { value: "vendor_model", label: "Revendedor Modelo" },
+  { value: "indicador", label: "Indicador" },
+  { value: "moderator", label: "Moderador" },
+];
+
 const UserDetailsPage = () => {
   const { userId } = useParams();
   const navigate = useNavigate();
@@ -93,6 +119,7 @@ const UserDetailsPage = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [integrations, setIntegrations] = useState<TelegramIntegration[]>([]);
   const [activities, setActivities] = useState<UserActivity[]>([]);
+  const [userRoles, setUserRoles] = useState<UserRole[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditingEmail, setIsEditingEmail] = useState(false);
   const [newEmail, setNewEmail] = useState("");
@@ -100,6 +127,9 @@ const UserDetailsPage = () => {
   const [showEmailDialog, setShowEmailDialog] = useState(false);
   const [isTogglingStatus, setIsTogglingStatus] = useState(false);
   const [showSuspendDialog, setShowSuspendDialog] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<string>("");
+  const [isAddingRole, setIsAddingRole] = useState(false);
+  const [isRemovingRole, setIsRemovingRole] = useState<string | null>(null);
 
   useEffect(() => {
     if (userId) {
@@ -145,10 +175,90 @@ const UserDetailsPage = () => {
         .limit(50);
 
       setActivities(actData || []);
+
+      // Fetch user roles
+      const { data: rolesData } = await supabase
+        .from("user_roles")
+        .select("id, role")
+        .eq("user_id", userId);
+
+      setUserRoles(rolesData || []);
     } catch (error) {
       console.error("Error fetching user data:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleAddRole = async () => {
+    if (!selectedRole || !userId) return;
+
+    setIsAddingRole(true);
+    try {
+      const { error } = await supabase
+        .from("user_roles")
+        .insert({ user_id: userId, role: selectedRole as any });
+
+      if (error) {
+        if (error.code === "23505") {
+          toast({
+            title: "Cargo já atribuído",
+            description: "Este usuário já possui este cargo.",
+            variant: "destructive",
+          });
+        } else {
+          throw error;
+        }
+      } else {
+        toast({
+          title: "Cargo adicionado",
+          description: `Cargo ${AVAILABLE_ROLES.find(r => r.value === selectedRole)?.label} adicionado com sucesso.`,
+        });
+        setSelectedRole("");
+        // Refresh roles
+        const { data: rolesData } = await supabase
+          .from("user_roles")
+          .select("id, role")
+          .eq("user_id", userId);
+        setUserRoles(rolesData || []);
+      }
+    } catch (error: any) {
+      console.error("Error adding role:", error);
+      toast({
+        title: "Erro ao adicionar cargo",
+        description: error.message || "Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAddingRole(false);
+    }
+  };
+
+  const handleRemoveRole = async (roleId: string, roleName: string) => {
+    setIsRemovingRole(roleId);
+    try {
+      const { error } = await supabase
+        .from("user_roles")
+        .delete()
+        .eq("id", roleId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Cargo removido",
+        description: `Cargo ${AVAILABLE_ROLES.find(r => r.value === roleName)?.label || roleName} removido.`,
+      });
+
+      setUserRoles(prev => prev.filter(r => r.id !== roleId));
+    } catch (error: any) {
+      console.error("Error removing role:", error);
+      toast({
+        title: "Erro ao remover cargo",
+        description: error.message || "Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRemovingRole(null);
     }
   };
 
@@ -425,6 +535,10 @@ const UserDetailsPage = () => {
               <Bot className="w-4 h-4" />
               Integrações
             </TabsTrigger>
+            <TabsTrigger value="roles" className="gap-2">
+              <Users className="w-4 h-4" />
+              Cargos
+            </TabsTrigger>
             <TabsTrigger value="activities" className="gap-2">
               <Activity className="w-4 h-4" />
               Atividades
@@ -528,6 +642,80 @@ const UserDetailsPage = () => {
                       ))}
                     </TableBody>
                   </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="roles">
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle>Cargos do Usuário ({userRoles.length})</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Add Role */}
+                <div className="flex gap-2">
+                  <Select value={selectedRole} onValueChange={setSelectedRole}>
+                    <SelectTrigger className="w-[200px]">
+                      <SelectValue placeholder="Selecionar cargo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {AVAILABLE_ROLES.filter(
+                        (r) => !userRoles.some((ur) => ur.role === r.value)
+                      ).map((role) => (
+                        <SelectItem key={role.value} value={role.value}>
+                          {role.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    onClick={handleAddRole}
+                    disabled={!selectedRole || isAddingRole}
+                    size="sm"
+                  >
+                    {isAddingRole ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <>
+                        <Plus className="w-4 h-4 mr-1" />
+                        Adicionar
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {/* Current Roles */}
+                {userRoles.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                    <p>Nenhum cargo atribuído</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {userRoles.map((role) => (
+                      <Badge
+                        key={role.id}
+                        variant="secondary"
+                        className="px-3 py-1.5 text-sm flex items-center gap-2"
+                      >
+                        {AVAILABLE_ROLES.find((r) => r.value === role.role)?.label || role.role}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="w-4 h-4 p-0 hover:bg-destructive/20"
+                          onClick={() => handleRemoveRole(role.id, role.role)}
+                          disabled={isRemovingRole === role.id}
+                        >
+                          {isRemovingRole === role.id ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-3 h-3 text-destructive" />
+                          )}
+                        </Button>
+                      </Badge>
+                    ))}
+                  </div>
                 )}
               </CardContent>
             </Card>
