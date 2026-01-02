@@ -42,6 +42,7 @@ import {
   Edit2,
   Gift,
   ArrowRightLeft,
+  Copy,
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend } from "recharts";
 import { Button } from "@/components/ui/button";
@@ -333,6 +334,7 @@ const AdminDashboardPage = () => {
   const [transferSourceMedia, setTransferSourceMedia] = useState<AdminMedia | null>(null);
   const [transferTargetMediaId, setTransferTargetMediaId] = useState<string>("");
   const [transferQuantity, setTransferQuantity] = useState<string>("");
+  const [transferMode, setTransferMode] = useState<"move" | "copy">("copy");
   const [isTransferring, setIsTransferring] = useState(false);
   
   const [planDialogOpen, setPlanDialogOpen] = useState(false);
@@ -1474,6 +1476,7 @@ const AdminDashboardPage = () => {
     setTransferSourceMedia(media);
     setTransferTargetMediaId("");
     setTransferQuantity("");
+    setTransferMode("copy"); // Default to copy mode
     setTransferMediaDialogOpen(true);
   };
 
@@ -1509,7 +1512,6 @@ const AdminDashboardPage = () => {
       
       // Get files to transfer (from the beginning of the source pack)
       const filesToTransfer = sourceFiles.slice(0, quantity);
-      const remainingSourceFiles = sourceFiles.slice(quantity);
       
       // Update target pack - add transferred files
       const { error: targetError } = await supabase
@@ -1523,21 +1525,25 @@ const AdminDashboardPage = () => {
 
       if (targetError) throw targetError;
 
-      // Update source pack - remove transferred files
-      const { error: sourceError } = await supabase
-        .from("admin_media")
-        .update({
-          media_files: remainingSourceFiles,
-          file_count: remainingSourceFiles.length,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", transferSourceMedia.id);
+      // Only update source pack if mode is "move" (not copy)
+      if (transferMode === "move") {
+        const remainingSourceFiles = sourceFiles.slice(quantity);
+        const { error: sourceError } = await supabase
+          .from("admin_media")
+          .update({
+            media_files: remainingSourceFiles,
+            file_count: remainingSourceFiles.length,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", transferSourceMedia.id);
 
-      if (sourceError) throw sourceError;
+        if (sourceError) throw sourceError;
+      }
 
+      const actionText = transferMode === "move" ? "movidos" : "copiados";
       toast({ 
-        title: "Mídias transferidas!", 
-        description: `${quantity.toLocaleString()} arquivos movidos de "${transferSourceMedia.name}" para "${targetPack.name}".` 
+        title: transferMode === "move" ? "Mídias transferidas!" : "Mídias copiadas!", 
+        description: `${quantity.toLocaleString()} arquivos ${actionText} de "${transferSourceMedia.name}" para "${targetPack.name}".` 
       });
       
       setTransferMediaDialogOpen(false);
@@ -2775,8 +2781,8 @@ const AdminDashboardPage = () => {
               <DialogContent className="max-w-md">
                 <DialogHeader>
                   <DialogTitle className="flex items-center gap-2">
-                    <ArrowRightLeft className="w-5 h-5" />
-                    Transferir Mídias
+                    {transferMode === "copy" ? <Copy className="w-5 h-5" /> : <ArrowRightLeft className="w-5 h-5" />}
+                    {transferMode === "copy" ? "Copiar Mídias" : "Mover Mídias"}
                   </DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
@@ -2790,8 +2796,38 @@ const AdminDashboardPage = () => {
                     </div>
                   )}
 
+                  {/* Mode selector */}
                   <div className="space-y-2">
-                    <Label>Quantidade de arquivos a transferir</Label>
+                    <Label>Modo de transferência</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        type="button"
+                        variant={transferMode === "copy" ? "default" : "outline"}
+                        className={transferMode === "copy" ? "telegram-gradient text-white" : ""}
+                        onClick={() => setTransferMode("copy")}
+                      >
+                        <Copy className="w-4 h-4 mr-2" />
+                        Copiar
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={transferMode === "move" ? "default" : "outline"}
+                        className={transferMode === "move" ? "telegram-gradient text-white" : ""}
+                        onClick={() => setTransferMode("move")}
+                      >
+                        <ArrowRightLeft className="w-4 h-4 mr-2" />
+                        Mover
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {transferMode === "copy" 
+                        ? "Os arquivos permanecerão no pacote de origem" 
+                        : "Os arquivos serão removidos do pacote de origem"}
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Quantidade de arquivos</Label>
                     <Input
                       type="number"
                       min="1"
@@ -2801,7 +2837,7 @@ const AdminDashboardPage = () => {
                       placeholder={`1 a ${transferSourceMedia?.file_count?.toLocaleString() || 0}`}
                     />
                     <p className="text-xs text-muted-foreground">
-                      Os arquivos serão transferidos do início do pacote
+                      Os arquivos serão selecionados do início do pacote
                     </p>
                   </div>
 
@@ -2826,7 +2862,8 @@ const AdminDashboardPage = () => {
                   {transferQuantity && transferTargetMediaId && (
                     <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
                       <p className="text-sm">
-                        <strong>{parseInt(transferQuantity).toLocaleString()}</strong> arquivos serão movidos de{" "}
+                        <strong>{parseInt(transferQuantity).toLocaleString()}</strong> arquivos serão{" "}
+                        {transferMode === "copy" ? "copiados" : "movidos"} de{" "}
                         <strong>"{transferSourceMedia?.name}"</strong> para{" "}
                         <strong>"{adminMedia.find(m => m.id === transferTargetMediaId)?.name}"</strong>
                       </p>
@@ -2849,12 +2886,12 @@ const AdminDashboardPage = () => {
                       {isTransferring ? (
                         <>
                           <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                          Transferindo...
+                          {transferMode === "copy" ? "Copiando..." : "Movendo..."}
                         </>
                       ) : (
                         <>
-                          <ArrowRightLeft className="w-4 h-4 mr-2" />
-                          Transferir
+                          {transferMode === "copy" ? <Copy className="w-4 h-4 mr-2" /> : <ArrowRightLeft className="w-4 h-4 mr-2" />}
+                          {transferMode === "copy" ? "Copiar" : "Mover"}
                         </>
                       )}
                     </Button>
