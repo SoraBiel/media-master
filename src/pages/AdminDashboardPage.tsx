@@ -4093,7 +4093,10 @@ const AdminDashboardPage = () => {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => window.open(`/@${page.slug}`, "_blank")}>
+                                  <DropdownMenuItem onClick={() => {
+                                    const baseUrl = smartLinkBaseUrl || window.location.origin;
+                                    window.open(`${baseUrl}/@${page.slug}`, "_blank");
+                                  }}>
                                     <ExternalLink className="w-4 h-4 mr-2" />
                                     Ver Página
                                   </DropdownMenuItem>
