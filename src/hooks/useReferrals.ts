@@ -10,6 +10,7 @@ export interface ReferralSettings {
   commission_type: "first_only" | "recurring";
   cookie_duration_days: number;
   min_payout_cents: number;
+  referral_base_url: string | null;
 }
 
 export interface Referral {
@@ -17,7 +18,7 @@ export interface Referral {
   referrer_id: string;
   referred_id: string;
   referral_code: string;
-  status: "pending" | "active" | "cancelled";
+  status: "pending" | "active" | "converted" | "cancelled";
   created_at: string;
   referred_profile?: {
     email: string;
@@ -338,8 +339,11 @@ export const useReferrals = () => {
 
   const getReferralLink = () => {
     if (!user) return "";
-    const baseUrl = window.location.origin;
-    return `${baseUrl}/signup?ref=${getReferralCode()}`;
+    // Use custom base URL if configured, otherwise fall back to current origin
+    if (settings?.referral_base_url) {
+      return `${settings.referral_base_url}/${getReferralCode()}`;
+    }
+    return `${window.location.origin}/r/${getReferralCode()}`;
   };
 
   useEffect(() => {

@@ -320,6 +320,23 @@ const AdminReferralsPanel = () => {
                     Tempo que a indicação fica vinculada ao usuário
                   </p>
                 </div>
+
+                <div className="space-y-2">
+                  <Label>URL Base para Links de Indicação</Label>
+                  <Input
+                    type="url"
+                    placeholder="https://nexo.com.br/r"
+                    value={settings?.referral_base_url || ""}
+                    onChange={(e) =>
+                      updateSettings({
+                        referral_base_url: e.target.value || null,
+                      })
+                    }
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Deixe vazio para usar o domínio atual. Ex: https://nexo.com.br/r
+                  </p>
+                </div>
               </CardContent>
             </Card>
 
