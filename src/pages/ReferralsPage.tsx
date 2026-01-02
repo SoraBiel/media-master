@@ -74,10 +74,12 @@ const ReferralsPage = () => {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
+      case "converted":
+        return <Badge className="bg-success/15 text-success border-success/30">Convertido</Badge>;
       case "active":
         return <Badge className="bg-success/15 text-success border-success/30">Ativo</Badge>;
       case "pending":
-        return <Badge variant="outline" className="border-warning text-warning">Pendente</Badge>;
+        return <Badge variant="outline" className="border-warning text-warning">Aguardando Pagamento</Badge>;
       case "cancelled":
         return <Badge variant="outline" className="border-destructive text-destructive">Cancelado</Badge>;
       case "paid":
@@ -309,25 +311,50 @@ const ReferralsPage = () => {
                         <TableRow>
                           <TableHead>Nome</TableHead>
                           <TableHead>Email</TableHead>
-                          <TableHead>Plano</TableHead>
+                          <TableHead>Plano Atual</TableHead>
                           <TableHead>Status</TableHead>
+                          <TableHead>Comissão Estimada</TableHead>
                           <TableHead>Data Cadastro</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {paginatedReferrals.map((referral) => (
-                          <TableRow key={referral.id}>
-                            <TableCell className="font-medium">
-                              {referral.referred_profile?.full_name || "—"}
-                            </TableCell>
-                            <TableCell>{referral.referred_profile?.email || "—"}</TableCell>
-                            <TableCell>
-                              {getPlanBadge(referral.referred_profile?.current_plan || null)}
-                            </TableCell>
-                            <TableCell>{getStatusBadge(referral.status)}</TableCell>
-                            <TableCell>{formatDate(referral.created_at)}</TableCell>
-                          </TableRow>
-                        ))}
+                        {paginatedReferrals.map((referral) => {
+                          const plan = referral.referred_profile?.current_plan || "free";
+                          const planPrices: Record<string, number> = {
+                            free: 0,
+                            basic: 4990,
+                            pro: 7990,
+                            agency: 14990,
+                          };
+                          const estimatedCommission = planPrices[plan] 
+                            ? Math.round((planPrices[plan] * (settings?.default_commission_percent || 20)) / 100)
+                            : 0;
+
+                          return (
+                            <TableRow key={referral.id}>
+                              <TableCell className="font-medium">
+                                {referral.referred_profile?.full_name || "—"}
+                              </TableCell>
+                              <TableCell>{referral.referred_profile?.email || "—"}</TableCell>
+                              <TableCell>
+                                {getPlanBadge(plan)}
+                              </TableCell>
+                              <TableCell>{getStatusBadge(referral.status)}</TableCell>
+                              <TableCell>
+                                {referral.status === "converted" && plan !== "free" ? (
+                                  <span className="text-success font-semibold">
+                                    {formatPrice(estimatedCommission)}
+                                  </span>
+                                ) : plan === "free" ? (
+                                  <span className="text-muted-foreground">Aguardando assinatura</span>
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
+                              </TableCell>
+                              <TableCell>{formatDate(referral.created_at)}</TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
 

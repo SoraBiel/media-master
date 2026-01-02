@@ -1344,6 +1344,7 @@ export type Database = {
           id: string
           is_enabled: boolean
           min_payout_cents: number
+          referral_base_url: string | null
           updated_at: string | null
         }
         Insert: {
@@ -1354,6 +1355,7 @@ export type Database = {
           id?: string
           is_enabled?: boolean
           min_payout_cents?: number
+          referral_base_url?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -1364,6 +1366,7 @@ export type Database = {
           id?: string
           is_enabled?: boolean
           min_payout_cents?: number
+          referral_base_url?: string | null
           updated_at?: string | null
         }
         Relationships: []

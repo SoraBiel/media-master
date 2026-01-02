@@ -37,6 +37,7 @@ import SmartLinksPage from "./pages/SmartLinksPage";
 import SmartLinkEditorPage from "./pages/SmartLinkEditorPage";
 import SmartLinkPublicPage from "./pages/SmartLinkPublicPage";
 import ReferralsPage from "./pages/ReferralsPage";
+import ReferralRedirectPage from "./pages/ReferralRedirectPage";
 import IndicadorPage from "./pages/IndicadorPage";
 import NotFound from "./pages/NotFound";
 
@@ -126,6 +127,7 @@ const App = () => (
                   <IndicadorPage />
                 </ProtectedRoute>
               } />
+              <Route path="/r/:code" element={<ReferralRedirectPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
             <BackgroundUploadIndicator />
