@@ -1838,6 +1838,10 @@ const AdminDashboardPage = () => {
               <Gift className="h-4 w-4" />
               Indique & Ganhe
             </TabsTrigger>
+            <TabsTrigger value="smart-links" className="flex items-center gap-1">
+              <Share2 className="h-4 w-4" />
+              Smart Links
+            </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center gap-1">
               <Settings className="h-4 w-4" />
               Configurações
@@ -3900,6 +3904,58 @@ const AdminDashboardPage = () => {
             <AdminReferralsPanel />
           </TabsContent>
 
+          {/* Smart Links Tab */}
+          <TabsContent value="smart-links" className="space-y-6">
+            <div className="space-y-2">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Share2 className="w-5 h-5" />
+                Configuração de Smart Links
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Configure a URL base que os leads receberão ao clicar nos Smart Links. Se deixar vazio, será usado o domínio padrão da plataforma.
+              </p>
+            </div>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">URL Base do Smart Link</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="smartLinkBaseUrl">URL Base</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="smartLinkBaseUrl"
+                      value={smartLinkBaseUrlInput}
+                      onChange={(e) => setSmartLinkBaseUrlInput(e.target.value)}
+                      placeholder="https://seudominio.com.br"
+                      className="flex-1"
+                    />
+                    <Button 
+                      onClick={handleSaveSmartLinkUrl}
+                      disabled={isSavingSmartLinkUrl || smartLinkBaseUrlInput === smartLinkBaseUrl}
+                      className="telegram-gradient text-white"
+                    >
+                      {isSavingSmartLinkUrl ? (
+                        <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />Salvando...</>
+                      ) : "Salvar"}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Exemplo: https://seudominio.com.br → Os leads verão links como https://seudominio.com.br/@slug
+                  </p>
+                  {smartLinkBaseUrl && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <Badge variant="outline" className="text-xs">
+                        URL atual: {smartLinkBaseUrl}
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* Settings Tab - All Feature Toggles */}
           <TabsContent value="settings" className="space-y-4">
             <div className="space-y-2">
@@ -4067,53 +4123,6 @@ const AdminDashboardPage = () => {
                     checked={adminSettings.telegram_groups_enabled}
                     onCheckedChange={(checked) => updateSetting("telegram_groups_enabled", checked)}
                   />
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Smart Link URL Configuration */}
-            <div className="mt-8 space-y-4">
-              <h3 className="text-lg font-semibold flex items-center gap-2">
-                <Share2 className="w-5 h-5" />
-                Configuração de Smart Links
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                Configure a URL base que os leads receberão ao clicar nos Smart Links. Se deixar vazio, será usado o domínio padrão da plataforma.
-              </p>
-              
-              <Card className="border-dashed">
-                <CardContent className="py-4 space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="smartLinkBaseUrl">URL Base do Smart Link</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="smartLinkBaseUrl"
-                        value={smartLinkBaseUrlInput}
-                        onChange={(e) => setSmartLinkBaseUrlInput(e.target.value)}
-                        placeholder="https://seudominio.com.br"
-                        className="flex-1"
-                      />
-                      <Button 
-                        onClick={handleSaveSmartLinkUrl}
-                        disabled={isSavingSmartLinkUrl || smartLinkBaseUrlInput === smartLinkBaseUrl}
-                        className="telegram-gradient text-white"
-                      >
-                        {isSavingSmartLinkUrl ? (
-                          <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />Salvando...</>
-                        ) : "Salvar"}
-                      </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Exemplo: https://seudominio.com.br → Os leads verão links como https://seudominio.com.br/@slug
-                    </p>
-                    {smartLinkBaseUrl && (
-                      <div className="flex items-center gap-2 mt-2">
-                        <Badge variant="outline" className="text-xs">
-                          URL atual: {smartLinkBaseUrl}
-                        </Badge>
-                      </div>
-                    )}
-                  </div>
                 </CardContent>
               </Card>
             </div>
