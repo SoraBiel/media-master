@@ -29,7 +29,7 @@ interface AuthContextType {
   isVendor: boolean;
   vendorRoles: VendorType[];
   isLoading: boolean;
-  signUp: (email: string, password: string, fullName: string, phone: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, fullName: string, phone: string, referralCode?: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -153,10 +153,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [user]);
 
-  const signUp = async (email: string, password: string, fullName: string, phone: string) => {
+  const signUp = async (email: string, password: string, fullName: string, phone: string, referralCode?: string) => {
     const redirectUrl = `${window.location.origin}/dashboard`;
     
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -167,6 +167,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         },
       },
     });
+
+    // If signup was successful and we have a referral code, create the referral record
+    if (!error && data?.user && referralCode) {
+      try {
+        // Find the referrer by their referral code (first 8 chars of user_id)
+        const { data: referrerProfiles } = await supabase
+          .from("profiles")
+          .select("user_id")
+          .ilike("user_id", `${referralCode}%`);
+
+        if (referrerProfiles && referrerProfiles.length > 0) {
+          const referrerId = referrerProfiles[0].user_id;
+          
+          // Prevent self-referral
+          if (referrerId !== data.user.id) {
+            // Create referral record
+            await supabase.from("referrals").insert({
+              referrer_id: referrerId,
+              referred_id: data.user.id,
+              referral_code: referralCode,
+              status: "pending",
+            });
+          }
+        }
+      } catch (refError) {
+        console.error("Error creating referral:", refError);
+        // Don't fail signup if referral creation fails
+      }
+    }
 
     return { error };
   };

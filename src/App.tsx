@@ -113,7 +113,13 @@ const App = () => (
                 </ProtectedRoute>
               } />
               <Route path="/@:slug" element={<SmartLinkPublicPage />} />
-              <Route path="/referrals" element={<ProtectedRoute><ReferralsPage /></ProtectedRoute>} />
+              <Route path="/referrals" element={
+                <ProtectedRoute>
+                  <FeatureProtectedRoute featureKey="referrals_enabled">
+                    <ReferralsPage />
+                  </FeatureProtectedRoute>
+                </ProtectedRoute>
+              } />
               <Route path="*" element={<NotFound />} />
             </Routes>
             <BackgroundUploadIndicator />
