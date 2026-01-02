@@ -278,6 +278,72 @@ export type Database = {
         }
         Relationships: []
       }
+      commissions: {
+        Row: {
+          amount_cents: number
+          commission_cents: number
+          commission_percent: number
+          created_at: string | null
+          id: string
+          notes: string | null
+          paid_at: string | null
+          paid_by: string | null
+          referral_id: string
+          referred_id: string
+          referrer_id: string
+          status: string
+          transaction_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          amount_cents: number
+          commission_cents: number
+          commission_percent: number
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          paid_at?: string | null
+          paid_by?: string | null
+          referral_id: string
+          referred_id: string
+          referrer_id: string
+          status?: string
+          transaction_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          amount_cents?: number
+          commission_cents?: number
+          commission_percent?: number
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          paid_at?: string | null
+          paid_by?: string | null
+          referral_id?: string
+          referred_id?: string
+          referrer_id?: string
+          status?: string
+          transaction_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commissions_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "referrals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commissions_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dashboard_banners: {
         Row: {
           created_at: string
@@ -1188,6 +1254,147 @@ export type Database = {
           phone?: string | null
           updated_at?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      referral_allowed_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role_name: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role_name: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role_name?: string
+        }
+        Relationships: []
+      }
+      referral_audit_logs: {
+        Row: {
+          action: string
+          created_at: string | null
+          entity_id: string | null
+          entity_type: string
+          id: string
+          ip_address: string | null
+          new_data: Json | null
+          old_data: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          ip_address?: string | null
+          new_data?: Json | null
+          old_data?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          ip_address?: string | null
+          new_data?: Json | null
+          old_data?: Json | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      referral_role_commissions: {
+        Row: {
+          commission_percent: number
+          created_at: string | null
+          id: string
+          role_name: string
+          updated_at: string | null
+        }
+        Insert: {
+          commission_percent: number
+          created_at?: string | null
+          id?: string
+          role_name: string
+          updated_at?: string | null
+        }
+        Update: {
+          commission_percent?: number
+          created_at?: string | null
+          id?: string
+          role_name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      referral_settings: {
+        Row: {
+          commission_type: string
+          cookie_duration_days: number
+          created_at: string | null
+          default_commission_percent: number
+          id: string
+          is_enabled: boolean
+          min_payout_cents: number
+          updated_at: string | null
+        }
+        Insert: {
+          commission_type?: string
+          cookie_duration_days?: number
+          created_at?: string | null
+          default_commission_percent?: number
+          id?: string
+          is_enabled?: boolean
+          min_payout_cents?: number
+          updated_at?: string | null
+        }
+        Update: {
+          commission_type?: string
+          cookie_duration_days?: number
+          created_at?: string | null
+          default_commission_percent?: number
+          id?: string
+          is_enabled?: boolean
+          min_payout_cents?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      referrals: {
+        Row: {
+          created_at: string | null
+          id: string
+          referral_code: string
+          referred_id: string
+          referrer_id: string
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          referral_code: string
+          referred_id: string
+          referrer_id: string
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          referral_code?: string
+          referred_id?: string
+          referrer_id?: string
+          status?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -2437,6 +2644,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_access_referrals: { Args: { p_user_id: string }; Returns: boolean }
+      generate_referral_code: { Args: { p_user_id: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
