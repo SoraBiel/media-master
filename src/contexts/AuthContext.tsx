@@ -173,49 +173,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       },
     });
 
-    // If signup was successful and we have a referral code, create the referral record
+    // If signup was successful and we have a referral code, create the referral record via edge function
     if (!error && data?.user && referralCode) {
       try {
-        // The referral code is the first 8 chars of user_id (uppercase)
-        // We need to find a user whose user_id starts with this code (case-insensitive)
-        const codeToMatch = referralCode.toLowerCase();
-        
-        // Fetch all profiles and filter client-side since ILIKE doesn't work well with UUIDs
-        const { data: allProfiles } = await supabase
-          .from("profiles")
-          .select("user_id");
+        // Call edge function to process referral (uses service role to bypass RLS)
+        const { error: refError } = await supabase.functions.invoke("process-referral", {
+          body: {
+            referral_code: referralCode,
+            referred_id: data.user.id,
+          },
+        });
 
-        if (allProfiles) {
-          // Find the referrer whose user_id starts with the referral code
-          const referrerProfile = allProfiles.find(p => 
-            p.user_id.substring(0, 8).toLowerCase() === codeToMatch
-          );
-
-          if (referrerProfile) {
-            const referrerId = referrerProfile.user_id;
-            
-            // Prevent self-referral
-            if (referrerId !== data.user.id) {
-              // Create referral record
-              const { error: refError } = await supabase.from("referrals").insert({
-                referrer_id: referrerId,
-                referred_id: data.user.id,
-                referral_code: referralCode.toUpperCase(),
-                status: "pending",
-              });
-              
-              if (refError) {
-                console.error("Error creating referral record:", refError);
-              } else {
-                console.log("Referral created successfully:", referrerId, "->", data.user.id);
-              }
-            }
-          } else {
-            console.log("Referrer not found for code:", referralCode);
-          }
+        if (refError) {
+          console.error("Error creating referral:", refError);
+        } else {
+          console.log("Referral processed successfully for user:", data.user.id);
         }
       } catch (refError) {
-        console.error("Error creating referral:", refError);
+        console.error("Error calling referral function:", refError);
         // Don't fail signup if referral creation fails
       }
     }
