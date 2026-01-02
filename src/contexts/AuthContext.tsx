@@ -27,6 +27,7 @@ interface AuthContextType {
   profile: Profile | null;
   isAdmin: boolean;
   isVendor: boolean;
+  isIndicador: boolean;
   vendorRoles: VendorType[];
   isLoading: boolean;
   signUp: (email: string, password: string, fullName: string, phone: string, referralCode?: string) => Promise<{ error: Error | null }>;
@@ -43,6 +44,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isVendor, setIsVendor] = useState(false);
+  const [isIndicador, setIsIndicador] = useState(false);
   const [vendorRoles, setVendorRoles] = useState<VendorType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -77,6 +79,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       const roles = roleData?.map(r => r.role) || [];
       setIsAdmin(roles.includes("admin"));
+      setIsIndicador(roles.includes("indicador"));
       
       // Check for any vendor role
       const vendorTypeRoles = roles.filter(r => 
@@ -111,6 +114,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setProfile(null);
           setIsAdmin(false);
           setIsVendor(false);
+          setIsIndicador(false);
           setVendorRoles([]);
         }
 
@@ -118,6 +122,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setProfile(null);
           setIsAdmin(false);
           setIsVendor(false);
+          setIsIndicador(false);
           setVendorRoles([]);
         }
 
@@ -227,6 +232,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         profile,
         isAdmin,
         isVendor,
+        isIndicador,
         vendorRoles,
         isLoading,
         signUp,

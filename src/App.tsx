@@ -37,6 +37,7 @@ import SmartLinksPage from "./pages/SmartLinksPage";
 import SmartLinkEditorPage from "./pages/SmartLinkEditorPage";
 import SmartLinkPublicPage from "./pages/SmartLinkPublicPage";
 import ReferralsPage from "./pages/ReferralsPage";
+import IndicadorPage from "./pages/IndicadorPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -118,6 +119,11 @@ const App = () => (
                   <FeatureProtectedRoute featureKey="referrals_enabled">
                     <ReferralsPage />
                   </FeatureProtectedRoute>
+                </ProtectedRoute>
+              } />
+              <Route path="/indicador" element={
+                <ProtectedRoute>
+                  <IndicadorPage />
                 </ProtectedRoute>
               } />
               <Route path="*" element={<NotFound />} />
