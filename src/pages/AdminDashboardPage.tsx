@@ -41,6 +41,7 @@ import {
   Share2,
   Edit2,
   Gift,
+  ArrowRightLeft,
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend } from "recharts";
 import { Button } from "@/components/ui/button";
@@ -326,6 +327,14 @@ const AdminDashboardPage = () => {
   const [editMediaName, setEditMediaName] = useState("");
   const [editMediaPackType, setEditMediaPackType] = useState("10k");
   const [editMediaMinPlan, setEditMediaMinPlan] = useState("basic");
+  
+  // Transfer media dialog state
+  const [transferMediaDialogOpen, setTransferMediaDialogOpen] = useState(false);
+  const [transferSourceMedia, setTransferSourceMedia] = useState<AdminMedia | null>(null);
+  const [transferTargetMediaId, setTransferTargetMediaId] = useState<string>("");
+  const [transferQuantity, setTransferQuantity] = useState<string>("");
+  const [isTransferring, setIsTransferring] = useState(false);
+  
   const [planDialogOpen, setPlanDialogOpen] = useState(false);
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
   const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);
@@ -1457,6 +1466,89 @@ const AdminDashboardPage = () => {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
     } finally {
       setIsUploadingMedia(false);
+    }
+  };
+
+  // Transfer media between packs
+  const handleOpenTransferDialog = (media: AdminMedia) => {
+    setTransferSourceMedia(media);
+    setTransferTargetMediaId("");
+    setTransferQuantity("");
+    setTransferMediaDialogOpen(true);
+  };
+
+  const handleTransferMedia = async () => {
+    if (!transferSourceMedia || !transferTargetMediaId || !transferQuantity) {
+      toast({ title: "Erro", description: "Preencha todos os campos", variant: "destructive" });
+      return;
+    }
+
+    const quantity = parseInt(transferQuantity);
+    if (isNaN(quantity) || quantity <= 0) {
+      toast({ title: "Erro", description: "Quantidade inválida", variant: "destructive" });
+      return;
+    }
+
+    const sourceFiles = Array.isArray(transferSourceMedia.media_files) ? transferSourceMedia.media_files : [];
+    if (quantity > sourceFiles.length) {
+      toast({ 
+        title: "Erro", 
+        description: `O pacote de origem só tem ${sourceFiles.length} arquivos`, 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    setIsTransferring(true);
+    try {
+      // Get target pack
+      const targetPack = adminMedia.find(m => m.id === transferTargetMediaId);
+      if (!targetPack) throw new Error("Pacote de destino não encontrado");
+
+      const targetFiles = Array.isArray(targetPack.media_files) ? targetPack.media_files : [];
+      
+      // Get files to transfer (from the beginning of the source pack)
+      const filesToTransfer = sourceFiles.slice(0, quantity);
+      const remainingSourceFiles = sourceFiles.slice(quantity);
+      
+      // Update target pack - add transferred files
+      const { error: targetError } = await supabase
+        .from("admin_media")
+        .update({
+          media_files: [...targetFiles, ...filesToTransfer],
+          file_count: targetFiles.length + filesToTransfer.length,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", transferTargetMediaId);
+
+      if (targetError) throw targetError;
+
+      // Update source pack - remove transferred files
+      const { error: sourceError } = await supabase
+        .from("admin_media")
+        .update({
+          media_files: remainingSourceFiles,
+          file_count: remainingSourceFiles.length,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", transferSourceMedia.id);
+
+      if (sourceError) throw sourceError;
+
+      toast({ 
+        title: "Mídias transferidas!", 
+        description: `${quantity.toLocaleString()} arquivos movidos de "${transferSourceMedia.name}" para "${targetPack.name}".` 
+      });
+      
+      setTransferMediaDialogOpen(false);
+      setTransferSourceMedia(null);
+      setTransferTargetMediaId("");
+      setTransferQuantity("");
+      fetchAdminMedia();
+    } catch (error: any) {
+      toast({ title: "Erro ao transferir", description: error.message, variant: "destructive" });
+    } finally {
+      setIsTransferring(false);
     }
   };
 
@@ -2653,6 +2745,9 @@ const AdminDashboardPage = () => {
                               <DropdownMenuItem onClick={() => handleEditMedia(media)}>
                                 <Edit2 className="w-4 h-4 mr-2" />Editar / Adicionar Mídias
                               </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleOpenTransferDialog(media)}>
+                                <ArrowRightLeft className="w-4 h-4 mr-2" />Transferir para Outro Pacote
+                              </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem onClick={() => handleDeleteMedia(media.id)} className="text-destructive">
                                 <Trash2 className="w-4 h-4 mr-2" />Excluir
@@ -2674,6 +2769,99 @@ const AdminDashboardPage = () => {
                 </TableBody>
               </Table>
             </div>
+
+            {/* Transfer Media Dialog */}
+            <Dialog open={transferMediaDialogOpen} onOpenChange={setTransferMediaDialogOpen}>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <ArrowRightLeft className="w-5 h-5" />
+                    Transferir Mídias
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  {transferSourceMedia && (
+                    <div className="p-3 bg-muted/50 rounded-lg">
+                      <p className="text-sm font-medium">Pacote de origem:</p>
+                      <p className="text-muted-foreground">{transferSourceMedia.name}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {transferSourceMedia.file_count?.toLocaleString()} arquivos disponíveis
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label>Quantidade de arquivos a transferir</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      max={transferSourceMedia?.file_count || 0}
+                      value={transferQuantity}
+                      onChange={(e) => setTransferQuantity(e.target.value)}
+                      placeholder={`1 a ${transferSourceMedia?.file_count?.toLocaleString() || 0}`}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Os arquivos serão transferidos do início do pacote
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Pacote de destino</Label>
+                    <Select value={transferTargetMediaId} onValueChange={setTransferTargetMediaId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o pacote de destino" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {adminMedia
+                          .filter(m => m.id !== transferSourceMedia?.id)
+                          .map((pack) => (
+                            <SelectItem key={pack.id} value={pack.id}>
+                              {pack.name} ({pack.file_count?.toLocaleString()} arquivos)
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {transferQuantity && transferTargetMediaId && (
+                    <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
+                      <p className="text-sm">
+                        <strong>{parseInt(transferQuantity).toLocaleString()}</strong> arquivos serão movidos de{" "}
+                        <strong>"{transferSourceMedia?.name}"</strong> para{" "}
+                        <strong>"{adminMedia.find(m => m.id === transferTargetMediaId)?.name}"</strong>
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="flex gap-2 pt-2">
+                    <Button 
+                      variant="outline" 
+                      className="flex-1"
+                      onClick={() => setTransferMediaDialogOpen(false)}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button 
+                      onClick={handleTransferMedia} 
+                      className="flex-1 telegram-gradient text-white"
+                      disabled={isTransferring || !transferQuantity || !transferTargetMediaId}
+                    >
+                      {isTransferring ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                          Transferindo...
+                        </>
+                      ) : (
+                        <>
+                          <ArrowRightLeft className="w-4 h-4 mr-2" />
+                          Transferir
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
           {/* Unified Accounts Tab */}
           <TabsContent value="accounts" className="space-y-4">
