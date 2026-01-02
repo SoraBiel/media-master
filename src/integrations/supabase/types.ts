@@ -2231,6 +2231,36 @@ export type Database = {
           },
         ]
       }
+      user_referral_commissions: {
+        Row: {
+          commission_percent: number
+          created_at: string | null
+          created_by: string | null
+          id: string
+          notes: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          commission_percent?: number
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          commission_percent?: number
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null
