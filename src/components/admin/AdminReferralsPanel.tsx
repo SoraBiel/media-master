@@ -4,7 +4,6 @@ import {
   DollarSign,
   Settings,
   CheckCircle,
-  Clock,
   ChevronDown,
   ChevronUp,
   UserCheck,
@@ -220,9 +219,6 @@ const AdminReferralsPanel = () => {
 
   // Stats
   const totalIndicadores = indicadores.length;
-  const totalCommissions = indicadores.reduce((sum, i) => sum + i.total_commission, 0);
-  const pendingCommissions = indicadores.reduce((sum, i) => sum + i.pending_commission, 0);
-  const paidCommissions = indicadores.reduce((sum, i) => sum + i.paid_commission, 0);
 
   // Get commissions for a specific indicador
   const getIndicadorCommissions = (userId: string) => {
@@ -328,16 +324,6 @@ const AdminReferralsPanel = () => {
                               <p className="text-xs text-muted-foreground">
                                 {indicador.referrals_count} indicados • {indicador.converted_count} convertidos
                               </p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-lg font-bold text-success">
-                                {formatPrice(indicador.total_commission)}
-                              </p>
-                              {indicador.pending_commission > 0 && (
-                                <Badge variant="outline" className="text-warning border-warning text-xs">
-                                  {formatPrice(indicador.pending_commission)} pendente
-                                </Badge>
-                              )}
                             </div>
                             {expandedIndicador === indicador.user_id ? (
                               <ChevronUp className="w-5 h-5 text-muted-foreground" />
