@@ -444,6 +444,11 @@ const AdminDashboardPage = () => {
   const [instagramImageFile, setInstagramImageFile] = useState<File | null>(null);
   const instagramImageInputRef = useRef<HTMLInputElement>(null);
 
+  // Smart Link URL settings
+  const [smartLinkBaseUrl, setSmartLinkBaseUrl] = useState("");
+  const [smartLinkBaseUrlInput, setSmartLinkBaseUrlInput] = useState("");
+  const [isSavingSmartLinkUrl, setIsSavingSmartLinkUrl] = useState(false);
+
   useEffect(() => {
     fetchAllData();
 
@@ -482,7 +487,53 @@ const AdminDashboardPage = () => {
       fetchUserRoles(),
       fetchVendorSales(),
       fetchResellerProducts(),
+      fetchSmartLinkBaseUrl(),
     ]);
+  };
+
+  const fetchSmartLinkBaseUrl = async () => {
+    const { data } = await supabase
+      .from("admin_text_settings")
+      .select("setting_value")
+      .eq("setting_key", "smart_link_base_url")
+      .maybeSingle();
+    
+    const url = data?.setting_value || "";
+    setSmartLinkBaseUrl(url);
+    setSmartLinkBaseUrlInput(url);
+  };
+
+  const handleSaveSmartLinkUrl = async () => {
+    setIsSavingSmartLinkUrl(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      const { error } = await supabase
+        .from("admin_text_settings")
+        .upsert({
+          setting_key: "smart_link_base_url",
+          setting_value: smartLinkBaseUrlInput,
+          updated_by: user?.id,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "setting_key" });
+
+      if (error) throw error;
+
+      setSmartLinkBaseUrl(smartLinkBaseUrlInput);
+      toast({
+        title: "Link salvo",
+        description: "A URL base do Smart Link foi atualizada.",
+      });
+    } catch (error) {
+      console.error("Error saving smart link URL:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível salvar a URL.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingSmartLinkUrl(false);
+    }
   };
 
   const fetchPlans = async () => {
@@ -4016,6 +4067,53 @@ const AdminDashboardPage = () => {
                     checked={adminSettings.telegram_groups_enabled}
                     onCheckedChange={(checked) => updateSetting("telegram_groups_enabled", checked)}
                   />
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Smart Link URL Configuration */}
+            <div className="mt-8 space-y-4">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Share2 className="w-5 h-5" />
+                Configuração de Smart Links
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Configure a URL base que os leads receberão ao clicar nos Smart Links. Se deixar vazio, será usado o domínio padrão da plataforma.
+              </p>
+              
+              <Card className="border-dashed">
+                <CardContent className="py-4 space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="smartLinkBaseUrl">URL Base do Smart Link</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="smartLinkBaseUrl"
+                        value={smartLinkBaseUrlInput}
+                        onChange={(e) => setSmartLinkBaseUrlInput(e.target.value)}
+                        placeholder="https://seudominio.com.br"
+                        className="flex-1"
+                      />
+                      <Button 
+                        onClick={handleSaveSmartLinkUrl}
+                        disabled={isSavingSmartLinkUrl || smartLinkBaseUrlInput === smartLinkBaseUrl}
+                        className="telegram-gradient text-white"
+                      >
+                        {isSavingSmartLinkUrl ? (
+                          <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />Salvando...</>
+                        ) : "Salvar"}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Exemplo: https://seudominio.com.br → Os leads verão links como https://seudominio.com.br/@slug
+                    </p>
+                    {smartLinkBaseUrl && (
+                      <div className="flex items-center gap-2 mt-2">
+                        <Badge variant="outline" className="text-xs">
+                          URL atual: {smartLinkBaseUrl}
+                        </Badge>
+                      </div>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             </div>
