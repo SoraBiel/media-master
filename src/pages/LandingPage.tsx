@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, CheckCircle2, Zap, TrendingUp, Shield, Users, BarChart3, Clock, MessageCircle, Star, ChevronRight, DollarSign, Target, Headphones, Gift, Rocket, Check, Crown, Building2, Sparkles, Plus, Bot, Play, Pause } from "lucide-react";
-const WHATSAPP_NUMBER = "5562981234567";
+const WHATSAPP_NUMBER = "556282123402";
 const WHATSAPP_MESSAGE = "Olá! Quero começar a vender na Nexo";
 const LandingPage = () => {
   const openWhatsApp = () => {
