@@ -253,65 +253,20 @@ const AdminReferralsPanel = () => {
           />
         </div>
       </div>
-
-      {/* Stats Cards */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-primary/15 flex items-center justify-center">
-                <Users className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{totalIndicadores}</p>
-                <p className="text-xs text-muted-foreground">Indicadores</p>
-              </div>
+      {/* Stats Card - Only Indicadores count */}
+      <Card className="max-w-xs">
+        <CardContent className="pt-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-primary/15 flex items-center justify-center">
+              <Users className="w-5 h-5 text-primary" />
             </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-blue-500/15 flex items-center justify-center">
-                <DollarSign className="w-5 h-5 text-blue-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{formatPrice(totalCommissions)}</p>
-                <p className="text-xs text-muted-foreground">Total Comissões</p>
-              </div>
+            <div>
+              <p className="text-2xl font-bold">{totalIndicadores}</p>
+              <p className="text-xs text-muted-foreground">Indicadores</p>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-warning/15 flex items-center justify-center">
-                <Clock className="w-5 h-5 text-warning" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{formatPrice(pendingCommissions)}</p>
-                <p className="text-xs text-muted-foreground">Pendentes</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-success/15 flex items-center justify-center">
-                <CheckCircle className="w-5 h-5 text-success" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{formatPrice(paidCommissions)}</p>
-                <p className="text-xs text-muted-foreground">Pagas</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Tabs */}
       <Tabs defaultValue="indicadores" className="space-y-4">
