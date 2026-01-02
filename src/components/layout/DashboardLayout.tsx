@@ -184,7 +184,7 @@ const DashboardLayout = ({
       path: "/indicador"
     }
   ];
-  const allNavItems = [...navItems, ...(isIndicador ? indicadorItems : []), ...(isVendor || isAdmin ? vendorItems : []), ...(isAdmin ? adminItems : [])];
+  const allNavItems = [...navItems, ...((isIndicador || isAdmin) ? indicadorItems : []), ...(isVendor || isAdmin ? vendorItems : []), ...(isAdmin ? adminItems : [])];
   const handleSignOut = async () => {
     await signOut();
     navigate("/login");
