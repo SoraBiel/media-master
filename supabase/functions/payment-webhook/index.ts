@@ -262,6 +262,123 @@ serve(async (req) => {
             console.log(`New subscription created: ${newSub?.id}, expires: ${expiresAt.toISOString()}`);
           }
         }
+
+        // === REFERRAL COMMISSION LOGIC ===
+        // Check if this is the user's first subscription payment
+        const { data: previousPaidSubs, error: prevSubsError } = await supabaseClient
+          .from("transactions")
+          .select("id")
+          .eq("user_id", transaction.user_id)
+          .eq("product_type", "subscription")
+          .eq("status", "paid")
+          .neq("id", transaction.id);
+
+        if (prevSubsError) {
+          console.error("Error checking previous subscriptions:", prevSubsError);
+        }
+
+        const isFirstPlanPurchase = !previousPaidSubs || previousPaidSubs.length === 0;
+        console.log(`Is first plan purchase: ${isFirstPlanPurchase}`);
+
+        if (isFirstPlanPurchase) {
+          // Check if user was referred
+          const { data: referral, error: refError } = await supabaseClient
+            .from("referrals")
+            .select("id, referrer_id, referral_code, status")
+            .eq("referred_id", transaction.user_id)
+            .maybeSingle();
+
+          if (refError) {
+            console.error("Error checking referral:", refError);
+          }
+
+          if (referral) {
+            console.log(`User was referred by: ${referral.referrer_id}`);
+
+            // Check if referrer has "indicador" role
+            const { data: referrerRole } = await supabaseClient
+              .from("user_roles")
+              .select("id")
+              .eq("user_id", referral.referrer_id)
+              .eq("role", "indicador")
+              .maybeSingle();
+
+            if (referrerRole) {
+              console.log("Referrer has indicador role, calculating commission...");
+
+              // Get custom commission for this referrer, or use default
+              let commissionPercent = 20; // Default
+
+              const { data: customCommission } = await supabaseClient
+                .from("user_referral_commissions")
+                .select("commission_percent")
+                .eq("user_id", referral.referrer_id)
+                .maybeSingle();
+
+              if (customCommission) {
+                commissionPercent = Number(customCommission.commission_percent);
+                console.log(`Using custom commission: ${commissionPercent}%`);
+              } else {
+                // Fallback to role-based commission
+                const { data: roleCommission } = await supabaseClient
+                  .from("referral_role_commissions")
+                  .select("commission_percent")
+                  .eq("role_name", "indicador")
+                  .maybeSingle();
+
+                if (roleCommission) {
+                  commissionPercent = Number(roleCommission.commission_percent);
+                  console.log(`Using role commission: ${commissionPercent}%`);
+                }
+              }
+
+              const transactionAmountCents = transaction.amount_cents;
+              const commissionCents = Math.round((transactionAmountCents * commissionPercent) / 100);
+
+              console.log(`Transaction amount: ${transactionAmountCents} cents, Commission: ${commissionCents} cents (${commissionPercent}%)`);
+
+              // Create commission record
+              const { data: newCommission, error: commissionError } = await supabaseClient
+                .from("commissions")
+                .insert({
+                  referral_id: referral.id,
+                  referrer_id: referral.referrer_id,
+                  referred_id: transaction.user_id,
+                  transaction_id: transaction.id,
+                  amount_cents: transactionAmountCents,
+                  commission_percent: commissionPercent,
+                  commission_cents: commissionCents,
+                  status: "pending",
+                })
+                .select()
+                .single();
+
+              if (commissionError) {
+                console.error("Error creating commission:", commissionError);
+              } else {
+                console.log(`Commission created: ${newCommission?.id}, amount: R$ ${(commissionCents / 100).toFixed(2)}`);
+              }
+
+              // Update referral status to "converted"
+              const { error: updateRefError } = await supabaseClient
+                .from("referrals")
+                .update({ status: "converted", updated_at: new Date().toISOString() })
+                .eq("id", referral.id);
+
+              if (updateRefError) {
+                console.error("Error updating referral status:", updateRefError);
+              } else {
+                console.log("Referral status updated to converted");
+              }
+            } else {
+              console.log("Referrer does not have indicador role, skipping commission");
+            }
+          } else {
+            console.log("User was not referred, no commission to create");
+          }
+        } else {
+          console.log("Not first plan purchase, skipping commission");
+        }
       }
     } else if (transaction.product_type === "tiktok_account") {
       console.log(`Processing TikTok account purchase: ${transaction.product_id}`);
@@ -355,7 +472,7 @@ serve(async (req) => {
       if (model?.funnel_json) {
         console.log("Model has funnel_json, importing to buyer's account");
         
-        const funnelData = model.funnel_json;
+        const funnelData = model.funnel_json as any;
         const funnelName = funnelData.name || `Funil - ${model.name}`;
         
         // Create the funnel
@@ -527,6 +644,68 @@ serve(async (req) => {
           console.error("Error creating delivery:", deliveryError);
         } else {
           console.log("Delivery record created for Telegram group");
+        }
+      }
+    } else if (transaction.product_type === "instagram_account") {
+      console.log(`Processing Instagram account purchase: ${transaction.product_id}`);
+      
+      // Get account details for delivery
+      const { data: account } = await supabaseClient
+        .from("instagram_accounts")
+        .select("*")
+        .eq("id", transaction.product_id)
+        .single();
+      
+      // Mark account as sold
+      const { error } = await supabaseClient
+        .from("instagram_accounts")
+        .update({
+          is_sold: true,
+          sold_to_user_id: transaction.user_id,
+          sold_at: new Date().toISOString(),
+        })
+        .eq("id", transaction.product_id);
+
+      if (error) {
+        console.error("Error updating instagram account:", error);
+      } else {
+        console.log(`Instagram account ${transaction.product_id} marked as sold`);
+      }
+
+      // Check if delivery already exists to avoid duplicates
+      const { data: existingInstagramDelivery } = await supabaseClient
+        .from("deliveries")
+        .select("id")
+        .eq("transaction_id", transaction.id)
+        .maybeSingle();
+
+      if (existingInstagramDelivery) {
+        console.log("Delivery already exists for this transaction, skipping");
+      } else {
+        // Create delivery record with deliverable data
+        const deliveryData = account ? {
+          login: account.deliverable_login,
+          password: account.deliverable_password,
+          email: account.deliverable_email,
+          notes: account.deliverable_notes,
+          info: account.deliverable_info,
+        } : {};
+
+        const { error: deliveryError } = await supabaseClient
+          .from("deliveries")
+          .insert({
+            user_id: transaction.user_id,
+            product_type: "instagram_account",
+            product_id: transaction.product_id,
+            transaction_id: transaction.id,
+            delivered_at: new Date().toISOString(),
+            delivery_data: deliveryData,
+          });
+
+        if (deliveryError) {
+          console.error("Error creating delivery:", deliveryError);
+        } else {
+          console.log("Delivery record created for Instagram account");
         }
       }
     }
