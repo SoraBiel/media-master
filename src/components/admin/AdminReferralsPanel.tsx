@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Users,
   DollarSign,
@@ -90,6 +90,37 @@ const AdminReferralsPanel = () => {
   const [roleCommissionPercent, setRoleCommissionPercent] = useState("");
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
   const [commissionDialogOpen, setCommissionDialogOpen] = useState(false);
+
+  // Local settings state for manual save
+  const [localCommissionPercent, setLocalCommissionPercent] = useState<number>(20);
+  const [localCommissionType, setLocalCommissionType] = useState<"first_only" | "recurring">("first_only");
+  const [localCookieDuration, setLocalCookieDuration] = useState<number>(30);
+  const [localReferralBaseUrl, setLocalReferralBaseUrl] = useState<string>("");
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Sync local state with settings when loaded
+  useEffect(() => {
+    if (settings) {
+      setLocalCommissionPercent(settings.default_commission_percent);
+      setLocalCommissionType(settings.commission_type);
+      setLocalCookieDuration(settings.cookie_duration_days);
+      setLocalReferralBaseUrl(settings.referral_base_url || "");
+      setHasUnsavedChanges(false);
+    }
+  }, [settings?.id]);
+
+  const handleSaveSettings = async () => {
+    setIsSaving(true);
+    await updateSettings({
+      default_commission_percent: localCommissionPercent,
+      commission_type: localCommissionType,
+      cookie_duration_days: localCookieDuration,
+      referral_base_url: localReferralBaseUrl || null,
+    });
+    setHasUnsavedChanges(false);
+    setIsSaving(false);
+  };
 
   const formatPrice = (cents: number) => {
     return new Intl.NumberFormat("pt-BR", {
@@ -260,8 +291,13 @@ const AdminReferralsPanel = () => {
           <div className="grid gap-4 md:grid-cols-2">
             {/* Global Settings */}
             <Card>
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-lg">Configurações Globais</CardTitle>
+                {hasUnsavedChanges && (
+                  <Badge variant="outline" className="border-warning text-warning">
+                    Não salvo
+                  </Badge>
+                )}
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
@@ -269,12 +305,11 @@ const AdminReferralsPanel = () => {
                   <div className="flex gap-2">
                     <Input
                       type="number"
-                      value={settings?.default_commission_percent || 20}
-                      onChange={(e) =>
-                        updateSettings({
-                          default_commission_percent: parseFloat(e.target.value) || 20,
-                        })
-                      }
+                      value={localCommissionPercent}
+                      onChange={(e) => {
+                        setLocalCommissionPercent(parseFloat(e.target.value) || 20);
+                        setHasUnsavedChanges(true);
+                      }}
                       className="w-24"
                     />
                     <span className="flex items-center text-muted-foreground">%</span>
@@ -284,10 +319,11 @@ const AdminReferralsPanel = () => {
                 <div className="space-y-2">
                   <Label>Tipo de Comissão</Label>
                   <Select
-                    value={settings?.commission_type || "first_only"}
-                    onValueChange={(value) =>
-                      updateSettings({ commission_type: value as "first_only" | "recurring" })
-                    }
+                    value={localCommissionType}
+                    onValueChange={(value) => {
+                      setLocalCommissionType(value as "first_only" | "recurring");
+                      setHasUnsavedChanges(true);
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -298,7 +334,7 @@ const AdminReferralsPanel = () => {
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground">
-                    {settings?.commission_type === "recurring"
+                    {localCommissionType === "recurring"
                       ? "Comissão gerada em todas as compras do indicado"
                       : "Comissão gerada apenas na primeira compra"}
                   </p>
@@ -308,12 +344,11 @@ const AdminReferralsPanel = () => {
                   <Label>Duração do Cookie (dias)</Label>
                   <Input
                     type="number"
-                    value={settings?.cookie_duration_days || 30}
-                    onChange={(e) =>
-                      updateSettings({
-                        cookie_duration_days: parseInt(e.target.value) || 30,
-                      })
-                    }
+                    value={localCookieDuration}
+                    onChange={(e) => {
+                      setLocalCookieDuration(parseInt(e.target.value) || 30);
+                      setHasUnsavedChanges(true);
+                    }}
                     className="w-24"
                   />
                   <p className="text-xs text-muted-foreground">
@@ -326,17 +361,24 @@ const AdminReferralsPanel = () => {
                   <Input
                     type="url"
                     placeholder="https://nexo.com.br/r"
-                    value={settings?.referral_base_url || ""}
-                    onChange={(e) =>
-                      updateSettings({
-                        referral_base_url: e.target.value || null,
-                      })
-                    }
+                    value={localReferralBaseUrl}
+                    onChange={(e) => {
+                      setLocalReferralBaseUrl(e.target.value);
+                      setHasUnsavedChanges(true);
+                    }}
                   />
                   <p className="text-xs text-muted-foreground">
                     Deixe vazio para usar o domínio atual. Ex: https://nexo.com.br/r
                   </p>
                 </div>
+
+                <Button 
+                  onClick={handleSaveSettings} 
+                  disabled={!hasUnsavedChanges || isSaving}
+                  className="w-full"
+                >
+                  {isSaving ? "Salvando..." : "Salvar Configurações"}
+                </Button>
               </CardContent>
             </Card>
 
