@@ -43,6 +43,8 @@ import {
   Gift,
   ArrowRightLeft,
   Copy,
+  Link,
+  ExternalLink,
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend } from "recharts";
 import { Button } from "@/components/ui/button";
@@ -260,6 +262,18 @@ interface VendorSale {
   vendor_profile?: { email: string; full_name: string | null } | null;
 }
 
+interface SmartLinkPage {
+  id: string;
+  user_id: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  is_active: boolean;
+  total_views: number;
+  created_at: string;
+  user_email?: string;
+}
+
 interface Stats {
   totalUsers: number;
   onlineUsers: number;
@@ -448,6 +462,8 @@ const AdminDashboardPage = () => {
   const [smartLinkBaseUrl, setSmartLinkBaseUrl] = useState("");
   const [smartLinkBaseUrlInput, setSmartLinkBaseUrlInput] = useState("");
   const [isSavingSmartLinkUrl, setIsSavingSmartLinkUrl] = useState(false);
+  const [smartLinkPages, setSmartLinkPages] = useState<SmartLinkPage[]>([]);
+  const [smartLinkSearchQuery, setSmartLinkSearchQuery] = useState("");
 
   useEffect(() => {
     fetchAllData();
@@ -488,6 +504,7 @@ const AdminDashboardPage = () => {
       fetchVendorSales(),
       fetchResellerProducts(),
       fetchSmartLinkBaseUrl(),
+      fetchSmartLinkPages(),
     ]);
   };
 
@@ -535,6 +552,64 @@ const AdminDashboardPage = () => {
       setIsSavingSmartLinkUrl(false);
     }
   };
+
+  const fetchSmartLinkPages = async () => {
+    const { data } = await supabase
+      .from("smart_link_pages")
+      .select("id, user_id, slug, title, description, is_active, total_views, created_at")
+      .order("created_at", { ascending: false });
+    
+    if (data && data.length > 0) {
+      const userIds = [...new Set(data.map(p => p.user_id))];
+      const { data: profilesData } = await supabase
+        .from("profiles")
+        .select("user_id, email")
+        .in("user_id", userIds);
+      
+      const emailMap = new Map(profilesData?.map(p => [p.user_id, p.email]));
+      const enriched = data.map(page => ({
+        ...page,
+        user_email: emailMap.get(page.user_id) || "Desconhecido"
+      }));
+      setSmartLinkPages(enriched);
+    } else {
+      setSmartLinkPages([]);
+    }
+  };
+
+  const handleToggleSmartLinkStatus = async (pageId: string, isActive: boolean) => {
+    const { error } = await supabase
+      .from("smart_link_pages")
+      .update({ is_active: !isActive })
+      .eq("id", pageId);
+    
+    if (error) {
+      toast({ title: "Erro", description: "Não foi possível atualizar o status.", variant: "destructive" });
+    } else {
+      toast({ title: "Sucesso", description: `Página ${!isActive ? "ativada" : "desativada"}.` });
+      fetchSmartLinkPages();
+    }
+  };
+
+  const handleDeleteSmartLink = async (pageId: string) => {
+    const { error } = await supabase
+      .from("smart_link_pages")
+      .delete()
+      .eq("id", pageId);
+    
+    if (error) {
+      toast({ title: "Erro", description: "Não foi possível excluir a página.", variant: "destructive" });
+    } else {
+      toast({ title: "Sucesso", description: "Página excluída." });
+      fetchSmartLinkPages();
+    }
+  };
+
+  const filteredSmartLinkPages = smartLinkPages.filter(page =>
+    page.title.toLowerCase().includes(smartLinkSearchQuery.toLowerCase()) ||
+    page.slug.toLowerCase().includes(smartLinkSearchQuery.toLowerCase()) ||
+    (page.user_email && page.user_email.toLowerCase().includes(smartLinkSearchQuery.toLowerCase()))
+  );
 
   const fetchPlans = async () => {
     const { data } = await supabase
@@ -3909,13 +3984,14 @@ const AdminDashboardPage = () => {
             <div className="space-y-2">
               <h3 className="text-lg font-semibold flex items-center gap-2">
                 <Share2 className="w-5 h-5" />
-                Configuração de Smart Links
+                Gerenciamento de Smart Links
               </h3>
               <p className="text-sm text-muted-foreground">
-                Configure a URL base que os leads receberão ao clicar nos Smart Links. Se deixar vazio, será usado o domínio padrão da plataforma.
+                Configure a URL base e gerencie todas as páginas de Smart Links dos usuários.
               </p>
             </div>
             
+            {/* URL Base Configuration */}
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">URL Base do Smart Link</CardTitle>
@@ -3952,6 +4028,114 @@ const AdminDashboardPage = () => {
                     </div>
                   )}
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Smart Link Pages List */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Link className="w-4 h-4" />
+                    Páginas de Smart Links ({smartLinkPages.length})
+                  </CardTitle>
+                  <Input
+                    placeholder="Buscar por título, slug ou email..."
+                    value={smartLinkSearchQuery}
+                    onChange={(e) => setSmartLinkSearchQuery(e.target.value)}
+                    className="max-w-xs"
+                  />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className="h-[400px]">
+                  {filteredSmartLinkPages.length === 0 ? (
+                    <div className="text-center text-muted-foreground py-8">
+                      {smartLinkSearchQuery ? "Nenhuma página encontrada" : "Nenhuma página de Smart Link criada"}
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Título</TableHead>
+                          <TableHead>Slug</TableHead>
+                          <TableHead>Usuário</TableHead>
+                          <TableHead className="text-center">Views</TableHead>
+                          <TableHead className="text-center">Status</TableHead>
+                          <TableHead>Criado em</TableHead>
+                          <TableHead className="text-right">Ações</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredSmartLinkPages.map((page) => (
+                          <TableRow key={page.id}>
+                            <TableCell className="font-medium">{page.title}</TableCell>
+                            <TableCell>
+                              <code className="text-xs bg-secondary px-1.5 py-0.5 rounded">@{page.slug}</code>
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">{page.user_email}</TableCell>
+                            <TableCell className="text-center">
+                              <Badge variant="secondary">{page.total_views}</Badge>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <Badge variant={page.is_active ? "default" : "secondary"}>
+                                {page.is_active ? "Ativo" : "Inativo"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {format(new Date(page.created_at), "dd/MM/yy", { locale: ptBR })}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon">
+                                    <MoreVertical className="w-4 h-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => window.open(`/@${page.slug}`, "_blank")}>
+                                    <ExternalLink className="w-4 h-4 mr-2" />
+                                    Ver Página
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleToggleSmartLinkStatus(page.id, page.is_active)}>
+                                    {page.is_active ? (
+                                      <><Ban className="w-4 h-4 mr-2" />Desativar</>
+                                    ) : (
+                                      <><CheckCircle2 className="w-4 h-4 mr-2" />Ativar</>
+                                    )}
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">
+                                        <Trash2 className="w-4 h-4 mr-2" />
+                                        Excluir
+                                      </DropdownMenuItem>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Excluir Smart Link?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          Esta ação é irreversível. A página "@{page.slug}" será excluída permanentemente.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => handleDeleteSmartLink(page.id)} className="bg-destructive text-destructive-foreground">
+                                          Excluir
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </ScrollArea>
               </CardContent>
             </Card>
           </TabsContent>
