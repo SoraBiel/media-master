@@ -36,6 +36,7 @@ import PublicationAutomationPage from "./pages/PublicationAutomationPage";
 import SmartLinksPage from "./pages/SmartLinksPage";
 import SmartLinkEditorPage from "./pages/SmartLinkEditorPage";
 import SmartLinkPublicPage from "./pages/SmartLinkPublicPage";
+import ReferralsPage from "./pages/ReferralsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -112,6 +113,7 @@ const App = () => (
                 </ProtectedRoute>
               } />
               <Route path="/@:slug" element={<SmartLinkPublicPage />} />
+              <Route path="/referrals" element={<ProtectedRoute><ReferralsPage /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
             <BackgroundUploadIndicator />

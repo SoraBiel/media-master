@@ -40,6 +40,7 @@ import {
   Bell,
   Share2,
   Edit2,
+  Gift,
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend } from "recharts";
 import { Button } from "@/components/ui/button";
@@ -98,6 +99,7 @@ import { AdminNotificationsPanel } from "@/components/admin/AdminNotificationsPa
 import { AdminBannersPanel } from "@/components/admin/AdminBannersPanel";
 import AdminAutomationPanel from "@/components/admin/AdminAutomationPanel";
 import { BulkMediaUploader } from "@/components/admin/BulkMediaUploader";
+import AdminReferralsPanel from "@/components/admin/AdminReferralsPanel";
 import { useAdminSettings, getSettingLabel } from "@/hooks/useAdminSettings";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -1682,6 +1684,10 @@ const AdminDashboardPage = () => {
             <TabsTrigger value="automation" className="flex items-center gap-1">
               <Share2 className="h-4 w-4" />
               Automação
+            </TabsTrigger>
+            <TabsTrigger value="referrals" className="flex items-center gap-1">
+              <Gift className="h-4 w-4" />
+              Indique & Ganhe
             </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center gap-1">
               <Settings className="h-4 w-4" />
@@ -3611,6 +3617,11 @@ const AdminDashboardPage = () => {
           {/* Automation Tab */}
           <TabsContent value="automation" className="space-y-6">
             <AdminAutomationPanel />
+          </TabsContent>
+
+          {/* Referrals Tab */}
+          <TabsContent value="referrals" className="space-y-6">
+            <AdminReferralsPanel />
           </TabsContent>
 
           {/* Settings Tab - All Feature Toggles */}
