@@ -68,7 +68,7 @@ import {
 
 const ITEMS_PER_PAGE = 10;
 
-const AVAILABLE_ROLES = ["admin", "user", "vendor", "moderator"];
+const AVAILABLE_ROLES = ["admin", "user", "vendor", "vendor_instagram", "vendor_tiktok", "vendor_model", "indicador", "moderator"];
 
 const AdminReferralsPanel = () => {
   const {
