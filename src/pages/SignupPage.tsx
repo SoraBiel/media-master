@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,7 +9,11 @@ import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 
+const REFERRAL_COOKIE_KEY = "nexo_referral_code";
+const COOKIE_DURATION_DAYS = 30;
+
 const SignupPage = () => {
+  const [searchParams] = useSearchParams();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -20,9 +24,31 @@ const SignupPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [referralCode, setReferralCode] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { signUp, user, isLoading: authLoading } = useAuth();
+
+  // Capture referral code from URL and store in localStorage
+  useEffect(() => {
+    const refParam = searchParams.get("ref");
+    if (refParam) {
+      localStorage.setItem(REFERRAL_COOKIE_KEY, refParam);
+      localStorage.setItem(`${REFERRAL_COOKIE_KEY}_expires`, String(Date.now() + COOKIE_DURATION_DAYS * 24 * 60 * 60 * 1000));
+      setReferralCode(refParam);
+    } else {
+      // Check if we have a stored referral code
+      const storedCode = localStorage.getItem(REFERRAL_COOKIE_KEY);
+      const expiresAt = localStorage.getItem(`${REFERRAL_COOKIE_KEY}_expires`);
+      if (storedCode && expiresAt && Date.now() < parseInt(expiresAt)) {
+        setReferralCode(storedCode);
+      } else {
+        // Clear expired referral
+        localStorage.removeItem(REFERRAL_COOKIE_KEY);
+        localStorage.removeItem(`${REFERRAL_COOKIE_KEY}_expires`);
+      }
+    }
+  }, [searchParams]);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -76,7 +102,7 @@ const SignupPage = () => {
 
     setIsLoading(true);
     
-    const { error } = await signUp(formData.email, formData.password, formData.name, formData.phone);
+    const { error } = await signUp(formData.email, formData.password, formData.name, formData.phone, referralCode || undefined);
     
     if (error) {
       setIsLoading(false);
@@ -91,6 +117,10 @@ const SignupPage = () => {
       });
       return;
     }
+    
+    // Clear referral code from localStorage after successful signup
+    localStorage.removeItem(REFERRAL_COOKIE_KEY);
+    localStorage.removeItem(`${REFERRAL_COOKIE_KEY}_expires`);
     
     setIsLoading(false);
     toast({
