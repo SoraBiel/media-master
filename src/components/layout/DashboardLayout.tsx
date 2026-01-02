@@ -1,7 +1,7 @@
 import { ReactNode, useState, useEffect, useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Send, LayoutDashboard, CreditCard, MessageCircle, Megaphone, Settings, LogOut, ChevronLeft, ChevronRight, Bell, BellOff, User, Shield, Menu, Crown, Headphones, GitBranch, MessageSquare, Plug, Wallet, Users, ShoppingBag, Store, Package, Share2, Link2, Gift } from "lucide-react";
+import { Send, LayoutDashboard, CreditCard, MessageCircle, Megaphone, Settings, LogOut, ChevronLeft, ChevronRight, Bell, BellOff, User, Shield, Menu, Crown, Headphones, GitBranch, MessageSquare, Plug, Wallet, Users, ShoppingBag, Store, Package, Share2, Link2, Gift, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/AuthContext";
@@ -25,6 +25,7 @@ const DashboardLayout = ({
     signOut,
     isAdmin,
     isVendor,
+    isIndicador,
     profile
   } = useAuth();
   const {
@@ -175,7 +176,14 @@ const DashboardLayout = ({
     label: "Revendedor",
     path: "/reseller"
   }];
-  const allNavItems = [...navItems, ...(isVendor || isAdmin ? vendorItems : []), ...(isAdmin ? adminItems : [])];
+
+  // Indicador-only items
+  const indicadorItems = [{
+    icon: TrendingUp,
+    label: "Painel Indicador",
+    path: "/indicador"
+  }];
+  const allNavItems = [...navItems, ...(isIndicador ? indicadorItems : []), ...(isVendor || isAdmin ? vendorItems : []), ...(isAdmin ? adminItems : [])];
   const handleSignOut = async () => {
     await signOut();
     navigate("/login");
