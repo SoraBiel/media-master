@@ -2,18 +2,15 @@ import { useState, useEffect } from "react";
 import {
   Users,
   DollarSign,
-  Percent,
   Settings,
-  Plus,
-  Trash2,
   CheckCircle,
-  AlertCircle,
-  Gift,
   Clock,
-  History,
+  ChevronDown,
+  ChevronUp,
+  UserCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -35,61 +32,39 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { useReferrals } from "@/hooks/useReferrals";
+import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
 
-const ITEMS_PER_PAGE = 10;
-
-const AVAILABLE_ROLES = ["admin", "user", "vendor", "vendor_instagram", "vendor_tiktok", "vendor_model", "indicador", "moderator"];
+interface Indicador {
+  user_id: string;
+  email: string;
+  full_name: string | null;
+  commission_percent: number | null;
+  referrals_count: number;
+  converted_count: number;
+  total_commission: number;
+  pending_commission: number;
+  paid_commission: number;
+}
 
 const AdminReferralsPanel = () => {
   const {
     settings,
-    referrals,
     commissions,
-    allowedRoles,
-    roleCommissions,
     isLoading,
     updateSettings,
-    addAllowedRole,
-    removeAllowedRole,
-    setRoleCommission,
     markCommissionAsPaid,
   } = useReferrals();
 
-  const [commissionPage, setCommissionPage] = useState(1);
-  const [selectedRole, setSelectedRole] = useState("");
-  const [roleCommissionPercent, setRoleCommissionPercent] = useState("");
-  const [roleDialogOpen, setRoleDialogOpen] = useState(false);
-  const [commissionDialogOpen, setCommissionDialogOpen] = useState(false);
+  const [indicadores, setIndicadores] = useState<Indicador[]>([]);
+  const [expandedIndicador, setExpandedIndicador] = useState<string | null>(null);
+  const [loadingIndicadores, setLoadingIndicadores] = useState(true);
 
   // Local settings state for manual save
   const [localCommissionPercent, setLocalCommissionPercent] = useState<number>(20);
@@ -109,6 +84,77 @@ const AdminReferralsPanel = () => {
       setHasUnsavedChanges(false);
     }
   }, [settings?.id]);
+
+  // Fetch indicadores
+  useEffect(() => {
+    const fetchIndicadores = async () => {
+      setLoadingIndicadores(true);
+      
+      // Get users with indicador role
+      const { data: indicadorRoles } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "indicador");
+
+      if (!indicadorRoles || indicadorRoles.length === 0) {
+        setIndicadores([]);
+        setLoadingIndicadores(false);
+        return;
+      }
+
+      const userIds = indicadorRoles.map(r => r.user_id);
+
+      // Get profiles
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, email, full_name")
+        .in("user_id", userIds);
+
+      // Get custom commissions
+      const { data: customCommissions } = await supabase
+        .from("user_referral_commissions")
+        .select("user_id, commission_percent")
+        .in("user_id", userIds);
+
+      // Get referrals for each indicador
+      const { data: referrals } = await supabase
+        .from("referrals")
+        .select("referrer_id, status")
+        .in("referrer_id", userIds);
+
+      // Get commissions for each indicador
+      const { data: allCommissions } = await supabase
+        .from("commissions")
+        .select("referrer_id, commission_cents, status")
+        .in("referrer_id", userIds);
+
+      const profileMap = new Map(profiles?.map(p => [p.user_id, p]));
+      const commissionMap = new Map(customCommissions?.map(c => [c.user_id, c.commission_percent]));
+
+      const indicadoresList: Indicador[] = userIds.map(userId => {
+        const profile = profileMap.get(userId);
+        const userReferrals = referrals?.filter(r => r.referrer_id === userId) || [];
+        const userCommissions = allCommissions?.filter(c => c.referrer_id === userId) || [];
+
+        return {
+          user_id: userId,
+          email: profile?.email || "",
+          full_name: profile?.full_name || null,
+          commission_percent: commissionMap.get(userId) || null,
+          referrals_count: userReferrals.length,
+          converted_count: userReferrals.filter(r => r.status === "converted").length,
+          total_commission: userCommissions.reduce((sum, c) => sum + c.commission_cents, 0),
+          pending_commission: userCommissions.filter(c => c.status === "pending").reduce((sum, c) => sum + c.commission_cents, 0),
+          paid_commission: userCommissions.filter(c => c.status === "paid").reduce((sum, c) => sum + c.commission_cents, 0),
+        };
+      });
+
+      setIndicadores(indicadoresList);
+      setLoadingIndicadores(false);
+    };
+
+    fetchIndicadores();
+  }, [commissions]);
 
   const handleSaveSettings = async () => {
     setIsSaving(true);
@@ -133,79 +179,37 @@ const AdminReferralsPanel = () => {
     return format(new Date(dateString), "dd/MM/yyyy HH:mm", { locale: ptBR });
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "paid":
-        return <Badge className="bg-success/15 text-success border-success/30">Paga</Badge>;
-      case "pending":
-        return <Badge variant="outline" className="border-warning text-warning">Pendente</Badge>;
-      case "cancelled":
-        return <Badge variant="outline" className="border-destructive text-destructive">Cancelada</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
-  };
-
-  const handleAddRole = async () => {
-    if (selectedRole) {
-      await addAllowedRole(selectedRole);
-      setSelectedRole("");
-      setRoleDialogOpen(false);
-    }
-  };
-
-  const handleSetRoleCommission = async () => {
-    if (selectedRole && roleCommissionPercent) {
-      await setRoleCommission(selectedRole, parseFloat(roleCommissionPercent));
-      setSelectedRole("");
-      setRoleCommissionPercent("");
-      setCommissionDialogOpen(false);
-    }
-  };
-
   // Stats
-  const totalCommissions = commissions.reduce((sum, c) => sum + c.commission_cents, 0);
-  const pendingCommissions = commissions
-    .filter((c) => c.status === "pending")
-    .reduce((sum, c) => sum + c.commission_cents, 0);
-  const paidCommissions = commissions
-    .filter((c) => c.status === "paid")
-    .reduce((sum, c) => sum + c.commission_cents, 0);
+  const totalIndicadores = indicadores.length;
+  const totalCommissions = indicadores.reduce((sum, i) => sum + i.total_commission, 0);
+  const pendingCommissions = indicadores.reduce((sum, i) => sum + i.pending_commission, 0);
+  const paidCommissions = indicadores.reduce((sum, i) => sum + i.paid_commission, 0);
 
-  // Pagination
-  const paginatedCommissions = commissions.slice(
-    (commissionPage - 1) * ITEMS_PER_PAGE,
-    commissionPage * ITEMS_PER_PAGE
-  );
-  const totalPages = Math.ceil(commissions.length / ITEMS_PER_PAGE);
+  // Get commissions for a specific indicador
+  const getIndicadorCommissions = (userId: string) => {
+    return commissions.filter(c => c.referrer_id === userId);
+  };
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" />
+        <div className="animate-pulse text-muted-foreground">Carregando...</div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* Header with Toggle */}
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold flex items-center gap-2">
-            <Gift className="w-5 h-5 text-primary" />
-            Indique & Ganhe
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Gerencie o programa de indicações
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-muted-foreground">
-            {settings?.is_enabled ? "Ativado" : "Desativado"}
-          </span>
+        <h2 className="text-xl font-semibold flex items-center gap-2">
+          <UserCheck className="w-5 h-5 text-primary" />
+          Sistema de Indicadores
+        </h2>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Ativo</span>
           <Switch
-            checked={settings?.is_enabled || false}
+            checked={settings?.is_enabled}
             onCheckedChange={(checked) => updateSettings({ is_enabled: checked })}
           />
         </div>
@@ -216,12 +220,12 @@ const AdminReferralsPanel = () => {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-blue-500/15 flex items-center justify-center">
-                <Users className="w-5 h-5 text-blue-500" />
+              <div className="w-10 h-10 rounded-lg bg-primary/15 flex items-center justify-center">
+                <Users className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{referrals.length}</p>
-                <p className="text-xs text-muted-foreground">Total Indicações</p>
+                <p className="text-2xl font-bold">{totalIndicadores}</p>
+                <p className="text-xs text-muted-foreground">Indicadores</p>
               </div>
             </div>
           </CardContent>
@@ -230,8 +234,8 @@ const AdminReferralsPanel = () => {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-primary/15 flex items-center justify-center">
-                <DollarSign className="w-5 h-5 text-primary" />
+              <div className="w-10 h-10 rounded-lg bg-blue-500/15 flex items-center justify-center">
+                <DollarSign className="w-5 h-5 text-blue-500" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{formatPrice(totalCommissions)}</p>
@@ -270,36 +274,166 @@ const AdminReferralsPanel = () => {
         </Card>
       </div>
 
-      <Tabs defaultValue="settings" className="space-y-4">
+      {/* Tabs */}
+      <Tabs defaultValue="indicadores" className="space-y-4">
         <TabsList>
+          <TabsTrigger value="indicadores">
+            <Users className="w-4 h-4 mr-2" />
+            Indicadores
+          </TabsTrigger>
           <TabsTrigger value="settings">
             <Settings className="w-4 h-4 mr-2" />
             Configurações
           </TabsTrigger>
-          <TabsTrigger value="commissions">
-            <DollarSign className="w-4 h-4 mr-2" />
-            Comissões
-          </TabsTrigger>
-          <TabsTrigger value="referrals">
-            <Users className="w-4 h-4 mr-2" />
-            Indicações
-          </TabsTrigger>
         </TabsList>
+
+        {/* Indicadores Tab */}
+        <TabsContent value="indicadores" className="space-y-4">
+          {loadingIndicadores ? (
+            <div className="text-center py-12 text-muted-foreground">
+              Carregando indicadores...
+            </div>
+          ) : indicadores.length === 0 ? (
+            <Card>
+              <CardContent className="py-12">
+                <div className="text-center text-muted-foreground">
+                  <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>Nenhum indicador cadastrado</p>
+                  <p className="text-sm">Atribua o cargo "Indicador" a usuários no painel de usuários</p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {indicadores.map((indicador) => (
+                <Collapsible
+                  key={indicador.user_id}
+                  open={expandedIndicador === indicador.user_id}
+                  onOpenChange={(open) => setExpandedIndicador(open ? indicador.user_id : null)}
+                >
+                  <Card>
+                    <CollapsibleTrigger asChild>
+                      <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-full bg-primary/15 flex items-center justify-center">
+                              <Users className="w-5 h-5 text-primary" />
+                            </div>
+                            <div>
+                              <CardTitle className="text-base">
+                                {indicador.full_name || indicador.email}
+                              </CardTitle>
+                              <p className="text-sm text-muted-foreground">{indicador.email}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-6">
+                            <div className="text-right">
+                              <p className="text-sm font-medium">
+                                Comissão: {indicador.commission_percent || settings?.default_commission_percent || 20}%
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {indicador.referrals_count} indicados • {indicador.converted_count} convertidos
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-lg font-bold text-success">
+                                {formatPrice(indicador.total_commission)}
+                              </p>
+                              {indicador.pending_commission > 0 && (
+                                <Badge variant="outline" className="text-warning border-warning text-xs">
+                                  {formatPrice(indicador.pending_commission)} pendente
+                                </Badge>
+                              )}
+                            </div>
+                            {expandedIndicador === indicador.user_id ? (
+                              <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                            ) : (
+                              <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                            )}
+                          </div>
+                        </div>
+                      </CardHeader>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <CardContent className="pt-0">
+                        <div className="border-t pt-4">
+                          <h4 className="font-medium mb-3">Histórico de Comissões</h4>
+                          {getIndicadorCommissions(indicador.user_id).length === 0 ? (
+                            <p className="text-sm text-muted-foreground text-center py-4">
+                              Nenhuma comissão gerada ainda
+                            </p>
+                          ) : (
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Indicado</TableHead>
+                                  <TableHead>Valor da Compra</TableHead>
+                                  <TableHead>Comissão</TableHead>
+                                  <TableHead>Status</TableHead>
+                                  <TableHead>Data</TableHead>
+                                  <TableHead></TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {getIndicadorCommissions(indicador.user_id).map((commission) => (
+                                  <TableRow key={commission.id}>
+                                    <TableCell>
+                                      {commission.referred_profile?.full_name || commission.referred_profile?.email || "—"}
+                                    </TableCell>
+                                    <TableCell>{formatPrice(commission.amount_cents)}</TableCell>
+                                    <TableCell className="font-semibold text-success">
+                                      {formatPrice(commission.commission_cents)} ({commission.commission_percent}%)
+                                    </TableCell>
+                                    <TableCell>
+                                      {commission.status === "paid" ? (
+                                        <Badge className="bg-success/15 text-success border-success/30">Paga</Badge>
+                                      ) : (
+                                        <Badge variant="outline" className="border-warning text-warning">Pendente</Badge>
+                                      )}
+                                    </TableCell>
+                                    <TableCell className="text-sm text-muted-foreground">
+                                      {formatDate(commission.created_at)}
+                                    </TableCell>
+                                    <TableCell>
+                                      {commission.status === "pending" && (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => markCommissionAsPaid(commission.id)}
+                                        >
+                                          <CheckCircle className="w-4 h-4 mr-1" />
+                                          Marcar Paga
+                                        </Button>
+                                      )}
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          )}
+                        </div>
+                      </CardContent>
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
+              ))}
+            </div>
+          )}
+        </TabsContent>
 
         {/* Settings Tab */}
         <TabsContent value="settings" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            {/* Global Settings */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-lg">Configurações Globais</CardTitle>
-                {hasUnsavedChanges && (
-                  <Badge variant="outline" className="border-warning text-warning">
-                    Não salvo
-                  </Badge>
-                )}
-              </CardHeader>
-              <CardContent className="space-y-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-lg">Configurações Globais</CardTitle>
+              {hasUnsavedChanges && (
+                <Badge variant="outline" className="border-warning text-warning">
+                  Não salvo
+                </Badge>
+              )}
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Comissão Padrão (%)</Label>
                   <div className="flex gap-2">
@@ -314,6 +448,9 @@ const AdminReferralsPanel = () => {
                     />
                     <span className="flex items-center text-muted-foreground">%</span>
                   </div>
+                  <p className="text-xs text-muted-foreground">
+                    Usado quando o indicador não tem comissão personalizada
+                  </p>
                 </div>
 
                 <div className="space-y-2">
@@ -333,11 +470,6 @@ const AdminReferralsPanel = () => {
                       <SelectItem value="recurring">Recorrente</SelectItem>
                     </SelectContent>
                   </Select>
-                  <p className="text-xs text-muted-foreground">
-                    {localCommissionType === "recurring"
-                      ? "Comissão gerada em todas as compras do indicado"
-                      : "Comissão gerada apenas na primeira compra"}
-                  </p>
                 </div>
 
                 <div className="space-y-2">
@@ -352,12 +484,12 @@ const AdminReferralsPanel = () => {
                     className="w-24"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Tempo que a indicação fica vinculada ao usuário
+                    Tempo que a indicação fica vinculada
                   </p>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>URL Base para Links de Indicação</Label>
+                  <Label>URL Base para Links</Label>
                   <Input
                     type="url"
                     placeholder="https://nexo.com.br/r"
@@ -368,389 +500,18 @@ const AdminReferralsPanel = () => {
                     }}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Deixe vazio para usar o domínio atual. Ex: https://nexo.com.br/r
+                    Deixe vazio para usar o domínio atual
                   </p>
                 </div>
-
-                <Button 
-                  onClick={handleSaveSettings} 
-                  disabled={!hasUnsavedChanges || isSaving}
-                  className="w-full"
-                >
-                  {isSaving ? "Salvando..." : "Salvar Configurações"}
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Allowed Roles */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="text-lg">Cargos Autorizados</CardTitle>
-                  <CardDescription>
-                    Cargos que podem acessar o sistema de indicação
-                  </CardDescription>
-                </div>
-                <Dialog open={roleDialogOpen} onOpenChange={setRoleDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="sm">
-                      <Plus className="w-4 h-4 mr-1" />
-                      Adicionar
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Adicionar Cargo</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                      <div className="space-y-2">
-                        <Label>Cargo</Label>
-                        <Select value={selectedRole} onValueChange={setSelectedRole}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione um cargo" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {AVAILABLE_ROLES.filter(
-                              (r) => !allowedRoles.some((ar) => ar.role_name === r)
-                            ).map((role) => (
-                              <SelectItem key={role} value={role}>
-                                {role.charAt(0).toUpperCase() + role.slice(1)}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button variant="outline" onClick={() => setRoleDialogOpen(false)}>
-                        Cancelar
-                      </Button>
-                      <Button onClick={handleAddRole} disabled={!selectedRole}>
-                        Adicionar
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </CardHeader>
-              <CardContent>
-                {allowedRoles.length === 0 ? (
-                  <div className="text-center py-6 text-muted-foreground">
-                    <AlertCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">Nenhum cargo autorizado</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {allowedRoles.map((role) => (
-                      <div
-                        key={role.id}
-                        className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
-                      >
-                        <span className="font-medium">
-                          {role.role_name.charAt(0).toUpperCase() + role.role_name.slice(1)}
-                        </span>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Remover Cargo</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Tem certeza que deseja remover este cargo? Usuários com este cargo
-                                perderão acesso ao sistema de indicação.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                onClick={() => removeAllowedRole(role.id)}
-                              >
-                                Remover
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Role-specific Commissions */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="text-lg">Comissões por Cargo</CardTitle>
-                <CardDescription>
-                  Defina porcentagens diferentes para cada cargo
-                </CardDescription>
               </div>
-              <Dialog open={commissionDialogOpen} onOpenChange={setCommissionDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm">
-                    <Plus className="w-4 h-4 mr-1" />
-                    Definir
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Definir Comissão por Cargo</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <Label>Cargo</Label>
-                      <Select value={selectedRole} onValueChange={setSelectedRole}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione um cargo" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {AVAILABLE_ROLES.map((role) => (
-                            <SelectItem key={role} value={role}>
-                              {role.charAt(0).toUpperCase() + role.slice(1)}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Comissão (%)</Label>
-                      <Input
-                        type="number"
-                        placeholder="Ex: 25"
-                        value={roleCommissionPercent}
-                        onChange={(e) => setRoleCommissionPercent(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setCommissionDialogOpen(false)}>
-                      Cancelar
-                    </Button>
-                    <Button
-                      onClick={handleSetRoleCommission}
-                      disabled={!selectedRole || !roleCommissionPercent}
-                    >
-                      Salvar
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </CardHeader>
-            <CardContent>
-              {roleCommissions.length === 0 ? (
-                <div className="text-center py-6 text-muted-foreground">
-                  <Percent className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">Usando comissão padrão para todos os cargos</p>
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Cargo</TableHead>
-                      <TableHead>Comissão</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {roleCommissions.map((rc) => (
-                      <TableRow key={rc.id}>
-                        <TableCell className="font-medium">
-                          {rc.role_name.charAt(0).toUpperCase() + rc.role_name.slice(1)}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{rc.commission_percent}%</Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
 
-        {/* Commissions Tab */}
-        <TabsContent value="commissions">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Todas as Comissões</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {paginatedCommissions.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  <DollarSign className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>Nenhuma comissão gerada ainda</p>
-                </div>
-              ) : (
-                <>
-                  <ScrollArea className="w-full">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Indicador</TableHead>
-                          <TableHead>Indicado</TableHead>
-                          <TableHead>Valor Compra</TableHead>
-                          <TableHead>Comissão</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Data</TableHead>
-                          <TableHead className="w-[100px]">Ações</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {paginatedCommissions.map((commission) => (
-                          <TableRow key={commission.id}>
-                            <TableCell>
-                              <div>
-                                <p className="font-medium">
-                                  {commission.referrer_profile?.full_name || "—"}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  {commission.referrer_profile?.email}
-                                </p>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div>
-                                <p className="font-medium">
-                                  {commission.referred_profile?.full_name || "—"}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  {commission.referred_profile?.email}
-                                </p>
-                              </div>
-                            </TableCell>
-                            <TableCell>{formatPrice(commission.amount_cents)}</TableCell>
-                            <TableCell>
-                              <div>
-                                <p className="font-semibold text-success">
-                                  {formatPrice(commission.commission_cents)}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  {commission.commission_percent}%
-                                </p>
-                              </div>
-                            </TableCell>
-                            <TableCell>{getStatusBadge(commission.status)}</TableCell>
-                            <TableCell className="text-sm">
-                              {formatDate(commission.created_at)}
-                            </TableCell>
-                            <TableCell>
-                              {commission.status === "pending" && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="text-success border-success/30 hover:bg-success/10"
-                                  onClick={() => markCommissionAsPaid(commission.id)}
-                                >
-                                  <CheckCircle className="w-4 h-4 mr-1" />
-                                  Pagar
-                                </Button>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </ScrollArea>
-
-                  {totalPages > 1 && (
-                    <div className="mt-4">
-                      <Pagination>
-                        <PaginationContent>
-                          <PaginationItem>
-                            <PaginationPrevious
-                              onClick={() => setCommissionPage((p) => Math.max(1, p - 1))}
-                              className={commissionPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                            />
-                          </PaginationItem>
-                          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => i + 1).map((page) => (
-                            <PaginationItem key={page}>
-                              <PaginationLink
-                                onClick={() => setCommissionPage(page)}
-                                isActive={page === commissionPage}
-                                className="cursor-pointer"
-                              >
-                                {page}
-                              </PaginationLink>
-                            </PaginationItem>
-                          ))}
-                          <PaginationItem>
-                            <PaginationNext
-                              onClick={() => setCommissionPage((p) => Math.min(totalPages, p + 1))}
-                              className={commissionPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                            />
-                          </PaginationItem>
-                        </PaginationContent>
-                      </Pagination>
-                    </div>
-                  )}
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Referrals Tab */}
-        <TabsContent value="referrals">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Todas as Indicações</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {referrals.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>Nenhuma indicação registrada</p>
-                </div>
-              ) : (
-                <ScrollArea className="w-full">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Indicador</TableHead>
-                        <TableHead>Indicado</TableHead>
-                        <TableHead>Plano</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Data</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {referrals.map((referral) => (
-                        <TableRow key={referral.id}>
-                          <TableCell className="font-medium">
-                            {referral.referral_code}
-                          </TableCell>
-                          <TableCell>
-                            <div>
-                              <p className="font-medium">
-                                {referral.referred_profile?.full_name || "—"}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {referral.referred_profile?.email}
-                              </p>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline">
-                              {referral.referred_profile?.current_plan || "Free"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {getStatusBadge(referral.status)}
-                          </TableCell>
-                          <TableCell className="text-sm">
-                            {formatDate(referral.created_at)}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </ScrollArea>
-              )}
+              <Button 
+                onClick={handleSaveSettings} 
+                disabled={!hasUnsavedChanges || isSaving}
+                className="w-full"
+              >
+                {isSaving ? "Salvando..." : "Salvar Configurações"}
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
