@@ -41,6 +41,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
+interface ReferredUser {
+  id: string;
+  email: string;
+  full_name: string | null;
+  current_plan: string | null;
+  status: string;
+  created_at: string;
+}
+
 interface Indicador {
   user_id: string;
   email: string;
@@ -51,6 +60,7 @@ interface Indicador {
   total_commission: number;
   pending_commission: number;
   paid_commission: number;
+  referred_users: ReferredUser[];
 }
 
 const AdminReferralsPanel = () => {
@@ -116,11 +126,26 @@ const AdminReferralsPanel = () => {
         .select("user_id, commission_percent")
         .in("user_id", userIds);
 
-      // Get referrals for each indicador
+      // Get referrals for each indicador with referred user info
       const { data: referrals } = await supabase
         .from("referrals")
-        .select("referrer_id, status")
+        .select("referrer_id, referred_id, status, created_at")
         .in("referrer_id", userIds);
+
+      // Get referred users profiles
+      const referredUserIds = referrals?.map(r => r.referred_id) || [];
+      let referredProfileMap = new Map<string, { user_id: string; email: string; full_name: string | null; current_plan: string | null }>();
+      
+      if (referredUserIds.length > 0) {
+        const { data: referredProfiles } = await supabase
+          .from("profiles")
+          .select("user_id, email, full_name, current_plan")
+          .in("user_id", referredUserIds);
+        
+        if (referredProfiles) {
+          referredProfileMap = new Map(referredProfiles.map(p => [p.user_id, p]));
+        }
+      }
 
       // Get commissions for each indicador
       const { data: allCommissions } = await supabase
@@ -136,6 +161,19 @@ const AdminReferralsPanel = () => {
         const userReferrals = referrals?.filter(r => r.referrer_id === userId) || [];
         const userCommissions = allCommissions?.filter(c => c.referrer_id === userId) || [];
 
+        // Build referred users list
+        const referred_users: ReferredUser[] = userReferrals.map(ref => {
+          const refProfile = referredProfileMap.get(ref.referred_id);
+          return {
+            id: ref.referred_id,
+            email: refProfile?.email || "",
+            full_name: refProfile?.full_name || null,
+            current_plan: refProfile?.current_plan || null,
+            status: ref.status,
+            created_at: ref.created_at,
+          };
+        });
+
         return {
           user_id: userId,
           email: profile?.email || "",
@@ -146,6 +184,7 @@ const AdminReferralsPanel = () => {
           total_commission: userCommissions.reduce((sum, c) => sum + c.commission_cents, 0),
           pending_commission: userCommissions.filter(c => c.status === "pending").reduce((sum, c) => sum + c.commission_cents, 0),
           paid_commission: userCommissions.filter(c => c.status === "paid").reduce((sum, c) => sum + c.commission_cents, 0),
+          referred_users,
         };
       });
 
@@ -355,9 +394,73 @@ const AdminReferralsPanel = () => {
                       </CardHeader>
                     </CollapsibleTrigger>
                     <CollapsibleContent>
-                      <CardContent className="pt-0">
+                      <CardContent className="pt-0 space-y-6">
+                        {/* Usuários Indicados */}
                         <div className="border-t pt-4">
-                          <h4 className="font-medium mb-3">Histórico de Comissões</h4>
+                          <h4 className="font-medium mb-3 flex items-center gap-2">
+                            <Users className="w-4 h-4" />
+                            Usuários Indicados ({indicador.referred_users.length})
+                          </h4>
+                          {indicador.referred_users.length === 0 ? (
+                            <p className="text-sm text-muted-foreground text-center py-4">
+                              Nenhum usuário indicado ainda
+                            </p>
+                          ) : (
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Nome</TableHead>
+                                  <TableHead>Email</TableHead>
+                                  <TableHead>Plano</TableHead>
+                                  <TableHead>Status</TableHead>
+                                  <TableHead>Data Cadastro</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {indicador.referred_users.map((user) => (
+                                  <TableRow key={user.id}>
+                                    <TableCell className="font-medium">
+                                      {user.full_name || "—"}
+                                    </TableCell>
+                                    <TableCell>{user.email}</TableCell>
+                                    <TableCell>
+                                      <Badge 
+                                        variant="outline" 
+                                        className={
+                                          user.current_plan === "pro" ? "bg-purple-500/15 text-purple-500 border-purple-500/30" :
+                                          user.current_plan === "basic" ? "bg-blue-500/15 text-blue-500 border-blue-500/30" :
+                                          user.current_plan === "agency" ? "bg-amber-500/15 text-amber-500 border-amber-500/30" :
+                                          "bg-muted text-muted-foreground"
+                                        }
+                                      >
+                                        {user.current_plan ? user.current_plan.charAt(0).toUpperCase() + user.current_plan.slice(1) : "Free"}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell>
+                                      {user.status === "converted" ? (
+                                        <Badge className="bg-success/15 text-success border-success/30">Convertido</Badge>
+                                      ) : user.status === "active" ? (
+                                        <Badge className="bg-blue-500/15 text-blue-500 border-blue-500/30">Ativo</Badge>
+                                      ) : (
+                                        <Badge variant="outline" className="border-warning text-warning">Pendente</Badge>
+                                      )}
+                                    </TableCell>
+                                    <TableCell className="text-sm text-muted-foreground">
+                                      {formatDate(user.created_at)}
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          )}
+                        </div>
+
+                        {/* Histórico de Comissões */}
+                        <div className="border-t pt-4">
+                          <h4 className="font-medium mb-3 flex items-center gap-2">
+                            <DollarSign className="w-4 h-4" />
+                            Histórico de Comissões
+                          </h4>
                           {getIndicadorCommissions(indicador.user_id).length === 0 ? (
                             <p className="text-sm text-muted-foreground text-center py-4">
                               Nenhuma comissão gerada ainda
