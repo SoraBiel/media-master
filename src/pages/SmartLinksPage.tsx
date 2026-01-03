@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSmartLinks, SmartLinkPageType, SmartLinkTemplate } from "@/hooks/useSmartLinks";
 import { useSmartLinkBaseUrl } from "@/hooks/useSmartLinkBaseUrl";
-import { Plus, Link2, Eye, ExternalLink, Trash2, Edit, Copy, ToggleLeft, ToggleRight, ArrowRight, Zap, Palette } from "lucide-react";
+import { Plus, Link2, Eye, ExternalLink, Trash2, Edit, Copy, ToggleLeft, ToggleRight, ArrowRight, Zap, Palette, User, X, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -26,10 +26,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 const SmartLinksPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const { pages, isLoading, limits, canCreatePage, createPage, updatePage, deletePage } = useSmartLinks();
   const smartLinkBaseUrl = useSmartLinkBaseUrl();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -37,18 +40,48 @@ const SmartLinksPage = () => {
   const [newPageTitle, setNewPageTitle] = useState("");
   const [newPageSlug, setNewPageSlug] = useState("");
   const [newRedirectUrl, setNewRedirectUrl] = useState("");
+  const [newAvatarUrl, setNewAvatarUrl] = useState("");
   const [isCreating, setIsCreating] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [pageType, setPageType] = useState<SmartLinkPageType>("linkbio");
   const [selectedTemplate, setSelectedTemplate] = useState<SmartLinkTemplate>("minimalist");
   const [createStep, setCreateStep] = useState<1 | 2>(1);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   const resetCreateForm = () => {
     setNewPageTitle("");
     setNewPageSlug("");
     setNewRedirectUrl("");
+    setNewAvatarUrl("");
     setPageType("linkbio");
     setSelectedTemplate("minimalist");
     setCreateStep(1);
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    setIsUploadingAvatar(true);
+    const fileExt = file.name.split(".").pop();
+    const filePath = `${user.id}/avatar-${Date.now()}.${fileExt}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("smart-link-assets")
+      .upload(filePath, file);
+
+    if (uploadError) {
+      toast({ title: "Erro ao enviar imagem", variant: "destructive" });
+      setIsUploadingAvatar(false);
+      return;
+    }
+
+    const { data: urlData } = supabase.storage
+      .from("smart-link-assets")
+      .getPublicUrl(filePath);
+
+    setNewAvatarUrl(urlData.publicUrl);
+    setIsUploadingAvatar(false);
   };
 
   const handleCreate = async () => {
@@ -90,6 +123,7 @@ const SmartLinksPage = () => {
       page_type: pageType,
       redirect_url: pageType === "redirector" ? newRedirectUrl : null,
       template: selectedTemplate,
+      avatar_url: newAvatarUrl || null,
       background_color: template?.background_color || "#1a1a2e",
       text_color: template?.text_color || "#ffffff",
       button_style: template?.button_style || "rounded",
@@ -268,21 +302,68 @@ const SmartLinksPage = () => {
                       </div>
 
                       {pageType === "redirector" && (
-                        <div className="space-y-2">
-                          <Label htmlFor="redirect_url" className="text-sm font-medium">
-                            URL de Destino
-                          </Label>
-                          <Input
-                            id="redirect_url"
-                            placeholder="https://t.me/seugrupo ou https://exemplo.com"
-                            value={newRedirectUrl}
-                            onChange={(e) => setNewRedirectUrl(e.target.value)}
-                            className="h-11"
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            O visitante será redirecionado automaticamente para este link
-                          </p>
-                        </div>
+                        <>
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium">Foto de Perfil (opcional)</Label>
+                            <div className="flex items-center gap-4">
+                              <input
+                                ref={avatarInputRef}
+                                type="file"
+                                accept="image/*"
+                                onChange={handleAvatarUpload}
+                                className="hidden"
+                              />
+                              {newAvatarUrl ? (
+                                <div className="relative">
+                                  <img
+                                    src={newAvatarUrl}
+                                    alt="Avatar"
+                                    className="w-16 h-16 rounded-full object-cover border-2"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => setNewAvatarUrl("")}
+                                    className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-1"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => avatarInputRef.current?.click()}
+                                  disabled={isUploadingAvatar}
+                                  className="w-16 h-16 rounded-full border-2 border-dashed flex items-center justify-center hover:border-primary transition-colors"
+                                >
+                                  {isUploadingAvatar ? (
+                                    <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                                  ) : (
+                                    <User className="w-5 h-5 text-muted-foreground" />
+                                  )}
+                                </button>
+                              )}
+                              <p className="text-xs text-muted-foreground">
+                                Aparece antes do redirecionamento
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="redirect_url" className="text-sm font-medium">
+                              URL de Destino
+                            </Label>
+                            <Input
+                              id="redirect_url"
+                              placeholder="https://t.me/seugrupo ou https://exemplo.com"
+                              value={newRedirectUrl}
+                              onChange={(e) => setNewRedirectUrl(e.target.value)}
+                              className="h-11"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              O visitante será redirecionado automaticamente para este link
+                            </p>
+                          </div>
+                        </>
                       )}
 
                       {pageType === "linkbio" && (

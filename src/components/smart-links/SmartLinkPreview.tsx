@@ -68,7 +68,7 @@ const SmartLinkPreview = ({ page, buttons }: SmartLinkPreviewProps) => {
           activeButtons.map((button) => (
             <div
               key={button.id}
-              className={getButtonClasses(page.button_style)}
+              className={`${getButtonClasses(page.button_style)} relative`}
               style={{
                 backgroundColor: page.button_style === "outline" 
                   ? "transparent" 
@@ -79,13 +79,14 @@ const SmartLinkPreview = ({ page, buttons }: SmartLinkPreviewProps) => {
                 borderColor: page.button_style === "outline" 
                   ? page.text_color 
                   : undefined,
+                paddingLeft: button.icon ? "2.5rem" : undefined,
               }}
             >
               {button.icon && (
                 <img
                   src={button.icon}
                   alt=""
-                  className="w-5 h-5 rounded object-cover flex-shrink-0"
+                  className="w-6 h-6 rounded object-cover flex-shrink-0 absolute left-2"
                 />
               )}
               <span className="truncate">{button.title}</span>
