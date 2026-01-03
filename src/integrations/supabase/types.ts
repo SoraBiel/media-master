@@ -1607,7 +1607,10 @@ export type Database = {
           id: string
           is_active: boolean | null
           meta_pixel_id: string | null
+          page_type: string
+          redirect_url: string | null
           slug: string
+          template: string | null
           text_color: string | null
           tiktok_pixel_id: string | null
           title: string
@@ -1625,7 +1628,10 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           meta_pixel_id?: string | null
+          page_type?: string
+          redirect_url?: string | null
           slug: string
+          template?: string | null
           text_color?: string | null
           tiktok_pixel_id?: string | null
           title: string
@@ -1643,7 +1649,10 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           meta_pixel_id?: string | null
+          page_type?: string
+          redirect_url?: string | null
           slug?: string
+          template?: string | null
           text_color?: string | null
           tiktok_pixel_id?: string | null
           title?: string

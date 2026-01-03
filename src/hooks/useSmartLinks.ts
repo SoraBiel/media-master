@@ -4,6 +4,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useToast } from "@/hooks/use-toast";
 
+export type SmartLinkPageType = "linkbio" | "redirector";
+
+export type SmartLinkTemplate = "custom" | "minimalist" | "gradient" | "light";
+
 export interface SmartLinkPage {
   id: string;
   user_id: string;
@@ -19,6 +23,9 @@ export interface SmartLinkPage {
   google_analytics_id: string | null;
   tiktok_pixel_id: string | null;
   total_views: number;
+  page_type: SmartLinkPageType;
+  redirect_url: string | null;
+  template: SmartLinkTemplate;
   created_at: string;
   updated_at: string;
 }
@@ -131,6 +138,9 @@ export const useSmartLinks = () => {
           background_color: data.background_color || "#1a1a2e",
           text_color: data.text_color || "#ffffff",
           button_style: data.button_style || "rounded",
+          page_type: data.page_type || "linkbio",
+          redirect_url: data.redirect_url || null,
+          template: data.template || "custom",
         })
         .select()
         .single();
