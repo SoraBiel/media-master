@@ -81,7 +81,14 @@ const SmartLinkPreview = ({ page, buttons }: SmartLinkPreviewProps) => {
                   : undefined,
               }}
             >
-              {button.title}
+              {button.icon && (
+                <img
+                  src={button.icon}
+                  alt=""
+                  className="w-5 h-5 rounded object-cover flex-shrink-0"
+                />
+              )}
+              <span className="truncate">{button.title}</span>
             </div>
           ))
         )}

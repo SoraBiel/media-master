@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -14,8 +14,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { useSmartLinks, useSmartLinkButtons, useSmartLinkAnalytics, SmartLinkPage, SmartLinkButton } from "@/hooks/useSmartLinks";
 import { useSmartLinkBaseUrl } from "@/hooks/useSmartLinkBaseUrl";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Save, Eye, Plus, GripVertical, Trash2, ExternalLink, Link2, MousePointerClick, BarChart3, Settings, Palette } from "lucide-react";
+import { ArrowLeft, Save, Eye, Plus, GripVertical, Trash2, ExternalLink, Link2, MousePointerClick, BarChart3, Settings, Palette, ImagePlus, X, Loader2, User } from "lucide-react";
 import SmartLinkButtonEditor from "@/components/smart-links/SmartLinkButtonEditor";
 import SmartLinkPreview from "@/components/smart-links/SmartLinkPreview";
 import SmartLinkAnalytics from "@/components/smart-links/SmartLinkAnalytics";
@@ -24,19 +25,23 @@ const SmartLinkEditorPage = () => {
   const { pageId } = useParams<{ pageId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const smartLinkBaseUrl = useSmartLinkBaseUrl();
   const { updatePage, limits, canAddButton } = useSmartLinks();
   const { buttons, createButton, updateButton, deleteButton, reorderButtons, isLoading: isLoadingButtons } = useSmartLinkButtons(pageId || null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   
   const [page, setPage] = useState<SmartLinkPage | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [editingButton, setEditingButton] = useState<SmartLinkButton | null>(null);
   const [isCreatingButton, setIsCreatingButton] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
   // Form state
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
   const [backgroundColor, setBackgroundColor] = useState("#1a1a2e");
   const [textColor, setTextColor] = useState("#ffffff");
   const [buttonStyle, setButtonStyle] = useState("rounded");
@@ -61,6 +66,7 @@ const SmartLinkEditorPage = () => {
         setPage(pageData);
         setTitle(pageData.title);
         setDescription(pageData.description || "");
+        setAvatarUrl(pageData.avatar_url || "");
         setBackgroundColor(pageData.background_color);
         setTextColor(pageData.text_color);
         setButtonStyle(pageData.button_style);
@@ -83,6 +89,38 @@ const SmartLinkEditorPage = () => {
     fetchPage();
   }, [pageId]);
 
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user || !pageId) return;
+
+    setIsUploadingAvatar(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/${pageId}-avatar-${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("smart-link-assets")
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from("smart-link-assets")
+        .getPublicUrl(fileName);
+
+      setAvatarUrl(urlData.publicUrl);
+    } catch (error) {
+      console.error("Error uploading avatar:", error);
+      toast({
+        title: "Erro no upload",
+        description: "Não foi possível fazer upload da imagem.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!pageId) return;
 
@@ -90,6 +128,7 @@ const SmartLinkEditorPage = () => {
     const success = await updatePage(pageId, {
       title,
       description: description || null,
+      avatar_url: avatarUrl || null,
       background_color: backgroundColor,
       text_color: textColor,
       button_style: buttonStyle,
@@ -103,6 +142,7 @@ const SmartLinkEditorPage = () => {
         ...page,
         title,
         description: description || null,
+        avatar_url: avatarUrl || null,
         background_color: backgroundColor,
         text_color: textColor,
         button_style: buttonStyle,
