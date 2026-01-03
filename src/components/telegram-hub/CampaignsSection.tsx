@@ -159,7 +159,7 @@ const CampaignsSection = () => {
     destination_id: "",
     media_pack_id: "",
     use_user_media: false,
-    delay_seconds: 10,
+    delay_seconds: 2, // Default to faster 2s
     send_mode: "media",
     caption: "",
     scheduled_start: "",
@@ -1116,13 +1116,15 @@ const CampaignsSection = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Delay</Label>
-                      <Select value={String(newCampaign.delay_seconds)} onValueChange={(value) => setNewCampaign({ ...newCampaign, delay_seconds: parseInt(value) })}>
+                      <Select value={String(newCampaign.delay_seconds)} onValueChange={(value) => setNewCampaign({ ...newCampaign, delay_seconds: parseFloat(value) })}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
+                          <SelectItem value="0.001">⚡ Turbo (1ms)</SelectItem>
+                          <SelectItem value="0.5">0.5s</SelectItem>
+                          <SelectItem value="1">1s</SelectItem>
                           <SelectItem value="2">2s</SelectItem>
                           <SelectItem value="5">5s</SelectItem>
                           <SelectItem value="10">10s</SelectItem>
-                          <SelectItem value="15">15s</SelectItem>
                           <SelectItem value="30">30s</SelectItem>
                           <SelectItem value="60">1min</SelectItem>
                         </SelectContent>
