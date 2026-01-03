@@ -8,12 +8,13 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useSmartLinks } from "@/hooks/useSmartLinks";
+import { useSmartLinks, SmartLinkPageType, SmartLinkTemplate } from "@/hooks/useSmartLinks";
 import { useSmartLinkBaseUrl } from "@/hooks/useSmartLinkBaseUrl";
-import { Plus, Link2, Eye, MousePointerClick, ExternalLink, Trash2, Edit, Copy, ToggleLeft, ToggleRight } from "lucide-react";
+import { Plus, Link2, Eye, ExternalLink, Trash2, Edit, Copy, ToggleLeft, ToggleRight, ArrowRight, Zap, Palette } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { SMART_LINK_TEMPLATES, SmartLinkTemplateConfig } from "@/lib/smartLinkTemplates";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +25,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { cn } from "@/lib/utils";
 
 const SmartLinksPage = () => {
   const navigate = useNavigate();
@@ -34,7 +36,20 @@ const SmartLinksPage = () => {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [newPageTitle, setNewPageTitle] = useState("");
   const [newPageSlug, setNewPageSlug] = useState("");
+  const [newRedirectUrl, setNewRedirectUrl] = useState("");
   const [isCreating, setIsCreating] = useState(false);
+  const [pageType, setPageType] = useState<SmartLinkPageType>("linkbio");
+  const [selectedTemplate, setSelectedTemplate] = useState<SmartLinkTemplate>("minimalist");
+  const [createStep, setCreateStep] = useState<1 | 2>(1);
+
+  const resetCreateForm = () => {
+    setNewPageTitle("");
+    setNewPageSlug("");
+    setNewRedirectUrl("");
+    setPageType("linkbio");
+    setSelectedTemplate("minimalist");
+    setCreateStep(1);
+  };
 
   const handleCreate = async () => {
     if (!newPageSlug.trim() || !newPageTitle.trim()) {
@@ -57,17 +72,35 @@ const SmartLinksPage = () => {
       return;
     }
 
+    if (pageType === "redirector" && !newRedirectUrl.trim()) {
+      toast({
+        title: "URL obrigatória",
+        description: "Informe a URL de redirecionamento.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsCreating(true);
+    const template = SMART_LINK_TEMPLATES.find((t) => t.id === selectedTemplate);
+
     const page = await createPage({
       title: newPageTitle,
       slug: newPageSlug,
+      page_type: pageType,
+      redirect_url: pageType === "redirector" ? newRedirectUrl : null,
+      template: selectedTemplate,
+      background_color: template?.background_color || "#1a1a2e",
+      text_color: template?.text_color || "#ffffff",
+      button_style: template?.button_style || "rounded",
     });
 
     if (page) {
       setIsCreateOpen(false);
-      setNewPageTitle("");
-      setNewPageSlug("");
-      navigate(`/smart-links/${page.id}`);
+      resetCreateForm();
+      if (pageType === "linkbio") {
+        navigate(`/smart-links/${page.id}`);
+      }
     }
     setIsCreating(false);
   };
@@ -115,86 +148,207 @@ const SmartLinksPage = () => {
               {pages.length}/{limits.pages === 999 ? "∞" : limits.pages} páginas
             </Badge>
 
-            <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+            <Dialog open={isCreateOpen} onOpenChange={(open) => {
+              setIsCreateOpen(open);
+              if (!open) resetCreateForm();
+            }}>
               <DialogTrigger asChild>
                 <Button disabled={!canCreatePage()}>
                   <Plus className="w-4 h-4 mr-2" />
                   Nova Página
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader className="text-center pb-2">
-                  <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
-                    <Link2 className="w-6 h-6 text-primary" />
-                  </div>
-                  <DialogTitle className="text-xl">Criar Smart Link</DialogTitle>
-                  <DialogDescription>
-                    Configure sua nova página de links personalizada
-                  </DialogDescription>
-                </DialogHeader>
+              <DialogContent className="sm:max-w-lg">
+                {createStep === 1 ? (
+                  <>
+                    <DialogHeader className="text-center pb-4">
+                      <DialogTitle className="text-xl">Escolha o tipo de página</DialogTitle>
+                      <DialogDescription>
+                        Selecione o tipo de Smart Link que deseja criar
+                      </DialogDescription>
+                    </DialogHeader>
 
-                <div className="space-y-5 py-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="title" className="text-sm font-medium">
-                      Título da Página
-                    </Label>
-                    <Input
-                      id="title"
-                      placeholder="Ex: Meus Links, Portfólio, Contatos..."
-                      value={newPageTitle}
-                      onChange={(e) => setNewPageTitle(e.target.value)}
-                      className="h-11"
-                    />
-                  </div>
+                    <div className="grid grid-cols-2 gap-4 py-4">
+                      {/* Link Bio Option */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPageType("linkbio");
+                          setCreateStep(2);
+                        }}
+                        className={cn(
+                          "flex flex-col items-center p-6 rounded-xl border-2 transition-all hover:border-primary hover:bg-primary/5",
+                          "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                        )}
+                      >
+                        <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center mb-4">
+                          <Palette className="w-7 h-7 text-primary" />
+                        </div>
+                        <h3 className="font-semibold mb-1">Link Bio</h3>
+                        <p className="text-xs text-muted-foreground text-center">
+                          Página com múltiplos botões e links personalizados
+                        </p>
+                      </button>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="slug" className="text-sm font-medium">
-                      URL Personalizada
-                    </Label>
-                    <div className="flex items-center gap-0 rounded-md border border-input bg-background overflow-hidden focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
-                      <span className="px-3 py-2.5 text-sm text-muted-foreground bg-muted/50 border-r border-input whitespace-nowrap">
-                        /@
-                      </span>
-                      <Input
-                        id="slug"
-                        placeholder="meulink"
-                        value={newPageSlug}
-                        onChange={(e) => setNewPageSlug(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))}
-                        className="h-11 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none"
-                      />
+                      {/* Redirector Option */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPageType("redirector");
+                          setCreateStep(2);
+                        }}
+                        className={cn(
+                          "flex flex-col items-center p-6 rounded-xl border-2 transition-all hover:border-primary hover:bg-primary/5",
+                          "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                        )}
+                      >
+                        <div className="w-14 h-14 rounded-full bg-gradient-to-br from-green-500/20 to-green-500/10 flex items-center justify-center mb-4">
+                          <Zap className="w-7 h-7 text-green-500" />
+                        </div>
+                        <h3 className="font-semibold mb-1">Redirecionador</h3>
+                        <p className="text-xs text-muted-foreground text-center">
+                          Redireciona automaticamente para um link ou grupo
+                        </p>
+                      </button>
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      Letras minúsculas, números, hífen ou underscore
-                    </p>
-                  </div>
-                </div>
+                  </>
+                ) : (
+                  <>
+                    <DialogHeader className="text-center pb-2">
+                      <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+                        {pageType === "linkbio" ? (
+                          <Palette className="w-6 h-6 text-primary" />
+                        ) : (
+                          <Zap className="w-6 h-6 text-green-500" />
+                        )}
+                      </div>
+                      <DialogTitle className="text-xl">
+                        {pageType === "linkbio" ? "Criar Link Bio" : "Criar Redirecionador"}
+                      </DialogTitle>
+                      <DialogDescription>
+                        {pageType === "linkbio"
+                          ? "Configure sua página de links personalizada"
+                          : "Configure seu redirecionador automático"}
+                      </DialogDescription>
+                    </DialogHeader>
 
-                <DialogFooter className="flex-col sm:flex-row gap-2 pt-2">
-                  <Button 
-                    variant="ghost" 
-                    onClick={() => setIsCreateOpen(false)}
-                    className="sm:flex-1"
-                  >
-                    Cancelar
-                  </Button>
-                  <Button 
-                    onClick={handleCreate} 
-                    disabled={isCreating || !newPageTitle.trim() || !newPageSlug.trim()}
-                    className="sm:flex-1 gap-2"
-                  >
-                    {isCreating ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                        Criando...
-                      </>
-                    ) : (
-                      <>
-                        <Plus className="w-4 h-4" />
-                        Criar Página
-                      </>
-                    )}
-                  </Button>
-                </DialogFooter>
+                    <div className="space-y-5 py-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="title" className="text-sm font-medium">
+                          {pageType === "linkbio" ? "Título da Página" : "Nome do Redirecionador"}
+                        </Label>
+                        <Input
+                          id="title"
+                          placeholder={pageType === "linkbio" ? "Ex: Meus Links, Portfólio..." : "Ex: Grupo VIP, Link Especial..."}
+                          value={newPageTitle}
+                          onChange={(e) => setNewPageTitle(e.target.value)}
+                          className="h-11"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="slug" className="text-sm font-medium">
+                          URL Personalizada
+                        </Label>
+                        <div className="flex items-center gap-0 rounded-md border border-input bg-background overflow-hidden focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                          <span className="px-3 py-2.5 text-sm text-muted-foreground bg-muted/50 border-r border-input whitespace-nowrap font-mono">
+                            /@
+                          </span>
+                          <Input
+                            id="slug"
+                            placeholder="meulink"
+                            value={newPageSlug}
+                            onChange={(e) => setNewPageSlug(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))}
+                            className="h-11 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none font-mono"
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Letras minúsculas, números, hífen ou underscore
+                        </p>
+                      </div>
+
+                      {pageType === "redirector" && (
+                        <div className="space-y-2">
+                          <Label htmlFor="redirect_url" className="text-sm font-medium">
+                            URL de Destino
+                          </Label>
+                          <Input
+                            id="redirect_url"
+                            placeholder="https://t.me/seugrupo ou https://exemplo.com"
+                            value={newRedirectUrl}
+                            onChange={(e) => setNewRedirectUrl(e.target.value)}
+                            className="h-11"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            O visitante será redirecionado automaticamente para este link
+                          </p>
+                        </div>
+                      )}
+
+                      {pageType === "linkbio" && (
+                        <div className="space-y-3">
+                          <Label className="text-sm font-medium">Escolha um Template</Label>
+                          <div className="grid grid-cols-3 gap-2">
+                            {SMART_LINK_TEMPLATES.map((template) => (
+                              <button
+                                key={template.id}
+                                type="button"
+                                onClick={() => setSelectedTemplate(template.id as SmartLinkTemplate)}
+                                className={cn(
+                                  "flex flex-col items-center p-3 rounded-lg border-2 transition-all",
+                                  selectedTemplate === template.id
+                                    ? "border-primary bg-primary/5"
+                                    : "border-border hover:border-muted-foreground/50"
+                                )}
+                              >
+                                <div
+                                  className="w-full h-12 rounded-md mb-2"
+                                  style={{
+                                    background: template.preview.gradient || template.background_color,
+                                  }}
+                                />
+                                <span className="text-xs font-medium">{template.name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <DialogFooter className="flex-col sm:flex-row gap-2 pt-2">
+                      <Button
+                        variant="ghost"
+                        onClick={() => setCreateStep(1)}
+                        className="sm:flex-1"
+                      >
+                        <ArrowRight className="w-4 h-4 mr-2 rotate-180" />
+                        Voltar
+                      </Button>
+                      <Button
+                        onClick={handleCreate}
+                        disabled={
+                          isCreating ||
+                          !newPageTitle.trim() ||
+                          !newPageSlug.trim() ||
+                          (pageType === "redirector" && !newRedirectUrl.trim())
+                        }
+                        className="sm:flex-1 gap-2"
+                      >
+                        {isCreating ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                            Criando...
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="w-4 h-4" />
+                            Criar {pageType === "linkbio" ? "Link Bio" : "Redirecionador"}
+                          </>
+                        )}
+                      </Button>
+                    </DialogFooter>
+                  </>
+                )}
               </DialogContent>
             </Dialog>
           </div>
@@ -235,16 +389,31 @@ const SmartLinksPage = () => {
               <Card key={page.id} className="group hover:border-primary/50 transition-colors">
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        {page.title}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <Badge 
+                          variant="outline" 
+                          className={cn(
+                            "text-2xs",
+                            page.page_type === "redirector" 
+                              ? "border-green-500/50 text-green-400 bg-green-500/10" 
+                              : "border-primary/50 text-primary bg-primary/10"
+                          )}
+                        >
+                          {page.page_type === "redirector" ? (
+                            <><Zap className="w-3 h-3 mr-1" />Redirector</>
+                          ) : (
+                            <><Palette className="w-3 h-3 mr-1" />Link Bio</>
+                          )}
+                        </Badge>
                         {page.is_active ? (
                           <Badge variant="default" className="text-2xs">Ativo</Badge>
                         ) : (
                           <Badge variant="secondary" className="text-2xs">Inativo</Badge>
                         )}
-                      </CardTitle>
-                      <CardDescription className="flex items-center gap-1">
+                      </div>
+                      <CardTitle className="text-lg">{page.title}</CardTitle>
+                      <CardDescription className="flex items-center gap-1 font-mono text-xs">
                         <Link2 className="w-3 h-3" />
                         /@{page.slug}
                       </CardDescription>
@@ -259,6 +428,12 @@ const SmartLinksPage = () => {
                       <Eye className="w-4 h-4" />
                       <span>{page.total_views} views</span>
                     </div>
+                    {page.page_type === "redirector" && page.redirect_url && (
+                      <div className="flex items-center gap-1.5 text-muted-foreground text-xs truncate max-w-[150px]">
+                        <ArrowRight className="w-3 h-3 flex-shrink-0" />
+                        <span className="truncate">{page.redirect_url}</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Created date */}
@@ -268,15 +443,17 @@ const SmartLinksPage = () => {
 
                   {/* Actions */}
                   <div className="flex items-center gap-2 pt-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => navigate(`/smart-links/${page.id}`)}
-                    >
-                      <Edit className="w-4 h-4 mr-1.5" />
-                      Editar
-                    </Button>
+                    {page.page_type === "linkbio" && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => navigate(`/smart-links/${page.id}`)}
+                      >
+                        <Edit className="w-4 h-4 mr-1.5" />
+                        Editar
+                      </Button>
+                    )}
 
                     <Button
                       variant="ghost"

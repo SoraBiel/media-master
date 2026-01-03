@@ -27,6 +27,9 @@ interface SmartLinkPage {
   meta_pixel_id: string | null;
   google_analytics_id: string | null;
   tiktok_pixel_id: string | null;
+  page_type: "linkbio" | "redirector";
+  redirect_url: string | null;
+  total_views?: number;
 }
 
 
@@ -65,13 +68,38 @@ const SmartLinkPublicPage = ({ slugOverride }: SmartLinkPublicPageProps) => {
           return;
         }
 
-        setPage(pageData as SmartLinkPage);
+        const fetchedPage = pageData as SmartLinkPage;
 
-        // Fetch buttons
+        // Handle redirector type - redirect immediately
+        if (fetchedPage.page_type === "redirector" && fetchedPage.redirect_url) {
+          // Record view before redirecting
+          await supabase.from("smart_link_views").insert({
+            page_id: fetchedPage.id,
+            utm_source: new URLSearchParams(window.location.search).get("utm_source"),
+            utm_medium: new URLSearchParams(window.location.search).get("utm_medium"),
+            utm_campaign: new URLSearchParams(window.location.search).get("utm_campaign"),
+            referrer: document.referrer || null,
+            user_agent: navigator.userAgent,
+          });
+
+          // Update view count
+          await supabase
+            .from("smart_link_pages")
+            .update({ total_views: (fetchedPage.total_views || 0) + 1 })
+            .eq("id", fetchedPage.id);
+
+          // Redirect to target URL
+          window.location.href = fetchedPage.redirect_url;
+          return;
+        }
+
+        setPage(fetchedPage);
+
+        // Fetch buttons only for linkbio type
         const { data: buttonsData } = await supabase
           .from("smart_link_buttons")
           .select("*")
-          .eq("page_id", pageData.id)
+          .eq("page_id", fetchedPage.id)
           .eq("is_active", true)
           .order("position", { ascending: true });
 
