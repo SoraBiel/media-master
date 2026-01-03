@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { SmartLinkButton } from "@/hooks/useSmartLinks";
+import { ImagePlus, X, Loader2 } from "lucide-react";
 
 interface SmartLinkButtonEditorProps {
   button: SmartLinkButton;
@@ -28,8 +29,11 @@ const SmartLinkButtonEditor = ({ button, onSave, onClose }: SmartLinkButtonEdito
   const [funnelId, setFunnelId] = useState(button.funnel_id || "");
   const [funnelTag, setFunnelTag] = useState(button.funnel_tag || "");
   const [eventName, setEventName] = useState(button.event_name || "");
+  const [iconUrl, setIconUrl] = useState(button.icon || "");
   const [funnels, setFunnels] = useState<Funnel[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingIcon, setIsUploadingIcon] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const fetchFunnels = async () => {
@@ -48,6 +52,33 @@ const SmartLinkButtonEditor = ({ button, onSave, onClose }: SmartLinkButtonEdito
     fetchFunnels();
   }, [user]);
 
+  const handleIconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    setIsUploadingIcon(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/${button.id}-${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("smart-link-assets")
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from("smart-link-assets")
+        .getPublicUrl(fileName);
+
+      setIconUrl(urlData.publicUrl);
+    } catch (error) {
+      console.error("Error uploading icon:", error);
+    } finally {
+      setIsUploadingIcon(false);
+    }
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     await onSave({
@@ -57,6 +88,7 @@ const SmartLinkButtonEditor = ({ button, onSave, onClose }: SmartLinkButtonEdito
       funnel_id: funnelId || null,
       funnel_tag: funnelTag || null,
       event_name: eventName || null,
+      icon: iconUrl || null,
     });
     setIsSaving(false);
   };
@@ -72,6 +104,52 @@ const SmartLinkButtonEditor = ({ button, onSave, onClose }: SmartLinkButtonEdito
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          {/* Icon Upload */}
+          <div className="space-y-2">
+            <Label>Ícone/Foto do Botão</Label>
+            <div className="flex items-center gap-3">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleIconUpload}
+                className="hidden"
+              />
+              {iconUrl ? (
+                <div className="relative">
+                  <img
+                    src={iconUrl}
+                    alt="Ícone"
+                    className="w-12 h-12 rounded-lg object-cover border"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setIconUrl("")}
+                    className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-0.5"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploadingIcon}
+                  className="w-12 h-12 rounded-lg border-2 border-dashed flex items-center justify-center hover:border-primary transition-colors"
+                >
+                  {isUploadingIcon ? (
+                    <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                  ) : (
+                    <ImagePlus className="w-5 h-5 text-muted-foreground" />
+                  )}
+                </button>
+              )}
+              <p className="text-xs text-muted-foreground flex-1">
+                Adicione um ícone ou foto para o botão (opcional)
+              </p>
+            </div>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="title">Título</Label>
             <Input

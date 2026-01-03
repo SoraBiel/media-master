@@ -319,7 +319,15 @@ const SmartLinkPublicPage = ({ slugOverride }: SmartLinkPublicPageProps) => {
                     : undefined,
                 }}
               >
-                {button.title}
+                {button.icon && (
+                  <img
+                    src={button.icon}
+                    alt=""
+                    className="w-6 h-6 rounded object-cover flex-shrink-0"
+                    loading="eager"
+                  />
+                )}
+                <span>{button.title}</span>
               </button>
             ))}
           </div>
