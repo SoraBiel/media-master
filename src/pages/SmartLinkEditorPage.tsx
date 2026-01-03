@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { useSmartLinks, useSmartLinkButtons, useSmartLinkAnalytics, SmartLinkPage, SmartLinkButton } from "@/hooks/useSmartLinks";
+import { useSmartLinkBaseUrl } from "@/hooks/useSmartLinkBaseUrl";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Save, Eye, Plus, GripVertical, Trash2, ExternalLink, Link2, MousePointerClick, BarChart3, Settings, Palette } from "lucide-react";
 import SmartLinkButtonEditor from "@/components/smart-links/SmartLinkButtonEditor";
@@ -23,6 +24,7 @@ const SmartLinkEditorPage = () => {
   const { pageId } = useParams<{ pageId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const smartLinkBaseUrl = useSmartLinkBaseUrl();
   const { updatePage, limits, canAddButton } = useSmartLinks();
   const { buttons, createButton, updateButton, deleteButton, reorderButtons, isLoading: isLoadingButtons } = useSmartLinkButtons(pageId || null);
   
@@ -184,7 +186,10 @@ const SmartLinkEditorPage = () => {
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
-              onClick={() => window.open(`/@${page.slug}`, "_blank")}
+              onClick={() => {
+                const base = (smartLinkBaseUrl || window.location.origin).replace(/\/+$/, "");
+                window.open(`${base}/@${page.slug}`, "_blank");
+              }}
             >
               <Eye className="w-4 h-4 mr-2" />
               Visualizar

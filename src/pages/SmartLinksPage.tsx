@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSmartLinks } from "@/hooks/useSmartLinks";
+import { useSmartLinkBaseUrl } from "@/hooks/useSmartLinkBaseUrl";
 import { Plus, Link2, Eye, MousePointerClick, ExternalLink, Trash2, Edit, Copy, ToggleLeft, ToggleRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -28,6 +29,7 @@ const SmartLinksPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { pages, isLoading, limits, canCreatePage, createPage, updatePage, deletePage } = useSmartLinks();
+  const smartLinkBaseUrl = useSmartLinkBaseUrl();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [newPageTitle, setNewPageTitle] = useState("");
@@ -80,17 +82,20 @@ const SmartLinksPage = () => {
     await updatePage(pageId, { is_active: !currentState });
   };
 
+  const getBaseUrl = () => {
+    const base = (smartLinkBaseUrl || window.location.origin).replace(/\/+$/, "");
+    return base;
+  };
+
+  const buildPublicUrl = (slug: string) => `${getBaseUrl()}/@${slug}`;
+
   const copyLink = (slug: string) => {
-    const url = `${window.location.origin}/@${slug}`;
+    const url = buildPublicUrl(slug);
     navigator.clipboard.writeText(url);
     toast({
       title: "Link copiado!",
       description: "O link foi copiado para a área de transferência.",
     });
-  };
-
-  const getBaseUrl = () => {
-    return window.location.origin;
   };
 
   return (
@@ -284,7 +289,7 @@ const SmartLinksPage = () => {
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      onClick={() => window.open(`/@${page.slug}`, "_blank")}
+                      onClick={() => window.open(buildPublicUrl(page.slug), "_blank")}
                     >
                       <ExternalLink className="w-4 h-4" />
                     </Button>
