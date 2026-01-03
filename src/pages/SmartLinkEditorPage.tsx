@@ -375,6 +375,55 @@ const SmartLinkEditorPage = () => {
                     <CardDescription>Personalize o visual da sua página</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
+                    {/* Avatar Upload */}
+                    <div className="space-y-2">
+                      <Label>Foto de Perfil</Label>
+                      <div className="flex items-center gap-4">
+                        <input
+                          ref={avatarInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleAvatarUpload}
+                          className="hidden"
+                        />
+                        {avatarUrl ? (
+                          <div className="relative">
+                            <img
+                              src={avatarUrl}
+                              alt="Avatar"
+                              className="w-20 h-20 rounded-full object-cover border-2"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setAvatarUrl("")}
+                              className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-1"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => avatarInputRef.current?.click()}
+                            disabled={isUploadingAvatar}
+                            className="w-20 h-20 rounded-full border-2 border-dashed flex items-center justify-center hover:border-primary transition-colors"
+                          >
+                            {isUploadingAvatar ? (
+                              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                            ) : (
+                              <User className="w-6 h-6 text-muted-foreground" />
+                            )}
+                          </button>
+                        )}
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">Foto de perfil</p>
+                          <p className="text-xs text-muted-foreground">
+                            Aparece no topo da sua página
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
                     <div className="space-y-2">
                       <Label htmlFor="title">Título</Label>
                       <Input
@@ -512,6 +561,7 @@ const SmartLinkEditorPage = () => {
                       ...page,
                       title,
                       description: description || null,
+                      avatar_url: avatarUrl || null,
                       background_color: backgroundColor,
                       text_color: textColor,
                       button_style: buttonStyle,
