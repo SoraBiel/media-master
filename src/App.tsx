@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { BackgroundUploadProvider } from "@/contexts/BackgroundUploadContext";
 import { BackgroundUploadIndicator } from "@/components/BackgroundUploadIndicator";
@@ -39,9 +39,15 @@ import SmartLinkPublicPage from "./pages/SmartLinkPublicPage";
 import ReferralsPage from "./pages/ReferralsPage";
 import ReferralRedirectPage from "./pages/ReferralRedirectPage";
 import NotFound from "./pages/NotFound";
-import { Navigate } from "react-router-dom";
+
 
 const queryClient = new QueryClient();
+
+const SmartLinkPublicRoute = () => {
+  const { slug } = useParams<{ slug: string }>();
+  if (!slug?.startsWith("@")) return <NotFound />;
+  return <SmartLinkPublicPage slugOverride={slug.slice(1)} />;
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -114,7 +120,7 @@ const App = () => (
                   </FeatureProtectedRoute>
                 </ProtectedRoute>
               } />
-              <Route path="/@:slug" element={<SmartLinkPublicPage />} />
+              <Route path="/:slug" element={<SmartLinkPublicRoute />} />
               <Route path="/referrals" element={
                 <ProtectedRoute>
                   <FeatureProtectedRoute featureKey="referrals_enabled">
