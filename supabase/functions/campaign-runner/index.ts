@@ -397,18 +397,16 @@ serve(async (req) => {
       });
     }
 
-    console.log(`Found campaign ${campaignId}, reserving batch ${startOffset}-${endOffset}...`);
+    console.log(`Found campaign ${campaignId}, processing batch ${startOffset}-${endOffset}...`);
 
-    // Atomically reserve this batch
+    // Just mark as processing (don't advance sent_count yet)
     const { data: reservedRows, error: reserveError } = await supabase
       .from("campaigns")
       .update({
-        sent_count: endOffset,
         updated_at: now,
       })
       .eq("id", campaignId)
       .eq("status", "running")
-      .eq("sent_count", startOffset)
       .select("*");
 
     if (reserveError) {
@@ -422,8 +420,8 @@ serve(async (req) => {
     const reserved = Array.isArray(reservedRows) && reservedRows.length > 0;
 
     if (!reserved) {
-      console.log("Campaign batch was reserved by another runner");
-      return new Response(JSON.stringify({ message: "Campaign already being processed" }), {
+      console.log("Campaign not running anymore");
+      return new Response(JSON.stringify({ message: "Campaign not running" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -587,13 +585,17 @@ serve(async (req) => {
 
     const endTime = Date.now();
     const batchTime = endTime - startTime;
-    const avgPerItem = Math.round(batchTime / mediaUrls.length);
+    const avgPerItem = mediaUrls.length > 0 ? Math.round(batchTime / mediaUrls.length) : 0;
 
-    // Final update
-    const progress = Math.min(100, Math.round((endOffset / totalCount) * 100));
-    const isComplete = endOffset >= totalCount;
+    // Calculate actual sent count (only count what was actually processed)
+    const actualSentThisBatch = results.successes + results.errors.length;
+    const newSentCount = startOffset + actualSentThisBatch;
+    const progress = Math.min(100, Math.round((newSentCount / totalCount) * 100));
+    const isComplete = newSentCount >= totalCount;
 
+    // Update with real counts AFTER sending
     await supabase.from("campaigns").update({
+      sent_count: newSentCount,
       success_count: successCount,
       error_count: errorCount,
       errors_log: errorsLog.slice(-50),
@@ -622,15 +624,16 @@ serve(async (req) => {
       }
     }
 
-    console.log(`Campaign ${campaignId} batch done: ${progress}% (${endOffset}/${totalCount}) - ${avgPerItem}ms/item`);
+    console.log(`Campaign ${campaignId} batch done: ${progress}% (${newSentCount}/${totalCount}) - ${avgPerItem}ms/item - ${results.successes} ok, ${results.errors.length} err`);
 
     // Self-invoke immediately if there's more work
     if (!isComplete) {
       const supabaseUrlEnv = Deno.env.get("SUPABASE_URL") ?? "";
       const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
-      // Add delay between batches
-      await new Promise(resolve => setTimeout(resolve, delaySeconds * 1000));
+      // Minimal delay between batches (just enough to avoid rate limits)
+      const batchDelay = Math.max(500, Math.min(delaySeconds * 1000, 2000));
+      await new Promise(resolve => setTimeout(resolve, batchDelay));
 
       // Non-blocking invoke
       fetch(`${supabaseUrlEnv}/functions/v1/campaign-runner`, {
@@ -647,7 +650,9 @@ serve(async (req) => {
       success: true,
       campaignId,
       progress,
-      sentCount: endOffset,
+      sentCount: newSentCount,
+      successCount,
+      errorCount,
       totalCount,
       isComplete,
       avgTimePerItem: avgPerItem,
