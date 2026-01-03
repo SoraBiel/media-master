@@ -7,9 +7,10 @@ const corsHeaders = {
 };
 
 const TELEGRAM_API_BASE = "https://api.telegram.org/bot";
-const CHUNK_SIZE = 50; // Process 50 items per invocation (increased from 30)
+const CHUNK_SIZE = 50; // Process 50 items per invocation
 const MAX_FILE_SIZE = 45 * 1024 * 1024; // 45MB - Telegram limit is 50MB
-const PARALLEL_SENDS = 5; // Send 5 items in parallel
+const PARALLEL_SENDS = 10; // Send 10 items in parallel for faster processing
+const MIN_DELAY_MS = 1; // Minimum 1ms delay for "turbo" mode
 
 function isVideoUrl(url: string): boolean {
   const lowerUrl = url.toLowerCase();
@@ -331,9 +332,9 @@ async function processInParallel<T>(
       }
     }
 
-    // Small delay between parallel batches to avoid rate limits
+    // Minimal delay between parallel batches to avoid rate limits
     if (i + parallelCount < items.length) {
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
   }
 
@@ -429,9 +430,10 @@ serve(async (req) => {
     const campaign: any = reservedRows![0];
     const userId = campaign.user_id;
     const mediaPackId = campaign.media_pack_id;
-    const delaySeconds = Math.max(1, campaign.delay_seconds || 1); // Min 1 second
+    // Support sub-second delays (e.g., 0.001 = 1ms for turbo mode)
+    const delaySeconds = Math.max(0.001, campaign.delay_seconds || 1);
 
-    console.log(`Processing campaign ${campaignId}: batch ${startOffset}-${endOffset} of ${totalCount}`);
+    console.log(`Processing campaign ${campaignId}: batch ${startOffset}-${endOffset} of ${totalCount}, delay=${delaySeconds}s`);
 
     // Get destination
     const { data: destination } = await supabase
@@ -631,9 +633,9 @@ serve(async (req) => {
       const supabaseUrlEnv = Deno.env.get("SUPABASE_URL") ?? "";
       const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
-      // Minimal delay between batches (just enough to avoid rate limits)
-      const batchDelay = Math.max(500, Math.min(delaySeconds * 1000, 2000));
-      await new Promise(resolve => setTimeout(resolve, batchDelay));
+      // Use actual delay setting - for turbo mode (0.001s), use minimal delay
+      const batchDelayMs = Math.max(MIN_DELAY_MS, Math.min(delaySeconds * 1000, 2000));
+      await new Promise(resolve => setTimeout(resolve, batchDelayMs));
 
       // Non-blocking invoke
       fetch(`${supabaseUrlEnv}/functions/v1/campaign-runner`, {
