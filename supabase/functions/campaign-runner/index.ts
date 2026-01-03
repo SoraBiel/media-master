@@ -7,7 +7,9 @@ const corsHeaders = {
 };
 
 const TELEGRAM_API_BASE = "https://api.telegram.org/bot";
-const CHUNK_SIZE = 30; // Process 30 items per invocation
+const CHUNK_SIZE = 50; // Process 50 items per invocation (increased from 30)
+const MAX_FILE_SIZE = 45 * 1024 * 1024; // 45MB - Telegram limit is 50MB
+const PARALLEL_SENDS = 5; // Send 5 items in parallel
 
 function isVideoUrl(url: string): boolean {
   const lowerUrl = url.toLowerCase();
@@ -38,39 +40,177 @@ function getMimeType(ext: string): string {
   return mimeTypes[ext] || "application/octet-stream";
 }
 
-async function telegramPostJson(botToken: string, method: string, payload: Record<string, any>): Promise<any> {
-  const url = `${TELEGRAM_API_BASE}${botToken}/${method}`;
-
-  for (let attempt = 0; attempt <= 2; attempt++) {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    const data = await res.json().catch(() => null);
-
-    if (!data?.ok) {
-      const errorCode = data?.error_code;
-      const description = data?.description || `Telegram API error (HTTP ${res.status})`;
-
-      if (errorCode === 429) {
-        const retryAfter = data?.parameters?.retry_after || 30;
-        console.log(`Rate limited, waiting ${retryAfter}s`);
-        await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
-        continue;
-      }
-
-      throw new Error(description);
+// Try sending via URL first (much faster), fallback to download
+async function sendMediaSmart(
+  botToken: string,
+  chatId: string,
+  mediaUrl: string,
+  caption?: string
+): Promise<any> {
+  const isVideo = isVideoUrl(mediaUrl);
+  
+  // First attempt: Send via URL (fastest)
+  try {
+    const method = isVideo ? "sendVideo" : "sendPhoto";
+    const payload: Record<string, any> = {
+      chat_id: chatId,
+      [isVideo ? "video" : "photo"]: mediaUrl,
+    };
+    
+    if (caption) {
+      payload.caption = caption;
+      payload.parse_mode = "HTML";
     }
-
-    return data.result;
+    
+    if (isVideo) {
+      payload.supports_streaming = true;
+    }
+    
+    const result = await telegramPostJsonFast(botToken, method, payload);
+    return result;
+  } catch (urlError: any) {
+    const errorMsg = String(urlError.message || "");
+    
+    // If URL method failed due to file issues, try download approach
+    if (errorMsg.includes("WEBPAGE_CURL_FAILED") || 
+        errorMsg.includes("wrong file identifier") ||
+        errorMsg.includes("failed to get HTTP URL content")) {
+      console.log(`URL send failed, trying download for: ${mediaUrl.substring(0, 50)}`);
+      return await downloadAndSendMedia(botToken, chatId, mediaUrl, caption);
+    }
+    
+    // For file too large errors, try as document
+    if (errorMsg.includes("Request Entity Too Large") ||
+        errorMsg.includes("file is too big") ||
+        errorMsg.includes("PHOTO_INVALID_DIMENSIONS")) {
+      console.log(`File too large, trying as document: ${mediaUrl.substring(0, 50)}`);
+      return await sendAsDocument(botToken, chatId, mediaUrl, caption);
+    }
+    
+    throw urlError;
   }
-
-  throw new Error("Telegram API retry limit reached");
 }
 
-// Download and send via FormData (more reliable than URL)
+// Fast Telegram API call with minimal retries
+async function telegramPostJsonFast(botToken: string, method: string, payload: Record<string, any>): Promise<any> {
+  const url = `${TELEGRAM_API_BASE}${botToken}/${method}`;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await res.json().catch(() => null);
+
+  if (!data?.ok) {
+    const errorCode = data?.error_code;
+    const description = data?.description || `Telegram API error (HTTP ${res.status})`;
+
+    if (errorCode === 429) {
+      const retryAfter = data?.parameters?.retry_after || 5;
+      console.log(`Rate limited, waiting ${retryAfter}s`);
+      await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
+      
+      // Retry once after rate limit
+      const retryRes = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const retryData = await retryRes.json().catch(() => null);
+      if (retryData?.ok) return retryData.result;
+      throw new Error(retryData?.description || "Retry failed");
+    }
+
+    throw new Error(description);
+  }
+
+  return data.result;
+}
+
+// Send as document (works for larger files)
+async function sendAsDocument(
+  botToken: string,
+  chatId: string,
+  mediaUrl: string,
+  caption?: string
+): Promise<any> {
+  // Try URL method first
+  const payload: Record<string, any> = {
+    chat_id: chatId,
+    document: mediaUrl,
+    disable_content_type_detection: true,
+  };
+  
+  if (caption) {
+    payload.caption = caption;
+    payload.parse_mode = "HTML";
+  }
+
+  try {
+    return await telegramPostJsonFast(botToken, "sendDocument", payload);
+  } catch (error: any) {
+    // If URL fails, download and send
+    if (String(error.message).includes("WEBPAGE_CURL_FAILED") ||
+        String(error.message).includes("wrong file identifier")) {
+      return await downloadAndSendAsDocument(botToken, chatId, mediaUrl, caption);
+    }
+    throw error;
+  }
+}
+
+// Download and send as document
+async function downloadAndSendAsDocument(
+  botToken: string,
+  chatId: string,
+  mediaUrl: string,
+  caption?: string
+): Promise<any> {
+  const ext = getFileExtension(mediaUrl);
+  const mimeType = getMimeType(ext);
+  const fileName = `media_${Date.now()}.${ext}`;
+
+  const response = await fetch(mediaUrl);
+  if (!response.ok) {
+    throw new Error(`Failed to download: ${response.status}`);
+  }
+
+  const contentLength = response.headers.get("content-length");
+  const fileSize = contentLength ? parseInt(contentLength) : 0;
+  
+  // Skip if file is too large even for documents (50MB limit)
+  if (fileSize > MAX_FILE_SIZE) {
+    throw new Error(`File too large: ${Math.round(fileSize / 1024 / 1024)}MB exceeds 45MB limit`);
+  }
+
+  const fileBlob = await response.blob();
+
+  const formData = new FormData();
+  formData.append("chat_id", chatId);
+  formData.append("document", new File([fileBlob], fileName, { type: mimeType }));
+  formData.append("disable_content_type_detection", "true");
+  
+  if (caption) {
+    formData.append("caption", caption);
+    formData.append("parse_mode", "HTML");
+  }
+
+  const url = `${TELEGRAM_API_BASE}${botToken}/sendDocument`;
+  const telegramResponse = await fetch(url, {
+    method: "POST",
+    body: formData,
+  });
+
+  const data = await telegramResponse.json();
+  if (!data.ok) {
+    throw new Error(data.description || "Failed to send document");
+  }
+
+  return data.result;
+}
+
+// Download and send via FormData (fallback)
 async function downloadAndSendMedia(
   botToken: string,
   chatId: string,
@@ -84,13 +224,21 @@ async function downloadAndSendMedia(
 
   const response = await fetch(mediaUrl);
   if (!response.ok) {
-    throw new Error(`Failed to download media: ${response.status}`);
+    throw new Error(`Failed to download: ${response.status}`);
+  }
+
+  const contentLength = response.headers.get("content-length");
+  const fileSize = contentLength ? parseInt(contentLength) : 0;
+  
+  // If file is too large for photo/video, send as document
+  if (fileSize > 10 * 1024 * 1024) { // >10MB, use document
+    return await downloadAndSendAsDocument(botToken, chatId, mediaUrl, caption);
   }
 
   const fileBlob = await response.blob();
   
-  let method = isVideo ? "sendVideo" : "sendPhoto";
-  let fileField = isVideo ? "video" : "photo";
+  const method = isVideo ? "sendVideo" : "sendPhoto";
+  const fileField = isVideo ? "video" : "photo";
 
   const formData = new FormData();
   formData.append("chat_id", chatId);
@@ -106,55 +254,90 @@ async function downloadAndSendMedia(
   }
 
   const url = `${TELEGRAM_API_BASE}${botToken}/${method}`;
+  const telegramResponse = await fetch(url, {
+    method: "POST",
+    body: formData,
+  });
 
-  for (let attempt = 0; attempt <= 2; attempt++) {
-    try {
-      const telegramResponse = await fetch(url, {
-        method: "POST",
-        body: formData,
-      });
+  const data = await telegramResponse.json();
 
-      const data = await telegramResponse.json();
+  if (!data.ok) {
+    if (data.error_code === 429) {
+      const retryAfter = data.parameters?.retry_after || 5;
+      await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
+      const retryRes = await fetch(url, { method: "POST", body: formData });
+      const retryData = await retryRes.json();
+      if (retryData.ok) return retryData.result;
+    }
 
-      if (!data.ok) {
-        if (data.error_code === 429) {
-          const retryAfter = data.parameters?.retry_after || 30;
-          console.log(`Rate limited, waiting ${retryAfter}s`);
-          await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
-          continue;
-        }
-
-        // Try as document if video/photo failed
-        if (data.description?.includes("file is too big") || 
-            data.description?.includes("video_file_invalid") ||
-            data.description?.includes("PHOTO_INVALID_DIMENSIONS")) {
-          console.log("Trying as document...");
-          const docFormData = new FormData();
-          docFormData.append("chat_id", chatId);
-          docFormData.append("document", new File([fileBlob], fileName, { type: mimeType }));
-          if (caption) {
-            docFormData.append("caption", caption);
-            docFormData.append("parse_mode", "HTML");
-          }
-
-          const docResponse = await fetch(`${TELEGRAM_API_BASE}${botToken}/sendDocument`, {
-            method: "POST",
-            body: docFormData,
-          });
-          const docData = await docResponse.json();
-          if (docData.ok) return docData.result;
-          throw new Error(docData.description || "Failed to send as document");
-        }
-
-        throw new Error(data.description || "Telegram API error");
+    // Try as document if photo/video fails
+    if (data.description?.includes("file is too big") || 
+        data.description?.includes("video_file_invalid") ||
+        data.description?.includes("PHOTO_INVALID_DIMENSIONS")) {
+      const docFormData = new FormData();
+      docFormData.append("chat_id", chatId);
+      docFormData.append("document", new File([fileBlob], fileName, { type: mimeType }));
+      if (caption) {
+        docFormData.append("caption", caption);
+        docFormData.append("parse_mode", "HTML");
       }
 
-      return data.result;
-    } catch (error: any) {
-      if (attempt === 2) throw error;
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      const docResponse = await fetch(`${TELEGRAM_API_BASE}${botToken}/sendDocument`, {
+        method: "POST",
+        body: docFormData,
+      });
+      const docData = await docResponse.json();
+      if (docData.ok) return docData.result;
+      throw new Error(docData.description || "Failed to send as document");
+    }
+
+    throw new Error(data.description || "Telegram API error");
+  }
+
+  return data.result;
+}
+
+// Process items in parallel batches
+async function processInParallel<T>(
+  items: T[],
+  processor: (item: T, index: number) => Promise<{ success: boolean; error?: string }>,
+  parallelCount: number
+): Promise<{ successes: number; errors: { index: number; error: string }[] }> {
+  const results: { successes: number; errors: { index: number; error: string }[] } = {
+    successes: 0,
+    errors: [],
+  };
+
+  for (let i = 0; i < items.length; i += parallelCount) {
+    const batch = items.slice(i, i + parallelCount);
+    const promises = batch.map((item, batchIndex) => 
+      processor(item, i + batchIndex).catch(error => ({
+        success: false,
+        error: String(error.message || error).substring(0, 100),
+      }))
+    );
+
+    const batchResults = await Promise.all(promises);
+    
+    for (let j = 0; j < batchResults.length; j++) {
+      const result = batchResults[j];
+      if (result.success) {
+        results.successes++;
+      } else {
+        results.errors.push({
+          index: i + j,
+          error: result.error || "Unknown error",
+        });
+      }
+    }
+
+    // Small delay between parallel batches to avoid rate limits
+    if (i + parallelCount < items.length) {
+      await new Promise(resolve => setTimeout(resolve, 300));
     }
   }
+
+  return results;
 }
 
 serve(async (req) => {
@@ -168,8 +351,6 @@ serve(async (req) => {
   );
 
   try {
-    // Claim work using an atomic sent_count reservation.
-    // This avoids relying on extra lock columns that may not be available in all environments.
     const now = new Date().toISOString();
 
     // Find the oldest running campaign
@@ -202,7 +383,7 @@ serve(async (req) => {
     const startOffset = targetCampaign.sent_count || 0;
     const endOffset = Math.min(startOffset + CHUNK_SIZE, totalCount);
 
-    // If already complete, finalize and stop.
+    // If already complete, finalize
     if (startOffset >= totalCount) {
       await supabase.from("campaigns").update({
         status: "completed",
@@ -216,9 +397,9 @@ serve(async (req) => {
       });
     }
 
-    console.log(`Found campaign ${campaignId}, attempting to reserve batch...`);
+    console.log(`Found campaign ${campaignId}, reserving batch ${startOffset}-${endOffset}...`);
 
-    // Atomically reserve this batch by advancing sent_count only if it matches what we read.
+    // Atomically reserve this batch
     const { data: reservedRows, error: reserveError } = await supabase
       .from("campaigns")
       .update({
@@ -248,13 +429,9 @@ serve(async (req) => {
     }
 
     const campaign: any = reservedRows![0];
-
     const userId = campaign.user_id;
     const mediaPackId = campaign.media_pack_id;
-    const delaySeconds = campaign.delay_seconds || 2;
-    const packSize = campaign.pack_size || 1;
-
-    const batchSize = endOffset - startOffset;
+    const delaySeconds = Math.max(1, campaign.delay_seconds || 1); // Min 1 second
 
     console.log(`Processing campaign ${campaignId}: batch ${startOffset}-${endOffset} of ${totalCount}`);
 
@@ -337,7 +514,7 @@ serve(async (req) => {
       const { data: userFiles } = await supabase.storage
         .from("user-media")
         .list(userId, {
-          limit: batchSize,
+          limit: endOffset - startOffset,
           offset: startOffset,
           sortBy: { column: "created_at", order: "desc" },
         });
@@ -353,7 +530,6 @@ serve(async (req) => {
     }
 
     if (mediaUrls.length === 0) {
-      // No more media, mark as completed
       await supabase.from("campaigns").update({
         status: "completed",
         progress: 100,
@@ -366,78 +542,55 @@ serve(async (req) => {
       });
     }
 
-    console.log(`Loaded ${mediaUrls.length} URLs for batch ${startOffset}-${endOffset}`);
+    console.log(`Loaded ${mediaUrls.length} URLs, processing in parallel batches of ${PARALLEL_SENDS}...`);
 
-    // Process media
+    // Process media in parallel
     let successCount = campaign.success_count || 0;
     let errorCount = campaign.error_count || 0;
     const errorsLog: any[] = Array.isArray(campaign.errors_log) ? campaign.errors_log.slice(-50) : [];
-    const sendTimes: number[] = [];
-
+    
+    const startTime = Date.now();
     const caption = startOffset === 0 ? campaign.caption : null;
 
-    // Process in packs
-    const chunks: string[][] = [];
-    for (let i = 0; i < mediaUrls.length; i += packSize) {
-      chunks.push(mediaUrls.slice(i, i + packSize));
-    }
-
-    for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
-      const chunk = chunks[chunkIndex];
-      const startTime = Date.now();
-      const captionForChunk = chunkIndex === 0 ? caption : null;
-
-      for (let i = 0; i < chunk.length; i++) {
+    const results = await processInParallel(
+      mediaUrls,
+      async (url, index) => {
         try {
-          await downloadAndSendMedia(
-            botToken,
+          await sendMediaSmart(
+            botToken!,
             chatId,
-            chunk[i],
-            i === 0 ? (captionForChunk || undefined) : undefined
+            url,
+            index === 0 ? (caption || undefined) : undefined
           );
-          successCount++;
+          return { success: true };
         } catch (error: any) {
-          console.error(`Error sending item ${startOffset + chunkIndex * packSize + i}:`, error.message);
-          errorCount++;
-          errorsLog.push({
-            index: startOffset + chunkIndex * packSize + i,
-            url: chunk[i].substring(0, 80),
-            error: String(error.message).substring(0, 100),
-            timestamp: new Date().toISOString(),
-          });
+          return { 
+            success: false, 
+            error: String(error.message || error).substring(0, 100) 
+          };
         }
+      },
+      PARALLEL_SENDS
+    );
 
-        // Small delay between items
-        if (i < chunk.length - 1) {
-          await new Promise((resolve) => setTimeout(resolve, 800));
-        }
-      }
+    successCount += results.successes;
+    errorCount += results.errors.length;
 
-      const endTime = Date.now();
-      sendTimes.push(endTime - startTime);
-
-      // Delay between chunks
-      if (chunkIndex < chunks.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, delaySeconds * 1000));
-      }
-
-      // Update progress in real-time after each chunk
-      const currentProgress = Math.min(100, Math.round((endOffset / totalCount) * 100));
-      await supabase.from("campaigns").update({
-        success_count: successCount,
-        error_count: errorCount,
-        errors_log: errorsLog.slice(-50),
-        progress: currentProgress,
-      }).eq("id", campaignId);
-
+    for (const err of results.errors) {
+      errorsLog.push({
+        index: startOffset + err.index,
+        url: mediaUrls[err.index]?.substring(0, 80) || "unknown",
+        error: err.error,
+        timestamp: new Date().toISOString(),
+      });
     }
+
+    const endTime = Date.now();
+    const batchTime = endTime - startTime;
+    const avgPerItem = Math.round(batchTime / mediaUrls.length);
 
     // Final update
     const progress = Math.min(100, Math.round((endOffset / totalCount) * 100));
-    const avgSendTime = sendTimes.length > 0 
-      ? Math.round(sendTimes.reduce((a, b) => a + b, 0) / sendTimes.length)
-      : campaign.avg_send_time_ms || 0;
-
     const isComplete = endOffset >= totalCount;
 
     await supabase.from("campaigns").update({
@@ -445,7 +598,7 @@ serve(async (req) => {
       error_count: errorCount,
       errors_log: errorsLog.slice(-50),
       progress,
-      avg_send_time_ms: avgSendTime,
+      avg_send_time_ms: avgPerItem,
       status: isComplete ? "completed" : "running",
       completed_at: isComplete ? new Date().toISOString() : null,
     }).eq("id", campaignId);
@@ -469,15 +622,18 @@ serve(async (req) => {
       }
     }
 
-    console.log(`Campaign ${campaignId} batch done: ${progress}% (${endOffset}/${totalCount})`);
+    console.log(`Campaign ${campaignId} batch done: ${progress}% (${endOffset}/${totalCount}) - ${avgPerItem}ms/item`);
 
     // Self-invoke immediately if there's more work
     if (!isComplete) {
-      const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+      const supabaseUrlEnv = Deno.env.get("SUPABASE_URL") ?? "";
       const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
+      // Add delay between batches
+      await new Promise(resolve => setTimeout(resolve, delaySeconds * 1000));
+
       // Non-blocking invoke
-      fetch(`${supabaseUrl}/functions/v1/campaign-runner`, {
+      fetch(`${supabaseUrlEnv}/functions/v1/campaign-runner`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -494,12 +650,13 @@ serve(async (req) => {
       sentCount: endOffset,
       totalCount,
       isComplete,
+      avgTimePerItem: avgPerItem,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
   } catch (error: any) {
-    console.error("Error in campaign-runner:", error);
+    console.error("Campaign runner error:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
