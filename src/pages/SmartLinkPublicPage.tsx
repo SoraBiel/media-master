@@ -70,7 +70,7 @@ const SmartLinkPublicPage = ({ slugOverride }: SmartLinkPublicPageProps) => {
 
         const fetchedPage = pageData as SmartLinkPage;
 
-        // Handle redirector type - redirect immediately
+        // Handle redirector type - show splash then redirect
         if (fetchedPage.page_type === "redirector" && fetchedPage.redirect_url) {
           // Record view before redirecting
           await supabase.from("smart_link_views").insert({
@@ -88,8 +88,13 @@ const SmartLinkPublicPage = ({ slugOverride }: SmartLinkPublicPageProps) => {
             .update({ total_views: (fetchedPage.total_views || 0) + 1 })
             .eq("id", fetchedPage.id);
 
-          // Redirect to target URL
-          window.location.href = fetchedPage.redirect_url;
+          setPage(fetchedPage);
+          setIsLoading(false);
+
+          // Redirect after a brief delay to show splash
+          setTimeout(() => {
+            window.location.href = fetchedPage.redirect_url!;
+          }, fetchedPage.avatar_url ? 1500 : 500);
           return;
         }
 
@@ -266,6 +271,45 @@ const SmartLinkPublicPage = ({ slugOverride }: SmartLinkPublicPageProps) => {
     );
   }
 
+  // Redirector splash screen
+  if (page.page_type === "redirector") {
+    return (
+      <div
+        className="min-h-screen flex flex-col items-center justify-center p-4"
+        style={{ backgroundColor: page.background_color }}
+      >
+        <div className="text-center space-y-4 animate-fade-in">
+          {page.avatar_url && (
+            <img
+              src={page.avatar_url}
+              alt={page.title}
+              className="w-28 h-28 rounded-full mx-auto object-cover border-4 animate-scale-in"
+              style={{ borderColor: page.text_color + "40" }}
+            />
+          )}
+          <h1
+            className="text-2xl font-bold"
+            style={{ color: page.text_color }}
+          >
+            {page.title}
+          </h1>
+          <div className="flex items-center justify-center gap-2">
+            <Loader2 
+              className="w-5 h-5 animate-spin" 
+              style={{ color: page.text_color }}
+            />
+            <span 
+              className="text-sm opacity-70"
+              style={{ color: page.text_color }}
+            >
+              Redirecionando...
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
 
@@ -306,7 +350,7 @@ const SmartLinkPublicPage = ({ slugOverride }: SmartLinkPublicPageProps) => {
               <button
                 key={button.id}
                 onClick={() => handleButtonClick(button)}
-                className={getButtonClasses(page.button_style)}
+                className={`${getButtonClasses(page.button_style)} relative`}
                 style={{
                   backgroundColor: page.button_style === "outline" 
                     ? "transparent" 
@@ -317,13 +361,14 @@ const SmartLinkPublicPage = ({ slugOverride }: SmartLinkPublicPageProps) => {
                   borderColor: page.button_style === "outline" 
                     ? page.text_color 
                     : undefined,
+                  paddingLeft: button.icon ? "3rem" : undefined,
                 }}
               >
                 {button.icon && (
                   <img
                     src={button.icon}
                     alt=""
-                    className="w-6 h-6 rounded object-cover flex-shrink-0"
+                    className="w-7 h-7 rounded object-cover flex-shrink-0 absolute left-3"
                     loading="eager"
                   />
                 )}
