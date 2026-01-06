@@ -1,12 +1,10 @@
-import { useState } from "react";
 import { cn } from "@/lib/utils";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { DateRangePicker } from "@/components/DateRangePicker";
+import { subDays, startOfDay, endOfDay } from "date-fns";
 import { DateRange } from "react-day-picker";
-import { subDays, startOfDay, endOfDay, differenceInDays } from "date-fns";
 import {
   Users,
   GitBranch,
@@ -60,10 +58,11 @@ const DashboardPage = () => {
     getBlockReason,
   } = usePlanExpiration();
   
-  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+  // Fixed to last 7 days
+  const dateRange: DateRange = {
     from: startOfDay(subDays(new Date(), 6)),
     to: endOfDay(new Date()),
-  });
+  };
   
   const {
     metrics,
@@ -71,15 +70,8 @@ const DashboardPage = () => {
     isLoading: metricsLoading,
   } = useFunnelMetrics(dateRange);
 
-  const periodLabel = dateRange?.from && dateRange?.to 
-    ? `${differenceInDays(dateRange.to, dateRange.from) + 1} dias`
-    : 'Últimos 7 dias';
-
   // Financial metrics based on MercadoPago sales
   const totalRevenue = metrics.totalPaidAmountCents / 100;
-  const availableBalance = totalRevenue * 0.95; // 5% de taxa simulada
-  const pendingBalance = 0; // Saldo a liberar
-  const retentionBalance = 0; // Em retenção
   const totalWithdrawn = 0; // Saque total realizado
 
   // Calculate PIX conversion data for pie chart
@@ -130,15 +122,10 @@ const DashboardPage = () => {
               Olá, {profile?.full_name?.split(" ")[0] || "usuário"}! 👋
             </h1>
             <p className="text-muted-foreground text-sm">
-              Acompanhe o desempenho dos seus funis
+              Dados dos últimos 7 dias
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <DateRangePicker
-              dateRange={dateRange}
-              onDateRangeChange={setDateRange}
-              className="w-[220px]"
-            />
             <NotificationsPanel />
             <Link to="/funnels/new">
               <Button variant="gradient" size="sm">
@@ -150,152 +137,101 @@ const DashboardPage = () => {
         </div>
 
         {/* Financial Overview Section */}
-        <div className="grid gap-4 lg:grid-cols-3">
+        <div className="grid gap-4 lg:grid-cols-2">
           {/* Left Column - Chart */}
-          <div className="lg:col-span-2">
-            <Card className="border-border/50 h-full">
-              <CardHeader className="pb-2 px-4 sm:px-6">
-                <CardTitle className="flex items-center gap-2 text-sm font-medium">
-                  <TrendingUp className="w-4 h-4 text-success" />
-                  Evolução de Vendas - {periodLabel}
-                  {!isMercadoPagoConnected && (
-                    <Badge variant="outline" className="ml-2 text-xs">
-                      MercadoPago não conectado
-                    </Badge>
-                  )}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="px-2 sm:px-6">
-                <div className="h-[200px]">
-                  {metrics.pixChartData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={metrics.pixChartData}>
-                        <defs>
-                          <linearGradient id="colorPixAmount" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="hsl(var(--success))" stopOpacity={0.2}/>
-                            <stop offset="95%" stopColor="hsl(var(--success))" stopOpacity={0}/>
-                          </linearGradient>
-                        </defs>
-                        <XAxis 
-                          dataKey="label" 
-                          tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} 
-                          tickLine={false} 
-                          axisLine={false} 
-                        />
-                        <YAxis 
-                          tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} 
-                          tickLine={false} 
-                          axisLine={false} 
-                          tickFormatter={(v) => `R$${v}`} 
-                          width={50}
-                        />
-                        <Tooltip 
-                          formatter={(value: number) => [`R$ ${value.toFixed(2)}`, 'Faturamento']}
-                          contentStyle={{ 
-                            background: 'hsl(var(--card))', 
-                            border: '1px solid hsl(var(--border))', 
-                            borderRadius: '6px',
-                            fontSize: '12px'
-                          }}
-                        />
-                        <Area 
-                          type="monotone" 
-                          dataKey="amount" 
-                          stroke="hsl(var(--success))" 
-                          strokeWidth={1.5} 
-                          fill="url(#colorPixAmount)" 
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                      <BarChart3 className="w-10 h-10 mb-2 opacity-30" />
-                      <p className="text-sm">Dados indisponíveis para o período selecionado</p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          <Card className="border-border/50">
+            <CardHeader className="pb-2 px-4 sm:px-6">
+              <CardTitle className="flex items-center gap-2 text-sm font-medium">
+                <TrendingUp className="w-4 h-4 text-success" />
+                Evolução de Vendas - Últimos 7 dias
+                {!isMercadoPagoConnected && (
+                  <Badge variant="outline" className="ml-2 text-xs">
+                    MercadoPago não conectado
+                  </Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-2 sm:px-6">
+              <div className="h-[200px]">
+                {metrics.pixChartData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={metrics.pixChartData}>
+                      <defs>
+                        <linearGradient id="colorPixAmount" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="hsl(var(--success))" stopOpacity={0.2}/>
+                          <stop offset="95%" stopColor="hsl(var(--success))" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <XAxis 
+                        dataKey="label" 
+                        tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} 
+                        tickLine={false} 
+                        axisLine={false} 
+                      />
+                      <YAxis 
+                        tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} 
+                        tickLine={false} 
+                        axisLine={false} 
+                        tickFormatter={(v) => `R$${v}`} 
+                        width={50}
+                      />
+                      <Tooltip 
+                        formatter={(value: number) => [`R$ ${value.toFixed(2)}`, 'Faturamento']}
+                        contentStyle={{ 
+                          background: 'hsl(var(--card))', 
+                          border: '1px solid hsl(var(--border))', 
+                          borderRadius: '6px',
+                          fontSize: '12px'
+                        }}
+                      />
+                      <Area 
+                        type="monotone" 
+                        dataKey="amount" 
+                        stroke="hsl(var(--success))" 
+                        strokeWidth={1.5} 
+                        fill="url(#colorPixAmount)" 
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                    <BarChart3 className="w-10 h-10 mb-2 opacity-30" />
+                    <p className="text-sm">Dados indisponíveis para o período</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
-          {/* Right Column - Financial Stats */}
-          <div className="space-y-3">
-            {/* Available Balance */}
-            <Card className="border-border/50">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center">
-                      <CheckCircle className="w-5 h-5 text-success" />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold text-success">
-                        R$ {availableBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                      </p>
-                      <p className="text-xs text-muted-foreground">Disponível</p>
-                    </div>
-                  </div>
-                  <Button size="sm" className="bg-success hover:bg-success/90 text-success-foreground font-semibold">
-                    SACAR
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Pending Balance */}
-            <Card className="border-border/50">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-yellow-500/10 flex items-center justify-center">
-                    <Clock className="w-5 h-5 text-yellow-500" />
-                  </div>
-                  <div>
-                    <p className="text-xl font-bold text-yellow-500">
-                      R$ {pendingBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </p>
-                    <p className="text-xs text-muted-foreground">Saldo à liberar</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Retention Balance */}
-            <Card className="border-border/50">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
-                    <Wallet className="w-5 h-5 text-orange-500" />
-                  </div>
-                  <div>
-                    <p className="text-xl font-bold text-orange-500">
-                      R$ {retentionBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </p>
-                    <p className="text-xs text-muted-foreground">Em retenção</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Total Withdrawn - Updates based on MercadoPago sales */}
-            <Card className="border-border/50">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-telegram/10 flex items-center justify-center">
-                    <ArrowUpDown className="w-5 h-5 text-telegram" />
-                  </div>
-                  <div>
-                    <p className="text-xl font-bold text-success">
-                      R$ {totalWithdrawn.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </p>
-                    <p className="text-xs text-muted-foreground">Saque total realizado</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          {/* Right Column - Saque Total */}
+          <Card className="border-border/50">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-sm font-medium">
+                <ArrowUpDown className="w-4 h-4 text-success" />
+                Saque Total Realizado
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col items-center justify-center h-[180px]">
+                <p className="text-5xl font-bold text-success mb-2">
+                  R$ {totalWithdrawn.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </p>
+                <p className="text-sm text-muted-foreground text-center">
+                  Total sacado da sua conta MercadoPago
+                </p>
+                {!isMercadoPagoConnected && (
+                  <Link to="/integrations" className="mt-3">
+                    <Button variant="outline" size="sm">
+                      Conectar MercadoPago
+                    </Button>
+                  </Link>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* PIX Conversion with Pie Chart */}
+        {/* PIX Conversion with Pie Chart + Package Stats */}
         <div className="grid gap-4 lg:grid-cols-2">
           <Card className="border-border/50">
             <CardHeader className="pb-2">
@@ -351,28 +287,51 @@ const DashboardPage = () => {
             </CardContent>
           </Card>
 
-          {/* Saque Total Card */}
+          {/* Package Stats */}
           <Card className="border-border/50">
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-sm font-medium">
-                <ArrowUpDown className="w-4 h-4 text-success" />
-                Saque Total Realizado
+                <BarChart3 className="w-4 h-4 text-telegram" />
+                Pacotes Mais Criados
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col items-center justify-center h-[150px]">
-                <p className="text-5xl font-bold text-success mb-2">
-                  R$ {totalWithdrawn.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                </p>
-                <p className="text-sm text-muted-foreground text-center">
-                  Total sacado da sua conta MercadoPago
-                </p>
-                {!isMercadoPagoConnected && (
-                  <Link to="/integrations" className="mt-3">
-                    <Button variant="outline" size="sm">
-                      Conectar MercadoPago
-                    </Button>
-                  </Link>
+              <div className="space-y-3">
+                {funnelOverviews.length > 0 ? (
+                  <>
+                    {funnelOverviews.slice(0, 4).map((funnel, index) => (
+                      <div key={funnel.id} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className={cn(
+                            "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
+                            index === 0 ? "bg-success/20 text-success" : "bg-muted text-muted-foreground"
+                          )}>
+                            {index + 1}
+                          </div>
+                          <span className="text-sm font-medium truncate max-w-[150px]">{funnel.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold">{funnel.leadsStarted} leads</span>
+                          <Badge variant={funnel.isActive ? "default" : "secondary"} className="text-xs">
+                            {funnel.isActive ? "Ativo" : "Inativo"}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                    {funnelOverviews.length === 0 && (
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        Nenhum funil criado ainda
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-[130px] text-muted-foreground">
+                    <GitBranch className="w-8 h-8 mb-2 opacity-30" />
+                    <p className="text-sm">Nenhum funil encontrado</p>
+                    <Link to="/funnels/new" className="mt-2">
+                      <Button variant="outline" size="sm">Criar Funil</Button>
+                    </Link>
+                  </div>
                 )}
               </div>
             </CardContent>
