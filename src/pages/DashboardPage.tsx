@@ -17,6 +17,16 @@ import {
   Play,
   Pause,
   Bot,
+  CheckCircle,
+  Wallet,
+  Clock,
+  ArrowDownLeft,
+  ArrowUpDown,
+  CreditCard,
+  RotateCcw,
+  Receipt,
+  Banknote,
+  BarChart3,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
@@ -67,30 +77,12 @@ const DashboardPage = () => {
     ? `${differenceInDays(dateRange.to, dateRange.from) + 1} dias`
     : 'Últimos 7 dias';
 
-  // Only 3 essential stats
-  const statsCards = [
-    {
-      title: "Leads no Período",
-      value: metrics.leadsToday.toString(),
-      icon: Users,
-      color: "text-telegram",
-      bgColor: "bg-telegram/10",
-    },
-    {
-      title: "Funis Ativos",
-      value: metrics.activeFunnels.toString(),
-      icon: GitBranch,
-      color: "text-success",
-      bgColor: "bg-success/10",
-    },
-    {
-      title: "Faturamento",
-      value: `R$ ${(metrics.totalPaidAmountCents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
-      icon: DollarSign,
-      color: "text-success",
-      bgColor: "bg-success/10",
-    },
-  ];
+  // Financial metrics
+  const totalRevenue = metrics.totalPaidAmountCents / 100;
+  const availableBalance = totalRevenue * 0.95; // 5% de taxa simulada
+  const pendingBalance = 0; // Saldo a liberar
+  const retentionBalance = 0; // Em retenção
+  const totalWithdrawn = 0; // Saque total realizado
 
   return (
     <DashboardLayout>
@@ -142,90 +134,284 @@ const DashboardPage = () => {
           </div>
         </div>
 
-        {/* Stats Grid - 3 cards only */}
-        <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
-          {statsCards.map((stat, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2, delay: index * 0.05 }}
-            >
-              <Card className="border-border/50">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs text-muted-foreground">{stat.title}</p>
-                      <p className="text-2xl font-bold mt-0.5">{stat.value}</p>
+        {/* Financial Overview Section */}
+        <div className="grid gap-4 lg:grid-cols-3">
+          {/* Left Column - Chart */}
+          <div className="lg:col-span-2">
+            <Card className="border-border/50 h-full">
+              <CardHeader className="pb-2 px-4 sm:px-6">
+                <CardTitle className="flex items-center gap-2 text-sm font-medium">
+                  <TrendingUp className="w-4 h-4 text-success" />
+                  Evolução de Vendas - {periodLabel}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-2 sm:px-6">
+                <div className="h-[200px]">
+                  {metrics.pixChartData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={metrics.pixChartData}>
+                        <defs>
+                          <linearGradient id="colorPixAmount" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="hsl(var(--success))" stopOpacity={0.2}/>
+                            <stop offset="95%" stopColor="hsl(var(--success))" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <XAxis 
+                          dataKey="label" 
+                          tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} 
+                          tickLine={false} 
+                          axisLine={false} 
+                        />
+                        <YAxis 
+                          tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} 
+                          tickLine={false} 
+                          axisLine={false} 
+                          tickFormatter={(v) => `R$${v}`} 
+                          width={50}
+                        />
+                        <Tooltip 
+                          formatter={(value: number) => [`R$ ${value.toFixed(2)}`, 'Faturamento']}
+                          contentStyle={{ 
+                            background: 'hsl(var(--card))', 
+                            border: '1px solid hsl(var(--border))', 
+                            borderRadius: '6px',
+                            fontSize: '12px'
+                          }}
+                        />
+                        <Area 
+                          type="monotone" 
+                          dataKey="amount" 
+                          stroke="hsl(var(--success))" 
+                          strokeWidth={1.5} 
+                          fill="url(#colorPixAmount)" 
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                      <BarChart3 className="w-10 h-10 mb-2 opacity-30" />
+                      <p className="text-sm">Dados indisponíveis para o período selecionado</p>
                     </div>
-                    <div className={`p-2.5 rounded-lg ${stat.bgColor}`}>
-                      <stat.icon className={`w-5 h-5 ${stat.color}`} />
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Right Column - Financial Stats */}
+          <div className="space-y-3">
+            {/* Available Balance */}
+            <Card className="border-border/50">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center">
+                      <CheckCircle className="w-5 h-5 text-success" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-success">
+                        R$ {availableBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </p>
+                      <p className="text-xs text-muted-foreground">Disponível</p>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
+                  <Button size="sm" className="bg-success hover:bg-success/90 text-success-foreground font-semibold">
+                    SACAR
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Pending Balance */}
+            <Card className="border-border/50">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-yellow-500/10 flex items-center justify-center">
+                    <Clock className="w-5 h-5 text-yellow-500" />
+                  </div>
+                  <div>
+                    <p className="text-xl font-bold text-yellow-500">
+                      R$ {pendingBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Saldo à liberar</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Retention Balance */}
+            <Card className="border-border/50">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                    <Wallet className="w-5 h-5 text-orange-500" />
+                  </div>
+                  <div>
+                    <p className="text-xl font-bold text-orange-500">
+                      R$ {retentionBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Em retenção</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Total Withdrawn */}
+            <Card className="border-border/50">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-telegram/10 flex items-center justify-center">
+                    <ArrowUpDown className="w-5 h-5 text-telegram" />
+                  </div>
+                  <div>
+                    <p className="text-xl font-bold text-success">
+                      R$ {totalWithdrawn.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Saque total realizado</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
-        {/* Sales Chart */}
-        <Card className="border-border/50">
-          <CardHeader className="pb-2 px-4 sm:px-6">
-            <CardTitle className="flex items-center gap-2 text-sm font-medium">
-              <TrendingUp className="w-4 h-4 text-success" />
-              Evolução de Vendas - {periodLabel}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-2 sm:px-6">
-            <div className="h-[180px] sm:h-[220px]">
-              {metrics.pixChartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={metrics.pixChartData}>
-                    <defs>
-                      <linearGradient id="colorPixAmount" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="hsl(var(--success))" stopOpacity={0.2}/>
-                        <stop offset="95%" stopColor="hsl(var(--success))" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <XAxis 
-                      dataKey="label" 
-                      tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} 
-                      tickLine={false} 
-                      axisLine={false} 
-                    />
-                    <YAxis 
-                      tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} 
-                      tickLine={false} 
-                      axisLine={false} 
-                      tickFormatter={(v) => `R$${v}`} 
-                      width={50}
-                    />
-                    <Tooltip 
-                      formatter={(value: number) => [`R$ ${value.toFixed(2)}`, 'Faturamento']}
-                      contentStyle={{ 
-                        background: 'hsl(var(--card))', 
-                        border: '1px solid hsl(var(--border))', 
-                        borderRadius: '6px',
-                        fontSize: '12px'
-                      }}
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="amount" 
-                      stroke="hsl(var(--success))" 
-                      strokeWidth={1.5} 
-                      fill="url(#colorPixAmount)" 
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex items-center justify-center h-full text-muted-foreground">
-                  <p className="text-sm">Nenhum pagamento no período</p>
+        {/* Conversion Metrics Row */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          <Card className="border-border/50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-green-500/10 flex items-center justify-center">
+                  <CreditCard className="w-4 h-4 text-green-500" />
                 </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+                <div>
+                  <p className="text-lg font-bold">0.00%</p>
+                  <p className="text-xs text-muted-foreground">Aprovação Cartão</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-yellow-500/10 flex items-center justify-center">
+                  <RotateCcw className="w-4 h-4 text-yellow-500" />
+                </div>
+                <div>
+                  <p className="text-lg font-bold">0.00%</p>
+                  <p className="text-xs text-muted-foreground">Chargeback</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-red-500/10 flex items-center justify-center">
+                  <Receipt className="w-4 h-4 text-red-500" />
+                </div>
+                <div>
+                  <p className="text-lg font-bold">0.00%</p>
+                  <p className="text-xs text-muted-foreground">Reembolsos</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-telegram/10 flex items-center justify-center">
+                  <Banknote className="w-4 h-4 text-telegram" />
+                </div>
+                <div>
+                  <p className="text-lg font-bold">0.00%</p>
+                  <p className="text-xs text-muted-foreground">Conversão Pix</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/50 col-span-2 sm:col-span-1">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                  <BarChart3 className="w-4 h-4 text-purple-500" />
+                </div>
+                <div>
+                  <p className="text-lg font-bold">0.00%</p>
+                  <p className="text-xs text-muted-foreground">Conversão Boleto</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Stats Grid - 3 cards */}
+        <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <Card className="border-border/50">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Leads no Período</p>
+                    <p className="text-2xl font-bold mt-0.5">{metrics.leadsToday}</p>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-telegram/10">
+                    <Users className="w-5 h-5 text-telegram" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2, delay: 0.05 }}
+          >
+            <Card className="border-border/50">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Funis Ativos</p>
+                    <p className="text-2xl font-bold mt-0.5">{metrics.activeFunnels}</p>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-success/10">
+                    <GitBranch className="w-5 h-5 text-success" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2, delay: 0.1 }}
+          >
+            <Card className="border-border/50">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Faturamento Total</p>
+                    <p className="text-2xl font-bold mt-0.5">
+                      R$ {(metrics.totalPaidAmountCents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    </p>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-success/10">
+                    <DollarSign className="w-5 h-5 text-success" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
 
         {/* Funnel Overview Table */}
         <Card className="border-border/50">
