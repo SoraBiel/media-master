@@ -646,7 +646,10 @@ const AccountsPage = () => {
       <div className="space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold mb-2">Contas</h1>
+          <div className="flex items-center gap-3 mb-2">
+            <ShoppingBag className="w-8 h-8 text-primary" />
+            <h1 className="text-3xl font-bold">Loja</h1>
+          </div>
           <p className="text-muted-foreground">
             Contas e modelos verificados prontos para uso
           </p>
