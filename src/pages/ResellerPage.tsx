@@ -212,7 +212,7 @@ const ResellerPage = () => {
     name: "",
     bio: "",
     niche: "",
-    category: "ia",
+    category: "black",
     price_cents: 0,
     deliverable_link: "",
     deliverable_notes: ""
@@ -787,7 +787,7 @@ const ResellerPage = () => {
       name: "",
       bio: "",
       niche: "",
-      category: "ia",
+      category: "black",
       price_cents: 0,
       deliverable_link: "",
       deliverable_notes: ""
