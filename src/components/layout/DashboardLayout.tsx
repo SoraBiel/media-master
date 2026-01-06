@@ -1,7 +1,7 @@
 import { ReactNode, useState, useEffect, useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, CreditCard, MessageCircle, Settings, LogOut, ChevronLeft, ChevronRight, Bell, BellOff, User, Shield, Menu, Crown, Headphones, GitBranch, MessageSquare, Plug, Wallet, Users, Store, Package, Share2, Link2, Gift } from "lucide-react";
+import { LayoutDashboard, CreditCard, MessageCircle, Settings, LogOut, ChevronLeft, ChevronRight, Bell, BellOff, User, Shield, Menu, Crown, Headphones, GitBranch, MessageSquare, Plug, Wallet, Users, Store, Package, Share2, Link2, Gift, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/AuthContext";
@@ -99,8 +99,8 @@ const DashboardLayout = ({
     // Only show Accounts if any account type is enabled
     if (adminSettings.tiktok_enabled || adminSettings.models_enabled) {
       items.push({
-        icon: Users,
-        label: "Contas",
+        icon: ShoppingBag,
+        label: "Loja",
         path: "/accounts"
       });
     }
