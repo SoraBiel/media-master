@@ -9,6 +9,9 @@ const corsHeaders = {
 interface PaymentRequest {
   product_type: "tiktok_account" | "model" | "telegram_group" | "instagram_account";
   product_id: string;
+  discount_percent?: number;
+  discounted_price_cents?: number;
+  is_welcome_gift?: boolean;
   buyer: {
     name: string;
     email: string;
@@ -49,9 +52,9 @@ serve(async (req) => {
       });
     }
 
-    const { product_type, product_id, buyer }: PaymentRequest = await req.json();
+    const { product_type, product_id, buyer, discount_percent, discounted_price_cents, is_welcome_gift }: PaymentRequest = await req.json();
 
-    console.log("Product payment request:", { product_type, product_id, buyer: { ...buyer, phone: '***' } });
+    console.log("Product payment request:", { product_type, product_id, buyer: { ...buyer, phone: '***' }, discount_percent, is_welcome_gift });
 
     // Validate product type
     const validTypes = ["tiktok_account", "model", "telegram_group", "instagram_account"];
@@ -147,7 +150,14 @@ serve(async (req) => {
       });
     }
 
-    const amountCents = product.price_cents;
+    // Apply discount if provided (welcome gift)
+    let amountCents = product.price_cents;
+    const originalPriceCents = product.price_cents;
+    
+    if (is_welcome_gift && discounted_price_cents && discounted_price_cents > 0) {
+      amountCents = discounted_price_cents;
+      console.log(`Applied welcome gift discount: ${originalPriceCents} -> ${amountCents} (${discount_percent}% off)`);
+    }
 
     // Determine which Mercado Pago account to use
     // If vendor exists and has MP connected, use vendor's account
