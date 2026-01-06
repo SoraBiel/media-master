@@ -20,19 +20,16 @@ import {
   CheckCircle,
   Wallet,
   Clock,
-  ArrowDownLeft,
   ArrowUpDown,
-  CreditCard,
-  RotateCcw,
-  Receipt,
-  Banknote,
   BarChart3,
+  Banknote,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlanExpiration } from "@/hooks/usePlanExpiration";
 import { useFunnelMetrics } from "@/hooks/useFunnelMetrics";
+import { useMercadoPagoIntegration } from "@/hooks/useMercadoPagoIntegration";
 import { PlanExpirationModal } from "@/components/PlanExpirationModal";
 import { FeatureBlockedOverlay } from "@/components/FeatureBlockedOverlay";
 import { NotificationsPanel } from "@/components/NotificationsPanel";
@@ -45,11 +42,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 
 const DashboardPage = () => {
   const navigate = useNavigate();
   const { profile } = useAuth();
+  const { isConnected: isMercadoPagoConnected } = useMercadoPagoIntegration();
   const {
     daysRemaining,
     isExpired,
@@ -77,12 +75,29 @@ const DashboardPage = () => {
     ? `${differenceInDays(dateRange.to, dateRange.from) + 1} dias`
     : 'Últimos 7 dias';
 
-  // Financial metrics
+  // Financial metrics based on MercadoPago sales
   const totalRevenue = metrics.totalPaidAmountCents / 100;
   const availableBalance = totalRevenue * 0.95; // 5% de taxa simulada
   const pendingBalance = 0; // Saldo a liberar
   const retentionBalance = 0; // Em retenção
   const totalWithdrawn = 0; // Saque total realizado
+
+  // Calculate PIX conversion data for pie chart
+  const totalPixGenerated = metrics.pixChartData.reduce((sum, d) => sum + d.count, 0) || 0;
+  const paidPixCount = metrics.pixChartData.reduce((sum, d) => sum + d.count, 0); // All in chart are paid
+  const pendingPixCount = Math.max(0, totalPixGenerated - paidPixCount);
+  
+  const pixConversionRate = totalPixGenerated > 0 
+    ? ((paidPixCount / totalPixGenerated) * 100).toFixed(1)
+    : "0.0";
+
+  const pieChartData = [
+    { name: "Pagos", value: paidPixCount, color: "hsl(var(--success))" },
+    { name: "Pendentes", value: pendingPixCount || 1, color: "hsl(var(--muted))" },
+  ];
+
+  // Only show pie if there's actual data
+  const hasPieData = totalPixGenerated > 0;
 
   return (
     <DashboardLayout>
@@ -143,6 +158,11 @@ const DashboardPage = () => {
                 <CardTitle className="flex items-center gap-2 text-sm font-medium">
                   <TrendingUp className="w-4 h-4 text-success" />
                   Evolução de Vendas - {periodLabel}
+                  {!isMercadoPagoConnected && (
+                    <Badge variant="outline" className="ml-2 text-xs">
+                      MercadoPago não conectado
+                    </Badge>
+                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent className="px-2 sm:px-6">
@@ -256,7 +276,7 @@ const DashboardPage = () => {
               </CardContent>
             </Card>
 
-            {/* Total Withdrawn */}
+            {/* Total Withdrawn - Updates based on MercadoPago sales */}
             <Card className="border-border/50">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
@@ -275,74 +295,85 @@ const DashboardPage = () => {
           </div>
         </div>
 
-        {/* Conversion Metrics Row */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        {/* PIX Conversion with Pie Chart */}
+        <div className="grid gap-4 lg:grid-cols-2">
           <Card className="border-border/50">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-green-500/10 flex items-center justify-center">
-                  <CreditCard className="w-4 h-4 text-green-500" />
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-sm font-medium">
+                <Banknote className="w-4 h-4 text-telegram" />
+                Conversão PIX
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-6">
+                <div className="h-[150px] w-[150px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={hasPieData ? pieChartData : [{ name: "Sem dados", value: 1, color: "hsl(var(--muted))" }]}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={40}
+                        outerRadius={60}
+                        paddingAngle={2}
+                        dataKey="value"
+                      >
+                        {(hasPieData ? pieChartData : [{ name: "Sem dados", value: 1, color: "hsl(var(--muted))" }]).map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
                 </div>
-                <div>
-                  <p className="text-lg font-bold">0.00%</p>
-                  <p className="text-xs text-muted-foreground">Aprovação Cartão</p>
+                <div className="flex-1 space-y-3">
+                  <div className="text-center">
+                    <p className="text-4xl font-bold text-success">{pixConversionRate}%</p>
+                    <p className="text-sm text-muted-foreground">Taxa de Conversão</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 text-center">
+                    <div>
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-success" />
+                        <span className="text-lg font-semibold">{paidPixCount}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Pagos</p>
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-muted" />
+                        <span className="text-lg font-semibold">{pendingPixCount}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Pendentes</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
+          {/* Saque Total Card */}
           <Card className="border-border/50">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-yellow-500/10 flex items-center justify-center">
-                  <RotateCcw className="w-4 h-4 text-yellow-500" />
-                </div>
-                <div>
-                  <p className="text-lg font-bold">0.00%</p>
-                  <p className="text-xs text-muted-foreground">Chargeback</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border/50">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-red-500/10 flex items-center justify-center">
-                  <Receipt className="w-4 h-4 text-red-500" />
-                </div>
-                <div>
-                  <p className="text-lg font-bold">0.00%</p>
-                  <p className="text-xs text-muted-foreground">Reembolsos</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border/50">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-telegram/10 flex items-center justify-center">
-                  <Banknote className="w-4 h-4 text-telegram" />
-                </div>
-                <div>
-                  <p className="text-lg font-bold">0.00%</p>
-                  <p className="text-xs text-muted-foreground">Conversão Pix</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border/50 col-span-2 sm:col-span-1">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                  <BarChart3 className="w-4 h-4 text-purple-500" />
-                </div>
-                <div>
-                  <p className="text-lg font-bold">0.00%</p>
-                  <p className="text-xs text-muted-foreground">Conversão Boleto</p>
-                </div>
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-sm font-medium">
+                <ArrowUpDown className="w-4 h-4 text-success" />
+                Saque Total Realizado
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col items-center justify-center h-[150px]">
+                <p className="text-5xl font-bold text-success mb-2">
+                  R$ {totalWithdrawn.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </p>
+                <p className="text-sm text-muted-foreground text-center">
+                  Total sacado da sua conta MercadoPago
+                </p>
+                {!isMercadoPagoConnected && (
+                  <Link to="/integrations" className="mt-3">
+                    <Button variant="outline" size="sm">
+                      Conectar MercadoPago
+                    </Button>
+                  </Link>
+                )}
               </div>
             </CardContent>
           </Card>
