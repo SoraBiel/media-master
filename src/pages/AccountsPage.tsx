@@ -503,12 +503,27 @@ const TinderStyleModels = ({
 };
 
 
+interface TelegramGroup {
+  id: string;
+  group_name: string;
+  group_username: string | null;
+  members_count: number;
+  description: string | null;
+  niche: string | null;
+  price_cents: number;
+  is_verified: boolean;
+  is_sold: boolean;
+  image_url: string | null;
+  group_type: string;
+}
+
 const AccountsPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialTab = searchParams.get("tab") || "tiktok";
+  const initialTab = searchParams.get("tab") || "black";
   
   const [tiktokAccounts, setTiktokAccounts] = useState<TikTokAccount[]>([]);
   const [blackModels, setBlackModels] = useState<BlackModel[]>([]);
+  const [telegramGroups, setTelegramGroups] = useState<TelegramGroup[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedNiche, setSelectedNiche] = useState<string | null>(null);
@@ -533,21 +548,29 @@ const AccountsPage = () => {
       .on("postgres_changes", { event: "*", schema: "public", table: "models_for_sale" }, fetchData)
       .subscribe();
 
+    const telegramChannel = supabase
+      .channel("telegram-groups-store")
+      .on("postgres_changes", { event: "*", schema: "public", table: "telegram_groups" }, fetchData)
+      .subscribe();
+
     return () => {
       supabase.removeChannel(tiktokChannel);
       supabase.removeChannel(modelsChannel);
+      supabase.removeChannel(telegramChannel);
     };
   }, []);
 
   const fetchData = async () => {
     try {
-      const [tiktokRes, modelsRes] = await Promise.all([
+      const [tiktokRes, modelsRes, telegramRes] = await Promise.all([
         supabase.from("tiktok_accounts").select("*").eq("is_sold", false).order("created_at", { ascending: false }),
         supabase.from("models_for_sale").select("*").eq("is_sold", false).eq("category", "black").order("created_at", { ascending: false }),
+        supabase.from("telegram_groups").select("*").eq("is_sold", false).order("created_at", { ascending: false }),
       ]);
 
       if (tiktokRes.data) setTiktokAccounts(tiktokRes.data);
       if (modelsRes.data) setBlackModels(modelsRes.data);
+      if (telegramRes.data) setTelegramGroups(telegramRes.data);
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
@@ -569,6 +592,10 @@ const AccountsPage = () => {
     navigate(`/checkout?type=model&id=${model.id}`);
   };
 
+  const handleBuyTelegramGroup = (group: TelegramGroup) => {
+    navigate(`/checkout?type=telegram_group&id=${group.id}`);
+  };
+
   const formatNumber = (num: number) => {
     if (num >= 1000000) return (num / 1000000).toFixed(1) + "M";
     if (num >= 1000) return (num / 1000).toFixed(1) + "K";
@@ -581,10 +608,30 @@ const AccountsPage = () => {
 
   const tiktokNiches = [...new Set(tiktokAccounts.map((a) => a.niche).filter(Boolean))];
   const modelNiches = [...new Set(blackModels.map((m) => m.niche).filter(Boolean))];
-  const niches = activeTab === "tiktok" ? tiktokNiches : activeTab === "black" ? modelNiches : [];
+  const telegramNiches = [...new Set(telegramGroups.map((g) => g.niche).filter(Boolean))];
+  const niches = activeTab === "tiktok" ? tiktokNiches : activeTab === "black" ? modelNiches : activeTab === "telegram" ? telegramNiches : [];
 
-  const maxPrice = Math.max(...tiktokAccounts.map((a) => a.price_cents), ...blackModels.map(m => m.price_cents), 100000);
+  const maxPrice = Math.max(...tiktokAccounts.map((a) => a.price_cents), ...blackModels.map(m => m.price_cents), ...telegramGroups.map(g => g.price_cents), 100000);
   const maxFollowers = Math.max(...tiktokAccounts.map((a) => a.followers), 10000000);
+  const maxMembers = Math.max(...telegramGroups.map((g) => g.members_count), 10000000);
+
+  const filteredTelegramGroups = telegramGroups
+    .filter((group) => {
+      const matchesSearch = group.group_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        group.description?.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesNiche = !selectedNiche || group.niche === selectedNiche;
+      const matchesVerified = !showVerifiedOnly || group.is_verified;
+      const matchesPrice = group.price_cents >= priceRange[0] && group.price_cents <= priceRange[1];
+      return matchesSearch && matchesNiche && matchesVerified && matchesPrice;
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case "price_asc": return a.price_cents - b.price_cents;
+        case "price_desc": return b.price_cents - a.price_cents;
+        case "followers_desc": return b.members_count - a.members_count;
+        default: return 0;
+      }
+    });
 
   const filteredTiktokAccounts = tiktokAccounts
     .filter((account) => {
@@ -656,7 +703,15 @@ const AccountsPage = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-          <TabsList className="bg-secondary">
+          <TabsList className="bg-secondary flex-wrap h-auto gap-1 p-1">
+            <TabsTrigger value="black" className="gap-2">
+              <Zap className="w-4 h-4" />
+              Modelos Black
+            </TabsTrigger>
+            <TabsTrigger value="telegram" className="gap-2">
+              <MessageSquare className="w-4 h-4" />
+              Grupos Telegram
+            </TabsTrigger>
             <TabsTrigger value="tiktok" className="gap-2">
               <Video className="w-4 h-4" />
               TikTok
@@ -665,10 +720,6 @@ const AccountsPage = () => {
               <Instagram className="w-4 h-4" />
               Instagram
             </TabsTrigger>
-            <TabsTrigger value="black" className="gap-2">
-              <Zap className="w-4 h-4" />
-              Modelos Black
-            </TabsTrigger>
           </TabsList>
 
           {/* Search and Filters Bar - Common for all tabs */}
@@ -676,7 +727,7 @@ const AccountsPage = () => {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder={activeTab === "black" ? "Buscar por nome ou descrição..." : "Buscar por username ou descrição..."}
+                placeholder={activeTab === "black" || activeTab === "telegram" ? "Buscar por nome ou descrição..." : "Buscar por username ou descrição..."}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
@@ -691,8 +742,8 @@ const AccountsPage = () => {
                 <SelectItem value="newest">Mais recentes</SelectItem>
                 <SelectItem value="price_asc">Menor preço</SelectItem>
                 <SelectItem value="price_desc">Maior preço</SelectItem>
-                {activeTab === "tiktok" && (
-                  <SelectItem value="followers_desc">Mais seguidores</SelectItem>
+                {(activeTab === "tiktok" || activeTab === "telegram") && (
+                  <SelectItem value="followers_desc">{activeTab === "telegram" ? "Mais membros" : "Mais seguidores"}</SelectItem>
                 )}
               </SelectContent>
             </Select>
@@ -936,6 +987,105 @@ const AccountsPage = () => {
                 onBuy={handleBuyModel} 
                 formatPrice={formatPrice} 
               />
+            )}
+          </TabsContent>
+
+          {/* Telegram Groups Tab */}
+          <TabsContent value="telegram" className="space-y-4">
+            <div className="text-sm text-muted-foreground">
+              {filteredTelegramGroups.length} grupo{filteredTelegramGroups.length !== 1 ? "s" : ""} encontrado{filteredTelegramGroups.length !== 1 ? "s" : ""}
+            </div>
+
+            {filteredTelegramGroups.length === 0 ? (
+              <div className="text-center py-12">
+                <MessageSquare className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">Nenhum grupo Telegram disponível no momento</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {filteredTelegramGroups.map((group, index) => (
+                  <motion.div
+                    key={group.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="group relative bg-card border border-border rounded-xl overflow-hidden hover:border-primary/50 transition-all duration-300"
+                  >
+                    {/* Image */}
+                    <div className="aspect-square relative overflow-hidden bg-gradient-to-br from-telegram/20 to-telegram/5">
+                      {group.image_url ? (
+                        <img
+                          src={group.image_url}
+                          alt={group.group_name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <MessageSquare className="h-16 w-16 text-telegram/30" />
+                        </div>
+                      )}
+
+                      {/* Badges */}
+                      <div className="absolute top-2 left-2 flex flex-wrap gap-1">
+                        {group.is_verified && (
+                          <Badge className="bg-primary text-primary-foreground">
+                            <CheckCircle2 className="h-3 w-3 mr-1" />
+                            Verificado
+                          </Badge>
+                        )}
+                        <Badge variant="secondary">
+                          {group.group_type === 'channel' ? 'Canal' : 'Grupo'}
+                        </Badge>
+                      </div>
+
+                      {/* Price Badge */}
+                      <div className="absolute bottom-2 right-2">
+                        <Badge className="bg-background/90 text-foreground font-bold text-lg px-3 py-1">
+                          {formatPrice(group.price_cents)}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    {/* Content */}
+                    <div className="p-4 space-y-3">
+                      <div>
+                        <h3 className="font-semibold truncate">{group.group_name}</h3>
+                        {group.group_username && (
+                          <p className="text-sm text-muted-foreground">@{group.group_username}</p>
+                        )}
+                      </div>
+
+                      {group.description && (
+                        <p className="text-sm text-muted-foreground line-clamp-2">
+                          {group.description}
+                        </p>
+                      )}
+
+                      {/* Stats */}
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <Users className="h-4 w-4" />
+                          {formatNumber(group.members_count)}
+                        </div>
+                        {group.niche && (
+                          <Badge variant="outline" className="text-xs">
+                            {group.niche}
+                          </Badge>
+                        )}
+                      </div>
+
+                      {/* Buy Button */}
+                      <Button
+                        className="w-full telegram-gradient text-white"
+                        onClick={() => handleBuyTelegramGroup(group)}
+                      >
+                        <ShoppingCart className="h-4 w-4 mr-2" />
+                        Comprar
+                      </Button>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
             )}
           </TabsContent>
         </Tabs>
