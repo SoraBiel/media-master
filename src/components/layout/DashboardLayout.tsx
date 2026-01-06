@@ -105,14 +105,7 @@ const DashboardLayout = ({
       });
     }
 
-    // Only show Telegram Groups if enabled by admin
-    if (adminSettings.telegram_groups_enabled) {
-      items.push({
-        icon: MessageCircle,
-        label: "Grupos Telegram",
-        path: "/telegram-groups"
-      });
-    }
+    // Telegram Groups is now inside the Store tab, removed from sidebar
 
     // Minhas Entregas (produtos comprados)
     items.push({
