@@ -8,6 +8,7 @@ import { Send, Mail, Lock, User, ArrowRight, Eye, EyeOff, Phone } from "lucide-r
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { WelcomeGiftModal } from "@/components/WelcomeGiftModal";
 
 const REFERRAL_COOKIE_KEY = "nexo_referral_code";
 const COOKIE_DURATION_DAYS = 30;
@@ -25,6 +26,8 @@ const SignupPage = () => {
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [referralCode, setReferralCode] = useState<string | null>(null);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [newUserId, setNewUserId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { signUp, user, isLoading: authLoading } = useAuth();
@@ -127,7 +130,24 @@ const SignupPage = () => {
       title: "Conta criada!",
       description: "Bem-vindo ao Nexo.",
     });
-    navigate("/dashboard", { replace: true });
+    
+    // Show welcome gift modal instead of navigating directly
+    // We need to wait for the user to be set in context
+    const checkUser = setInterval(async () => {
+      const { data } = await (await import("@/integrations/supabase/client")).supabase.auth.getUser();
+      if (data.user) {
+        clearInterval(checkUser);
+        setNewUserId(data.user.id);
+        setShowWelcomeModal(true);
+      }
+    }, 100);
+
+    // Timeout after 5 seconds
+    setTimeout(() => clearInterval(checkUser), 5000);
+  };
+
+  const handleCloseWelcomeModal = () => {
+    setShowWelcomeModal(false);
   };
 
   // Show loading while checking auth state
@@ -327,6 +347,15 @@ const SignupPage = () => {
           </p>
         </motion.div>
       </div>
+
+      {/* Welcome Gift Modal */}
+      {newUserId && (
+        <WelcomeGiftModal
+          isOpen={showWelcomeModal}
+          onClose={handleCloseWelcomeModal}
+          userId={newUserId}
+        />
+      )}
     </div>
   );
 };

@@ -42,6 +42,10 @@ const CheckoutPage = () => {
   const productType = searchParams.get("type") || "subscription";
   const productId = searchParams.get("id") || "";
   const planSlug = searchParams.get("plan") || "";
+  const discountPercent = parseInt(searchParams.get("discount") || "0");
+  const originalPriceCents = parseInt(searchParams.get("original_price") || "0");
+  const discountedPriceCents = parseInt(searchParams.get("discounted_price") || "0");
+  const isWelcomeGift = searchParams.get("welcome_gift") === "true";
 
   const [isLoadingProduct, setIsLoadingProduct] = useState(true);
   const [isGeneratingPix, setIsGeneratingPix] = useState(false);
@@ -60,6 +64,9 @@ const CheckoutPage = () => {
     product_type: productType,
     product_id: productId || undefined,
     plan_slug: planSlug || undefined,
+    discount_percent: discountPercent || undefined,
+    discounted_price_cents: discountedPriceCents || undefined,
+    is_welcome_gift: isWelcomeGift || undefined,
     buyer: {
       name: profile?.full_name,
       email: profile?.email,
@@ -446,15 +453,35 @@ const CheckoutPage = () => {
                 <div className="flex items-end justify-between">
                   <div>
                     <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Valor total</p>
-                    <div className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-                      {formatPrice(productInfo.price_cents)}
-                    </div>
+                    {isWelcomeGift && discountPercent > 0 ? (
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg text-muted-foreground line-through">{formatPrice(originalPriceCents || productInfo.price_cents)}</span>
+                          <Badge className="bg-green-500 text-white">{discountPercent}% OFF</Badge>
+                        </div>
+                        <div className="text-4xl font-bold bg-gradient-to-r from-green-500 to-green-600 bg-clip-text text-transparent">
+                          {formatPrice(discountedPriceCents || productInfo.price_cents)}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                        {formatPrice(productInfo.price_cents)}
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Shield className="w-4 h-4 text-green-500" />
                     <span>Pagamento Seguro</span>
                   </div>
                 </div>
+
+                {/* Welcome Gift Badge */}
+                {isWelcomeGift && (
+                  <div className="mt-4 flex items-center gap-2 p-3 rounded-xl bg-gradient-to-r from-pink-500/10 via-purple-500/10 to-orange-500/10 border border-pink-500/20">
+                    <Sparkles className="w-5 h-5 text-yellow-400" />
+                    <span className="text-sm font-medium">🎁 Presente de Boas-Vindas - Desconto Exclusivo!</span>
+                  </div>
+                )}
 
                 {isProduct && (
                   <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
