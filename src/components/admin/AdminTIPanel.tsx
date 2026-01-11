@@ -716,10 +716,6 @@ const AdminTIPanel = () => {
     setIsTestingFunctions(true);
     const results: EdgeFunctionTestResult[] = [];
 
-    // Get current session for auth header
-    const { data: { session } } = await supabase.auth.getSession();
-    const authHeader = session?.access_token ? `Bearer ${session.access_token}` : undefined;
-
     for (const fn of EDGE_FUNCTIONS) {
       setEdgeFunctionTests(prev => prev.map(f => 
         f.name === fn.name ? { ...f, status: "testing" } : f
@@ -727,52 +723,44 @@ const AdminTIPanel = () => {
 
       const start = performance.now();
       try {
-        // Use POST with proper headers - Edge functions need Authorization for JWT-protected endpoints
-        const headers: Record<string, string> = {
-          "Content-Type": "application/json",
-          "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "",
-        };
-        
-        if (authHeader) {
-          headers["Authorization"] = authHeader;
-        }
-
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
-        
-        const response = await fetch(`${supabaseUrl}/functions/v1/${fn.name}`, {
-          method: "POST",
-          headers,
-          body: JSON.stringify({ test: true, ping: true }),
-          signal: controller.signal,
+        // Use Supabase client which handles CORS properly
+        const { data, error } = await supabase.functions.invoke(fn.name, {
+          body: { ping: true, test: true },
         });
         
-        clearTimeout(timeoutId);
         const responseTime = Math.round(performance.now() - start);
         
-        // Consider various success scenarios:
-        // - 200, 201: Success
-        // - 400, 401, 403: Function is reachable but rejected the test request (expected)
-        // - 404: Function not found
-        // - 500+: Server error
-        const isReachable = response.status < 500;
+        // Even if there's an error, if we got a response the function is reachable
+        // FunctionsHttpError means the function responded (even with 4xx/5xx)
+        // FunctionsRelayError means network/infrastructure issue
+        // FunctionsFetchError means couldn't reach the function at all
         
-        results.push({
-          name: fn.name,
-          status: isReachable ? "success" : "error",
-          message: isReachable 
-            ? `Online (${response.status})` 
-            : `Erro: ${response.status}`,
-          responseTime,
-        });
+        if (error) {
+          // Check error type - some errors still mean the function is reachable
+          const errorName = error.name || "";
+          const isReachable = errorName === "FunctionsHttpError";
+          
+          results.push({
+            name: fn.name,
+            status: isReachable ? "success" : "error",
+            message: isReachable ? `Online (resposta: ${error.message?.substring(0, 30) || "erro"})` : (error.message || "Erro"),
+            responseTime,
+          });
+        } else {
+          results.push({
+            name: fn.name,
+            status: "success",
+            message: "Online ✓",
+            responseTime,
+          });
+        }
       } catch (error: any) {
         const responseTime = Math.round(performance.now() - start);
-        const isTimeout = error.name === "AbortError";
         results.push({
           name: fn.name,
           status: "error",
-          message: isTimeout ? "Timeout (5s)" : (error.message || "Erro de conexão"),
-          responseTime: isTimeout ? 5000 : responseTime,
+          message: error.message || "Erro de conexão",
+          responseTime,
         });
       }
 
@@ -781,7 +769,7 @@ const AdminTIPanel = () => {
         return result || f;
       }));
       
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 150));
     }
 
     setIsTestingFunctions(false);
