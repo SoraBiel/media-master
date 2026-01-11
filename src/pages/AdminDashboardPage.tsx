@@ -45,6 +45,7 @@ import {
   Copy,
   Link,
   ExternalLink,
+  Server,
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend } from "recharts";
 import { Button } from "@/components/ui/button";
@@ -104,6 +105,7 @@ import { AdminBannersPanel } from "@/components/admin/AdminBannersPanel";
 import AdminAutomationPanel from "@/components/admin/AdminAutomationPanel";
 import { BulkMediaUploader } from "@/components/admin/BulkMediaUploader";
 import AdminReferralsPanel from "@/components/admin/AdminReferralsPanel";
+import AdminSystemConfigPanel from "@/components/admin/AdminSystemConfigPanel";
 import { useAdminSettings, getSettingLabel } from "@/hooks/useAdminSettings";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -1920,6 +1922,10 @@ const AdminDashboardPage = () => {
             <TabsTrigger value="settings" className="flex items-center gap-1">
               <Settings className="h-4 w-4" />
               Configurações
+            </TabsTrigger>
+            <TabsTrigger value="system" className="flex items-center gap-1">
+              <Server className="h-4 w-4" />
+              Sistema
             </TabsTrigger>
           </TabsList>
 
@@ -4375,6 +4381,11 @@ const AdminDashboardPage = () => {
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
+
+          {/* System Configuration Tab */}
+          <TabsContent value="system" className="space-y-4">
+            <AdminSystemConfigPanel />
           </TabsContent>
         </Tabs>
 
