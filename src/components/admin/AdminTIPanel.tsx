@@ -572,8 +572,18 @@ const AdminTIPanel = () => {
 
     // Test Edge Functions
     try {
-      const response = await fetch(`${supabaseUrl}/functions/v1/funnel-webhook`, { method: "OPTIONS" });
-      setHealthStatus(prev => ({ ...prev, functions: response.ok || response.status === 204 ? "healthy" : "warning" }));
+      // Use client invoke (handles CORS). Any HTTP response (even 400/500) means functions are reachable.
+      const { error } = await supabase.functions.invoke("funnel-webhook", {
+        body: { ping: true },
+      });
+
+      if (!error) {
+        setHealthStatus(prev => ({ ...prev, functions: "healthy" }));
+      } else {
+        const errorName = (error as any).name || "";
+        const isHttpError = errorName === "FunctionsHttpError";
+        setHealthStatus(prev => ({ ...prev, functions: isHttpError ? "healthy" : "error" }));
+      }
     } catch {
       setHealthStatus(prev => ({ ...prev, functions: "error" }));
     }

@@ -7,33 +7,49 @@ const corsHeaders = {
 };
 
 interface TelegramRequest {
-  action: "validate" | "getMe" | "sendMessage" | "getUpdates" | "sendPhoto" | "sendVideo" | "sendMediaGroup" | "getChats";
-  botToken: string;
+  action?:
+    | "ping"
+    | "validate"
+    | "getMe"
+    | "sendMessage"
+    | "getUpdates"
+    | "sendPhoto"
+    | "sendVideo"
+    | "sendMediaGroup"
+    | "getChats";
+  botToken?: string;
   chatId?: string;
   message?: string;
   mediaUrl?: string;
   mediaType?: "photo" | "video";
   mediaGroup?: Array<{ type: string; media: string; caption?: string }>;
+  // health-check payloads
+  ping?: boolean;
+  test?: boolean;
 }
 
 const TELEGRAM_API_BASE = "https://api.telegram.org/bot";
 
-async function callTelegramAPI(botToken: string, method: string, params?: Record<string, any>) {
+async function callTelegramAPI(
+  botToken: string,
+  method: string,
+  params?: Record<string, any>,
+) {
   const url = `${TELEGRAM_API_BASE}${botToken}/${method}`;
-  
+
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: params ? JSON.stringify(params) : undefined,
   });
-  
+
   const data = await response.json();
   console.log(`Telegram API ${method} response:`, data);
-  
+
   if (!data.ok) {
     throw new Error(data.description || "Telegram API error");
   }
-  
+
   return data.result;
 }
 
@@ -45,7 +61,7 @@ serve(async (req) => {
   try {
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     );
 
     // Get the auth user
@@ -59,7 +75,7 @@ serve(async (req) => {
 
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
-    
+
     if (authError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
@@ -67,8 +83,39 @@ serve(async (req) => {
       });
     }
 
-    const body: TelegramRequest = await req.json();
+    let body: TelegramRequest;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Health check path (used by admin T.I. tests)
+    if (body?.ping || body?.action === "ping") {
+      return new Response(
+        JSON.stringify({ success: true, data: { ok: true, service: "telegram-bot" } }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     const { action, botToken, chatId, message, mediaUrl, mediaType, mediaGroup } = body;
+
+    if (!action) {
+      return new Response(JSON.stringify({ error: "Missing action" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!botToken) {
+      return new Response(JSON.stringify({ error: "Missing botToken" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     console.log(`Telegram bot action: ${action} for user: ${user.id}`);
 

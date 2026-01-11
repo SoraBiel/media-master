@@ -7,15 +7,18 @@ const corsHeaders = {
 };
 
 interface PaymentRequest {
-  product_type: "subscription" | "tiktok_account" | "model" | "telegram_group";
+  product_type?: "subscription" | "tiktok_account" | "model" | "telegram_group";
   product_id?: string;
   plan_slug?: string;
-  buyer: {
-    name: string;
-    email: string;
+  buyer?: {
+    name?: string;
+    email?: string;
     phone?: string;
     document?: string;
   };
+  // health-check payloads
+  ping?: boolean;
+  test?: boolean;
 }
 
 serve(async (req) => {
@@ -27,7 +30,7 @@ serve(async (req) => {
   try {
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     );
 
     // Get auth header
@@ -42,7 +45,7 @@ serve(async (req) => {
     // Get user from token
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
-    
+
     if (userError || !user) {
       return new Response(JSON.stringify({ error: "Invalid token" }), {
         status: 401,
@@ -50,14 +53,45 @@ serve(async (req) => {
       });
     }
 
-    const { product_type, product_id, plan_slug, buyer }: PaymentRequest = await req.json();
+    let body: PaymentRequest;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Health check path (used by admin T.I. tests)
+    if (body?.ping) {
+      return new Response(JSON.stringify({ success: true, data: { ok: true, service: "create-payment" } }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { product_type, product_id, plan_slug, buyer } = body;
+
+    if (!product_type) {
+      return new Response(JSON.stringify({ error: "Missing product_type" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!buyer || !buyer.name || !buyer.email) {
+      return new Response(JSON.stringify({ error: "Missing buyer.name or buyer.email" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // Sanitize buyer name: remove numbers and invalid characters, keep only letters, spaces, hyphens, apostrophes
     const sanitizeName = (name: string): string => {
       // Remove numbers and special characters, keep only letters (including accented), spaces, hyphens, apostrophes
-      let sanitized = name.replace(/[^a-zA-ZÀ-ÿ\s\-']/g, '').trim();
+      let sanitized = name.replace(/[^a-zA-ZÀ-ÿ\s\-']/g, "").trim();
       // Remove multiple consecutive spaces
-      sanitized = sanitized.replace(/\s+/g, ' ');
+      sanitized = sanitized.replace(/\s+/g, " ");
       // If name becomes empty or too short, use a default
       if (sanitized.length < 2) {
         sanitized = "Cliente";
@@ -68,29 +102,36 @@ serve(async (req) => {
     // Format phone number for BuckPay (requires at least 12 chars with country code)
     const formatPhoneForBuckPay = (phone?: string): string | undefined => {
       if (!phone) return undefined;
-      
+
       // Remove all non-numeric characters
-      let cleaned = phone.replace(/\D/g, '');
-      
+      let cleaned = phone.replace(/\D/g, "");
+
       // If phone doesn't start with country code, add Brazil's +55
       if (cleaned.length === 10 || cleaned.length === 11) {
         // Brazilian phone: DDD (2 digits) + number (8 or 9 digits)
-        cleaned = '55' + cleaned;
+        cleaned = "55" + cleaned;
       }
-      
+
       // Ensure minimum 12 characters
       if (cleaned.length < 12) {
         console.warn("Phone number too short even after formatting:", cleaned);
         return undefined;
       }
-      
+
       return cleaned;
     };
 
     const sanitizedBuyerName = sanitizeName(buyer.name);
     const formattedPhone = formatPhoneForBuckPay(buyer.phone);
 
-    console.log("Payment request:", { product_type, product_id, plan_slug, buyer, sanitizedBuyerName, formattedPhone });
+    console.log("Payment request:", {
+      product_type,
+      product_id,
+      plan_slug,
+      buyer,
+      sanitizedBuyerName,
+      formattedPhone,
+    });
 
     // Determine amount based on product type
     let amountCents = 0;
