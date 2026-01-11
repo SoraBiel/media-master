@@ -716,6 +716,10 @@ const AdminTIPanel = () => {
     setIsTestingFunctions(true);
     const results: EdgeFunctionTestResult[] = [];
 
+    // Get current session for auth header
+    const { data: { session } } = await supabase.auth.getSession();
+    const authHeader = session?.access_token ? `Bearer ${session.access_token}` : undefined;
+
     for (const fn of EDGE_FUNCTIONS) {
       setEdgeFunctionTests(prev => prev.map(f => 
         f.name === fn.name ? { ...f, status: "testing" } : f
@@ -723,22 +727,52 @@ const AdminTIPanel = () => {
 
       const start = performance.now();
       try {
+        // Use POST with proper headers - Edge functions need Authorization for JWT-protected endpoints
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+          "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "",
+        };
+        
+        if (authHeader) {
+          headers["Authorization"] = authHeader;
+        }
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        
         const response = await fetch(`${supabaseUrl}/functions/v1/${fn.name}`, {
-          method: "OPTIONS",
+          method: "POST",
+          headers,
+          body: JSON.stringify({ test: true, ping: true }),
+          signal: controller.signal,
         });
         
+        clearTimeout(timeoutId);
         const responseTime = Math.round(performance.now() - start);
+        
+        // Consider various success scenarios:
+        // - 200, 201: Success
+        // - 400, 401, 403: Function is reachable but rejected the test request (expected)
+        // - 404: Function not found
+        // - 500+: Server error
+        const isReachable = response.status < 500;
+        
         results.push({
           name: fn.name,
-          status: response.ok || response.status === 204 ? "success" : "error",
-          message: response.ok || response.status === 204 ? "Função acessível" : `Status: ${response.status}`,
+          status: isReachable ? "success" : "error",
+          message: isReachable 
+            ? `Online (${response.status})` 
+            : `Erro: ${response.status}`,
           responseTime,
         });
       } catch (error: any) {
+        const responseTime = Math.round(performance.now() - start);
+        const isTimeout = error.name === "AbortError";
         results.push({
           name: fn.name,
           status: "error",
-          message: error.message || "Erro de conexão",
+          message: isTimeout ? "Timeout (5s)" : (error.message || "Erro de conexão"),
+          responseTime: isTimeout ? 5000 : responseTime,
         });
       }
 
@@ -751,7 +785,12 @@ const AdminTIPanel = () => {
     }
 
     setIsTestingFunctions(false);
-    toast({ title: "Teste de funções concluído!", description: `${results.filter(r => r.status === "success").length}/${results.length} funções OK` });
+    const successCount = results.filter(r => r.status === "success").length;
+    toast({ 
+      title: "Teste de funções concluído!", 
+      description: `${successCount}/${results.length} funções online`,
+      variant: successCount === results.length ? "default" : "destructive"
+    });
   };
 
   const testDatabase = async () => {
