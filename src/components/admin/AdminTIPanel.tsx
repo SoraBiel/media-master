@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +12,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -61,102 +62,369 @@ import {
   ArrowRight,
   Info,
   AlertCircle,
+  Trash2,
+  Eye,
+  EyeOff,
+  Search,
+  Filter,
+  BarChart3,
+  Users,
+  MessageSquare,
+  CreditCard,
+  FileText,
+  Wrench,
+  HeartPulse,
+  Timer,
+  Gauge,
+  History,
+  ScrollText,
+  Bell,
+  Send,
+  Bot,
+  Smartphone,
+  Monitor,
+  PanelLeft,
+  LayoutDashboard,
+  Cog,
+  Package,
+  FolderOpen,
+  Hash,
+  Calendar,
+  TrendingUp,
+  Pause,
+  RotateCcw,
+  Trash,
+  Mail,
+  PhoneCall,
+  Image,
+  Video,
+  Music,
+  File,
+  Folder,
+  FolderArchive,
+  Archive,
+  CloudUpload,
+  CloudDownload,
+  HardDriveDownload,
+  HardDriveUpload,
+  Power,
+  PowerOff,
+  Plug,
+  Unplug,
+  WifiHigh,
+  WifiLow,
+  WifiZero,
+  SignalHigh,
+  SignalLow,
+  SignalMedium,
+  CircleDot,
+  CircleCheck,
+  CircleX,
+  CircleAlert,
+  CirclePause,
+  TriangleAlert,
+  OctagonAlert,
+  ShieldCheck,
+  ShieldAlert,
+  ShieldX,
+  ShieldQuestion,
+  LockKeyhole,
+  Fingerprint,
+  ScanLine,
+  QrCode,
+  Workflow,
+  GitCommit,
+  GitMerge,
+  GitPullRequest,
+  List,
+  ListChecks,
+  ListX,
+  ClipboardCheck,
+  ClipboardList,
+  ClipboardX,
+  FileCheck,
+  FileX,
+  FileCog,
+  FileWarning,
+  ServerCog,
+  ServerCrash,
+  ServerOff,
+  DatabaseZap,
+  Boxes,
+  Box,
+  Container,
 } from "lucide-react";
+
+// ================================
+// CONFIGURAÇÕES E CONSTANTES
+// ================================
 
 // Definição de todas as rotas do sistema
 const SYSTEM_ROUTES = [
-  { path: "/", name: "Landing Page", auth: false, description: "Página inicial pública" },
-  { path: "/login", name: "Login", auth: false, description: "Autenticação de usuários" },
-  { path: "/signup", name: "Cadastro", auth: false, description: "Registro de novos usuários" },
-  { path: "/forgot-password", name: "Esqueci Senha", auth: false, description: "Recuperação de senha" },
-  { path: "/reset-password", name: "Redefinir Senha", auth: false, description: "Definir nova senha" },
-  { path: "/dashboard", name: "Dashboard", auth: true, description: "Painel principal do usuário" },
-  { path: "/billing", name: "Faturamento", auth: true, description: "Gestão de planos e pagamentos" },
-  { path: "/telegram", name: "Telegram Hub", auth: true, description: "Central de bots Telegram" },
-  { path: "/accounts", name: "Contas", auth: true, description: "Gestão de contas conectadas" },
-  { path: "/telegram-groups", name: "Grupos Telegram", auth: true, description: "Marketplace de grupos", feature: "telegram_groups_enabled" },
-  { path: "/funnels", name: "Funis", auth: true, description: "Lista de funis de vendas", feature: "funnels_enabled" },
-  { path: "/funnels/:funnelId", name: "Editor de Funil", auth: true, description: "Construtor de funis", feature: "funnels_enabled" },
-  { path: "/checkout", name: "Checkout", auth: true, description: "Página de pagamento" },
-  { path: "/thank-you", name: "Obrigado", auth: true, description: "Confirmação de compra" },
-  { path: "/delivery", name: "Entregas", auth: true, description: "Produtos adquiridos" },
-  { path: "/admin", name: "Admin Dashboard", auth: true, description: "Painel administrativo", role: "admin" },
-  { path: "/admin/user/:userId", name: "Detalhes do Usuário", auth: true, description: "Informações do usuário", role: "admin" },
-  { path: "/reseller", name: "Revendedor", auth: true, description: "Painel de revenda", role: "vendor" },
-  { path: "/settings", name: "Configurações", auth: true, description: "Preferências do usuário" },
-  { path: "/integrations", name: "Integrações", auth: true, description: "APIs e webhooks" },
-  { path: "/payments", name: "Pagamentos", auth: true, description: "Histórico de transações" },
-  { path: "/my-purchases", name: "Minhas Compras", auth: true, description: "Produtos comprados" },
-  { path: "/publication-automation", name: "Automação", auth: true, description: "Publicação automática", feature: "automation_module_enabled" },
-  { path: "/smart-links", name: "Smart Links", auth: true, description: "Páginas de links", feature: "smart_links_enabled" },
-  { path: "/smart-links/:pageId", name: "Editor Smart Link", auth: true, description: "Editar página", feature: "smart_links_enabled" },
-  { path: "/referrals", name: "Indicações", auth: true, description: "Programa de afiliados", feature: "referrals_enabled" },
-  { path: "/r/:code", name: "Redirect Referral", auth: false, description: "Redirecionamento de indicação" },
-  { path: "/@:slug", name: "Smart Link Público", auth: false, description: "Página pública do smart link" },
+  { path: "/", name: "Landing Page", auth: false, description: "Página inicial pública", category: "public" },
+  { path: "/login", name: "Login", auth: false, description: "Autenticação de usuários", category: "auth" },
+  { path: "/signup", name: "Cadastro", auth: false, description: "Registro de novos usuários", category: "auth" },
+  { path: "/forgot-password", name: "Esqueci Senha", auth: false, description: "Recuperação de senha", category: "auth" },
+  { path: "/reset-password", name: "Redefinir Senha", auth: false, description: "Definir nova senha", category: "auth" },
+  { path: "/onboarding", name: "Onboarding", auth: true, description: "Configuração inicial", category: "user" },
+  { path: "/dashboard", name: "Dashboard", auth: true, description: "Painel principal do usuário", category: "user" },
+  { path: "/billing", name: "Faturamento", auth: true, description: "Gestão de planos e pagamentos", category: "user" },
+  { path: "/telegram", name: "Telegram Hub", auth: true, description: "Central de bots Telegram", category: "feature" },
+  { path: "/accounts", name: "Contas", auth: true, description: "Gestão de contas conectadas", category: "user" },
+  { path: "/telegram-groups", name: "Grupos Telegram", auth: true, description: "Marketplace de grupos", feature: "telegram_groups_enabled", category: "marketplace" },
+  { path: "/funnels", name: "Funis", auth: true, description: "Lista de funis de vendas", feature: "funnels_enabled", category: "feature" },
+  { path: "/funnels/:funnelId", name: "Editor de Funil", auth: true, description: "Construtor de funis", feature: "funnels_enabled", category: "feature" },
+  { path: "/checkout", name: "Checkout", auth: true, description: "Página de pagamento", category: "payment" },
+  { path: "/thank-you", name: "Obrigado", auth: true, description: "Confirmação de compra", category: "payment" },
+  { path: "/delivery", name: "Entregas", auth: true, description: "Produtos adquiridos", category: "user" },
+  { path: "/admin", name: "Admin Dashboard", auth: true, description: "Painel administrativo", role: "admin", category: "admin" },
+  { path: "/admin/user/:userId", name: "Detalhes do Usuário", auth: true, description: "Informações do usuário", role: "admin", category: "admin" },
+  { path: "/reseller", name: "Revendedor", auth: true, description: "Painel de revenda", role: "vendor", category: "vendor" },
+  { path: "/indicador", name: "Indicador", auth: true, description: "Painel de indicações", role: "indicador", category: "vendor" },
+  { path: "/settings", name: "Configurações", auth: true, description: "Preferências do usuário", category: "user" },
+  { path: "/integrations", name: "Integrações", auth: true, description: "APIs e webhooks", category: "feature" },
+  { path: "/payments", name: "Pagamentos", auth: true, description: "Histórico de transações", category: "payment" },
+  { path: "/my-purchases", name: "Minhas Compras", auth: true, description: "Produtos comprados", category: "user" },
+  { path: "/publication-automation", name: "Automação", auth: true, description: "Publicação automática", feature: "automation_module_enabled", category: "feature" },
+  { path: "/smart-links", name: "Smart Links", auth: true, description: "Páginas de links", feature: "smart_links_enabled", category: "feature" },
+  { path: "/smart-links/:pageId", name: "Editor Smart Link", auth: true, description: "Editar página", feature: "smart_links_enabled", category: "feature" },
+  { path: "/referrals", name: "Indicações", auth: true, description: "Programa de afiliados", feature: "referrals_enabled", category: "feature" },
+  { path: "/r/:code", name: "Redirect Referral", auth: false, description: "Redirecionamento de indicação", category: "public" },
+  { path: "/@:slug", name: "Smart Link Público", auth: false, description: "Página pública do smart link", category: "public" },
+  { path: "/media-library", name: "Biblioteca de Mídia", auth: true, description: "Gerenciar mídias", category: "feature" },
+  { path: "/model-hub", name: "Model Hub", auth: true, description: "Hub de modelos", category: "marketplace" },
 ];
 
 // Edge Functions disponíveis
 const EDGE_FUNCTIONS = [
-  { name: "telegram-bot", description: "Processa mensagens e webhooks do Telegram", method: "POST", auth: "webhook" },
-  { name: "create-payment", description: "Cria pagamentos PIX via BuckPay", method: "POST", auth: "jwt" },
-  { name: "create-product-payment", description: "Pagamento de produtos do catálogo", method: "POST", auth: "jwt" },
-  { name: "funnel-webhook", description: "Processa eventos de funil de vendas", method: "POST", auth: "public" },
-  { name: "mercadopago-callback", description: "Callback OAuth do MercadoPago", method: "GET", auth: "public" },
-  { name: "mercadopago-oauth", description: "Inicia OAuth com MercadoPago", method: "GET", auth: "jwt" },
-  { name: "mercadopago-payment", description: "Cria pagamento no MercadoPago", method: "POST", auth: "jwt" },
-  { name: "mercadopago-webhook", description: "Webhook de notificações MP", method: "POST", auth: "public" },
-  { name: "payment-reminder", description: "Envia lembretes de pagamento", method: "POST", auth: "cron" },
-  { name: "payment-webhook", description: "Webhook genérico de pagamentos", method: "POST", auth: "public" },
-  { name: "process-referral", description: "Processa indicações de usuários", method: "POST", auth: "jwt" },
-  { name: "social-oauth", description: "OAuth para redes sociais", method: "GET", auth: "jwt" },
-  { name: "social-post", description: "Publica em redes sociais", method: "POST", auth: "jwt" },
-  { name: "test-destination", description: "Testa destino de campanha", method: "POST", auth: "jwt" },
-  { name: "campaign-dispatch", description: "Dispara campanhas de mídia", method: "POST", auth: "jwt" },
-  { name: "campaign-runner", description: "Executor de campanhas (cron)", method: "POST", auth: "cron" },
-  { name: "utmify-track", description: "Tracking UTMify", method: "POST", auth: "public" },
-  { name: "wpp-api", description: "API WhatsApp", method: "POST", auth: "jwt" },
-  { name: "wpp-webhook", description: "Webhook WhatsApp", method: "POST", auth: "public" },
-  { name: "admin-update-email", description: "Admin atualiza email", method: "POST", auth: "admin" },
+  { name: "telegram-bot", description: "Processa mensagens e webhooks do Telegram", method: "POST", auth: "webhook", category: "telegram" },
+  { name: "create-payment", description: "Cria pagamentos PIX via BuckPay", method: "POST", auth: "jwt", category: "payment" },
+  { name: "create-product-payment", description: "Pagamento de produtos do catálogo", method: "POST", auth: "jwt", category: "payment" },
+  { name: "funnel-webhook", description: "Processa eventos de funil de vendas", method: "POST", auth: "public", category: "funnel" },
+  { name: "mercadopago-callback", description: "Callback OAuth do MercadoPago", method: "GET", auth: "public", category: "payment" },
+  { name: "mercadopago-oauth", description: "Inicia OAuth com MercadoPago", method: "GET", auth: "jwt", category: "payment" },
+  { name: "mercadopago-payment", description: "Cria pagamento no MercadoPago", method: "POST", auth: "jwt", category: "payment" },
+  { name: "mercadopago-webhook", description: "Webhook de notificações MP", method: "POST", auth: "public", category: "payment" },
+  { name: "payment-reminder", description: "Envia lembretes de pagamento", method: "POST", auth: "cron", category: "automation" },
+  { name: "payment-webhook", description: "Webhook genérico de pagamentos", method: "POST", auth: "public", category: "payment" },
+  { name: "process-referral", description: "Processa indicações de usuários", method: "POST", auth: "jwt", category: "referral" },
+  { name: "social-oauth", description: "OAuth para redes sociais", method: "GET", auth: "jwt", category: "social" },
+  { name: "social-post", description: "Publica em redes sociais", method: "POST", auth: "jwt", category: "social" },
+  { name: "test-destination", description: "Testa destino de campanha", method: "POST", auth: "jwt", category: "campaign" },
+  { name: "campaign-dispatch", description: "Dispara campanhas de mídia", method: "POST", auth: "jwt", category: "campaign" },
+  { name: "campaign-runner", description: "Executor de campanhas (cron)", method: "POST", auth: "cron", category: "campaign" },
+  { name: "utmify-track", description: "Tracking UTMify", method: "POST", auth: "public", category: "analytics" },
+  { name: "wpp-api", description: "API WhatsApp", method: "POST", auth: "jwt", category: "whatsapp" },
+  { name: "wpp-webhook", description: "Webhook WhatsApp", method: "POST", auth: "public", category: "whatsapp" },
+  { name: "admin-update-email", description: "Admin atualiza email", method: "POST", auth: "admin", category: "admin" },
 ];
 
-// Tabelas do banco de dados
+// Tabelas do banco de dados com mais detalhes
 const DATABASE_TABLES = [
-  { name: "profiles", description: "Perfis de usuários", rls: true },
-  { name: "user_roles", description: "Papéis dos usuários (admin, vendor, user)", rls: true },
-  { name: "subscriptions", description: "Assinaturas ativas", rls: true },
-  { name: "plans", description: "Planos disponíveis", rls: false },
-  { name: "transactions", description: "Transações financeiras", rls: true },
-  { name: "funnels", description: "Funis de vendas", rls: true },
-  { name: "funnel_nodes", description: "Nós dos funis", rls: true },
-  { name: "funnel_edges", description: "Conexões entre nós", rls: true },
-  { name: "funnel_products", description: "Produtos dos funis", rls: true },
-  { name: "funnel_payments", description: "Pagamentos via funil", rls: true },
-  { name: "telegram_integrations", description: "Bots Telegram conectados", rls: true },
-  { name: "telegram_sessions", description: "Sessões de conversa", rls: true },
-  { name: "telegram_logs", description: "Logs de eventos Telegram", rls: true },
-  { name: "destinations", description: "Destinos de campanha", rls: true },
-  { name: "campaigns", description: "Campanhas de mídia", rls: true },
-  { name: "admin_media", description: "Pacotes de mídia do admin", rls: false },
-  { name: "admin_settings", description: "Configurações booleanas", rls: false },
-  { name: "admin_text_settings", description: "Configurações de texto", rls: false },
-  { name: "smart_link_pages", description: "Páginas Smart Link", rls: true },
-  { name: "smart_link_buttons", description: "Botões das páginas", rls: true },
-  { name: "smart_link_clicks", description: "Cliques nos botões", rls: false },
-  { name: "smart_link_views", description: "Visualizações de páginas", rls: false },
-  { name: "referrals", description: "Indicações de usuários", rls: true },
-  { name: "commissions", description: "Comissões de indicação", rls: true },
-  { name: "referral_settings", description: "Config do programa", rls: false },
-  { name: "integrations", description: "Integrações OAuth", rls: true },
-  { name: "social_accounts", description: "Contas de redes sociais", rls: true },
-  { name: "scheduled_posts", description: "Posts agendados", rls: true },
-  { name: "notifications", description: "Notificações do sistema", rls: false },
-  { name: "dashboard_banners", description: "Banners do dashboard", rls: false },
-  { name: "tiktok_accounts", description: "Contas TikTok à venda", rls: false },
-  { name: "instagram_accounts", description: "Contas Instagram à venda", rls: false },
-  { name: "telegram_groups", description: "Grupos Telegram à venda", rls: false },
-  { name: "models_for_sale", description: "Modelos à venda", rls: false },
-  { name: "deliveries", description: "Entregas de produtos", rls: true },
+  { name: "profiles", description: "Perfis de usuários", rls: true, category: "core", critical: true },
+  { name: "user_roles", description: "Papéis dos usuários", rls: true, category: "core", critical: true },
+  { name: "user_metrics", description: "Métricas dos usuários", rls: true, category: "analytics" },
+  { name: "user_activities", description: "Atividades dos usuários", rls: true, category: "analytics" },
+  { name: "subscriptions", description: "Assinaturas ativas", rls: true, category: "billing", critical: true },
+  { name: "plans", description: "Planos disponíveis", rls: false, category: "billing" },
+  { name: "transactions", description: "Transações financeiras", rls: true, category: "billing", critical: true },
+  { name: "funnels", description: "Funis de vendas", rls: true, category: "funnel" },
+  { name: "funnel_nodes", description: "Nós dos funis", rls: true, category: "funnel" },
+  { name: "funnel_edges", description: "Conexões entre nós", rls: true, category: "funnel" },
+  { name: "funnel_products", description: "Produtos dos funis", rls: true, category: "funnel" },
+  { name: "funnel_payments", description: "Pagamentos via funil", rls: true, category: "funnel" },
+  { name: "funnel_templates", description: "Templates de funis", rls: false, category: "funnel" },
+  { name: "telegram_integrations", description: "Bots Telegram conectados", rls: true, category: "telegram" },
+  { name: "telegram_sessions", description: "Sessões de conversa", rls: true, category: "telegram" },
+  { name: "telegram_logs", description: "Logs de eventos Telegram", rls: true, category: "telegram" },
+  { name: "destinations", description: "Destinos de campanha", rls: true, category: "campaign" },
+  { name: "campaigns", description: "Campanhas de mídia", rls: true, category: "campaign" },
+  { name: "admin_media", description: "Pacotes de mídia do admin", rls: false, category: "admin" },
+  { name: "admin_settings", description: "Configurações booleanas", rls: false, category: "admin", critical: true },
+  { name: "admin_text_settings", description: "Configurações de texto", rls: false, category: "admin" },
+  { name: "admin_settings_history", description: "Histórico de configurações", rls: false, category: "admin" },
+  { name: "smart_link_pages", description: "Páginas Smart Link", rls: true, category: "smartlink" },
+  { name: "smart_link_buttons", description: "Botões das páginas", rls: true, category: "smartlink" },
+  { name: "smart_link_clicks", description: "Cliques nos botões", rls: false, category: "smartlink" },
+  { name: "smart_link_views", description: "Visualizações de páginas", rls: false, category: "smartlink" },
+  { name: "referrals", description: "Indicações de usuários", rls: true, category: "referral" },
+  { name: "commissions", description: "Comissões de indicação", rls: true, category: "referral" },
+  { name: "referral_settings", description: "Config do programa", rls: false, category: "referral" },
+  { name: "referral_allowed_roles", description: "Roles permitidos", rls: false, category: "referral" },
+  { name: "referral_role_commissions", description: "Comissões por role", rls: false, category: "referral" },
+  { name: "integrations", description: "Integrações OAuth", rls: true, category: "integration" },
+  { name: "social_accounts", description: "Contas de redes sociais", rls: true, category: "social" },
+  { name: "scheduled_posts", description: "Posts agendados", rls: true, category: "social" },
+  { name: "post_platform_logs", description: "Logs de posts", rls: true, category: "social" },
+  { name: "notifications", description: "Notificações do sistema", rls: false, category: "system" },
+  { name: "dashboard_banners", description: "Banners do dashboard", rls: false, category: "system" },
+  { name: "tiktok_accounts", description: "Contas TikTok à venda", rls: false, category: "marketplace" },
+  { name: "instagram_accounts", description: "Contas Instagram à venda", rls: false, category: "marketplace" },
+  { name: "telegram_groups", description: "Grupos Telegram à venda", rls: false, category: "marketplace" },
+  { name: "models_for_sale", description: "Modelos à venda", rls: false, category: "marketplace" },
+  { name: "deliveries", description: "Entregas de produtos", rls: true, category: "delivery" },
+  { name: "catalog_purchases", description: "Compras do catálogo", rls: true, category: "marketplace" },
+  { name: "checkout_sessions", description: "Sessões de checkout", rls: true, category: "billing" },
 ];
+
+// Storage Buckets
+const STORAGE_BUCKETS = [
+  { name: "media-packs", description: "Pacotes de mídia para campanhas", public: true },
+  { name: "product-images", description: "Imagens de produtos", public: true },
+  { name: "user-media", description: "Mídia enviada por usuários", public: true },
+  { name: "smart-link-assets", description: "Assets dos Smart Links", public: true },
+];
+
+// Secrets do sistema
+const SYSTEM_SECRETS = [
+  { name: "SUPABASE_URL", description: "URL da API do backend", category: "core", required: true },
+  { name: "SUPABASE_ANON_KEY", description: "Chave pública do backend", category: "core", required: true },
+  { name: "SUPABASE_SERVICE_ROLE_KEY", description: "Chave de serviço (admin)", category: "core", required: true },
+  { name: "APP_URL", description: "URL da aplicação", category: "core", required: true },
+  { name: "BUCKPAY_API_TOKEN", description: "Token API BuckPay", category: "payment", required: false },
+  { name: "BUCKPAY_USER_AGENT", description: "User Agent BuckPay", category: "payment", required: false },
+  { name: "MERCADOPAGO_CLIENT_ID", description: "Client ID MercadoPago", category: "payment", required: false },
+  { name: "MERCADOPAGO_CLIENT_SECRET", description: "Client Secret MercadoPago", category: "payment", required: false },
+  { name: "META_APP_ID", description: "App ID Meta/Facebook", category: "social", required: false },
+  { name: "META_APP_SECRET", description: "App Secret Meta", category: "social", required: false },
+  { name: "TWITTER_CONSUMER_KEY", description: "Consumer Key Twitter", category: "social", required: false },
+  { name: "TWITTER_CONSUMER_SECRET", description: "Consumer Secret Twitter", category: "social", required: false },
+  { name: "TWITTER_ACCESS_TOKEN", description: "Access Token Twitter", category: "social", required: false },
+  { name: "TWITTER_ACCESS_TOKEN_SECRET", description: "Access Token Secret Twitter", category: "social", required: false },
+];
+
+// Troubleshooting comum
+const TROUBLESHOOTING_ITEMS = [
+  {
+    id: "auth-error",
+    title: "Erro de autenticação (401/403)",
+    symptoms: ["Usuário não consegue fazer login", "Token expirado", "Acesso negado"],
+    solutions: [
+      "Verificar se o email foi confirmado",
+      "Limpar cookies e localStorage do navegador",
+      "Verificar se o usuário tem a role necessária",
+      "Checar se a sessão não expirou (JWT expires_at)",
+    ],
+    code: `// Verificar sessão
+const { data: { session } } = await supabase.auth.getSession();
+console.log('Session:', session);
+
+// Forçar refresh do token
+await supabase.auth.refreshSession();`,
+  },
+  {
+    id: "rls-error",
+    title: "Dados não aparecem (RLS)",
+    symptoms: ["Query retorna vazio", "Usuário não vê seus dados", "Erro de permissão no banco"],
+    solutions: [
+      "Verificar se RLS está habilitado na tabela",
+      "Checar se existe policy para a operação (SELECT, INSERT, etc)",
+      "Confirmar que auth.uid() está correto na policy",
+      "Testar query como service_role para descartar RLS",
+    ],
+    code: `-- Verificar policies de uma tabela
+SELECT * FROM pg_policies WHERE tablename = 'sua_tabela';
+
+-- Testar como usuário específico
+SET LOCAL role authenticated;
+SET LOCAL request.jwt.claims TO '{"sub": "user-id"}';
+SELECT * FROM sua_tabela;`,
+  },
+  {
+    id: "edge-function-error",
+    title: "Edge Function não responde",
+    symptoms: ["Timeout na função", "Erro 500", "CORS error"],
+    solutions: [
+      "Verificar logs da função no painel",
+      "Checar se todos os secrets estão configurados",
+      "Verificar CORS headers na resposta",
+      "Testar localmente com supabase functions serve",
+    ],
+    code: `// Template de Edge Function com CORS
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+  // ...
+});`,
+  },
+  {
+    id: "webhook-error",
+    title: "Webhook não recebe dados",
+    symptoms: ["Telegram não envia mensagens", "MercadoPago não notifica", "Dados não chegam"],
+    solutions: [
+      "Verificar se o webhook está registrado corretamente",
+      "Checar se a URL está acessível publicamente",
+      "Verificar se verify_jwt = false no config.toml",
+      "Testar com curl/Postman",
+    ],
+    code: `# Registrar webhook do Telegram
+curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook" \\
+  -d "url=https://mfuvdsrtppoqojfrisii.supabase.co/functions/v1/funnel-webhook"
+
+# Verificar webhook atual
+curl "https://api.telegram.org/bot<TOKEN>/getWebhookInfo"`,
+  },
+  {
+    id: "payment-error",
+    title: "Pagamento não processa",
+    symptoms: ["PIX não gera", "Pagamento fica pendente", "Webhook não confirma"],
+    solutions: [
+      "Verificar credenciais do MercadoPago/BuckPay",
+      "Checar se o ambiente está correto (sandbox vs produção)",
+      "Verificar logs da edge function de pagamento",
+      "Confirmar que o webhook está configurado no provedor",
+    ],
+    code: `-- Verificar pagamentos pendentes
+SELECT * FROM funnel_payments 
+WHERE status = 'pending' 
+ORDER BY created_at DESC LIMIT 10;
+
+-- Verificar transações
+SELECT * FROM transactions
+WHERE status != 'paid'
+ORDER BY created_at DESC;`,
+  },
+  {
+    id: "storage-error",
+    title: "Upload de arquivo falha",
+    symptoms: ["Imagem não carrega", "Erro ao fazer upload", "URL retorna 404"],
+    solutions: [
+      "Verificar se o bucket existe e está público",
+      "Checar políticas de storage",
+      "Verificar tamanho máximo permitido",
+      "Confirmar tipo de arquivo permitido",
+    ],
+    code: `-- Verificar buckets
+SELECT * FROM storage.buckets;
+
+-- Verificar policies de storage
+SELECT * FROM storage.policies;`,
+  },
+];
+
+// Checklist de manutenção
+const MAINTENANCE_CHECKLIST = [
+  { id: "backup", title: "Backup do banco de dados", frequency: "Diário", priority: "critical" },
+  { id: "logs", title: "Revisar logs de erro", frequency: "Diário", priority: "high" },
+  { id: "payments", title: "Reconciliar pagamentos pendentes", frequency: "Diário", priority: "high" },
+  { id: "expired-sessions", title: "Limpar sessões expiradas", frequency: "Semanal", priority: "medium" },
+  { id: "unused-media", title: "Limpar mídia não utilizada", frequency: "Mensal", priority: "low" },
+  { id: "security-audit", title: "Auditoria de segurança", frequency: "Mensal", priority: "high" },
+  { id: "update-deps", title: "Atualizar dependências", frequency: "Mensal", priority: "medium" },
+  { id: "test-integrations", title: "Testar integrações externas", frequency: "Semanal", priority: "high" },
+  { id: "review-rls", title: "Revisar políticas RLS", frequency: "Mensal", priority: "critical" },
+  { id: "monitor-usage", title: "Monitorar uso de recursos", frequency: "Semanal", priority: "medium" },
+];
+
+// ================================
+// INTERFACES
+// ================================
 
 interface RouteTestResult {
   path: string;
@@ -179,8 +447,39 @@ interface DatabaseTestResult {
   message?: string;
 }
 
+interface HealthStatus {
+  database: "healthy" | "warning" | "error" | "checking";
+  auth: "healthy" | "warning" | "error" | "checking";
+  storage: "healthy" | "warning" | "error" | "checking";
+  functions: "healthy" | "warning" | "error" | "checking";
+  realtime: "healthy" | "warning" | "error" | "checking";
+}
+
+interface SystemMetrics {
+  totalUsers: number;
+  activeUsers: number;
+  totalFunnels: number;
+  activeFunnels: number;
+  totalTransactions: number;
+  pendingPayments: number;
+  totalSessions: number;
+  activeSessions: number;
+}
+
+interface RecentLog {
+  id: string;
+  timestamp: string;
+  type: string;
+  message: string;
+  details?: any;
+}
+
+// ================================
+// COMPONENTE PRINCIPAL
+// ================================
+
 const AdminTIPanel = () => {
-  const [activeTab, setActiveTab] = useState("routes");
+  const [activeTab, setActiveTab] = useState("health");
   const [routeTests, setRouteTests] = useState<RouteTestResult[]>([]);
   const [edgeFunctionTests, setEdgeFunctionTests] = useState<EdgeFunctionTestResult[]>([]);
   const [dbTests, setDbTests] = useState<DatabaseTestResult[]>([]);
@@ -188,18 +487,34 @@ const AdminTIPanel = () => {
   const [isTestingFunctions, setIsTestingFunctions] = useState(false);
   const [isTestingDb, setIsTestingDb] = useState(false);
   const [systemInfo, setSystemInfo] = useState<any>(null);
+  const [healthStatus, setHealthStatus] = useState<HealthStatus>({
+    database: "checking",
+    auth: "checking",
+    storage: "checking",
+    functions: "checking",
+    realtime: "checking",
+  });
+  const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
+  const [recentLogs, setRecentLogs] = useState<RecentLog[]>([]);
+  const [isLoadingMetrics, setIsLoadingMetrics] = useState(false);
+  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+  const [searchFilter, setSearchFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [maintenanceChecks, setMaintenanceChecks] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
 
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const supabaseProjectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
 
+  // ================================
+  // INICIALIZAÇÃO
+  // ================================
+
   useEffect(() => {
-    // Initialize route tests
     setRouteTests(SYSTEM_ROUTES.map(r => ({ path: r.path, status: "pending" })));
     setEdgeFunctionTests(EDGE_FUNCTIONS.map(f => ({ name: f.name, status: "pending" })));
     setDbTests(DATABASE_TABLES.map(t => ({ table: t.name, status: "pending" })));
     
-    // Get system info
     setSystemInfo({
       userAgent: navigator.userAgent,
       platform: navigator.platform,
@@ -208,8 +523,156 @@ const AdminTIPanel = () => {
       onLine: navigator.onLine,
       screenWidth: window.screen.width,
       screenHeight: window.screen.height,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      timestamp: new Date().toISOString(),
     });
+
+    // Carregar dados iniciais
+    runHealthCheck();
+    loadMetrics();
+    loadRecentLogs();
   }, []);
+
+  // ================================
+  // HEALTH CHECK
+  // ================================
+
+  const runHealthCheck = async () => {
+    setHealthStatus({
+      database: "checking",
+      auth: "checking",
+      storage: "checking",
+      functions: "checking",
+      realtime: "checking",
+    });
+
+    // Test Database
+    try {
+      const { error } = await supabase.from("profiles").select("id", { count: "exact", head: true });
+      setHealthStatus(prev => ({ ...prev, database: error ? "error" : "healthy" }));
+    } catch {
+      setHealthStatus(prev => ({ ...prev, database: "error" }));
+    }
+
+    // Test Auth
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      setHealthStatus(prev => ({ ...prev, auth: session ? "healthy" : "warning" }));
+    } catch {
+      setHealthStatus(prev => ({ ...prev, auth: "error" }));
+    }
+
+    // Test Storage
+    try {
+      const { data, error } = await supabase.storage.listBuckets();
+      setHealthStatus(prev => ({ ...prev, storage: error ? "error" : "healthy" }));
+    } catch {
+      setHealthStatus(prev => ({ ...prev, storage: "error" }));
+    }
+
+    // Test Edge Functions
+    try {
+      const response = await fetch(`${supabaseUrl}/functions/v1/funnel-webhook`, { method: "OPTIONS" });
+      setHealthStatus(prev => ({ ...prev, functions: response.ok || response.status === 204 ? "healthy" : "warning" }));
+    } catch {
+      setHealthStatus(prev => ({ ...prev, functions: "error" }));
+    }
+
+    // Test Realtime
+    try {
+      const channel = supabase.channel("health-check");
+      await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error("timeout")), 5000);
+        channel.subscribe((status) => {
+          clearTimeout(timeout);
+          if (status === "SUBSCRIBED") {
+            resolve(true);
+          }
+        });
+      });
+      await supabase.removeChannel(channel);
+      setHealthStatus(prev => ({ ...prev, realtime: "healthy" }));
+    } catch {
+      setHealthStatus(prev => ({ ...prev, realtime: "warning" }));
+    }
+  };
+
+  // ================================
+  // MÉTRICAS DO SISTEMA
+  // ================================
+
+  const loadMetrics = async () => {
+    setIsLoadingMetrics(true);
+    try {
+      const [
+        { count: totalUsers },
+        { count: activeUsers },
+        { count: totalFunnels },
+        { count: activeFunnels },
+        { count: totalTransactions },
+        { count: pendingPayments },
+        { count: totalSessions },
+        { count: activeSessions },
+      ] = await Promise.all([
+        supabase.from("profiles").select("*", { count: "exact", head: true }),
+        supabase.from("profiles").select("*", { count: "exact", head: true }).eq("is_online", true),
+        supabase.from("funnels").select("*", { count: "exact", head: true }),
+        supabase.from("funnels").select("*", { count: "exact", head: true }).eq("is_active", true),
+        supabase.from("transactions").select("*", { count: "exact", head: true }),
+        supabase.from("funnel_payments").select("*", { count: "exact", head: true }).eq("status", "pending"),
+        supabase.from("telegram_sessions").select("*", { count: "exact", head: true }),
+        supabase.from("telegram_sessions").select("*", { count: "exact", head: true }).eq("is_finished", false),
+      ]);
+
+      setMetrics({
+        totalUsers: totalUsers || 0,
+        activeUsers: activeUsers || 0,
+        totalFunnels: totalFunnels || 0,
+        activeFunnels: activeFunnels || 0,
+        totalTransactions: totalTransactions || 0,
+        pendingPayments: pendingPayments || 0,
+        totalSessions: totalSessions || 0,
+        activeSessions: activeSessions || 0,
+      });
+    } catch (error) {
+      console.error("Erro ao carregar métricas:", error);
+    } finally {
+      setIsLoadingMetrics(false);
+    }
+  };
+
+  // ================================
+  // LOGS RECENTES
+  // ================================
+
+  const loadRecentLogs = async () => {
+    setIsLoadingLogs(true);
+    try {
+      const { data: telegramLogs } = await supabase
+        .from("telegram_logs")
+        .select("id, created_at, event_type, payload")
+        .order("created_at", { ascending: false })
+        .limit(20);
+
+      const logs: RecentLog[] = (telegramLogs || []).map(log => ({
+        id: log.id,
+        timestamp: log.created_at || "",
+        type: log.event_type,
+        message: `Evento Telegram: ${log.event_type}`,
+        details: log.payload,
+      }));
+
+      setRecentLogs(logs);
+    } catch (error) {
+      console.error("Erro ao carregar logs:", error);
+    } finally {
+      setIsLoadingLogs(false);
+    }
+  };
+
+  // ================================
+  // TESTES DE SISTEMA
+  // ================================
 
   const testRoutes = async () => {
     setIsTestingRoutes(true);
@@ -222,7 +685,6 @@ const AdminTIPanel = () => {
 
       const start = performance.now();
       try {
-        // Simple check - just verify the route exists in our config
         const responseTime = Math.round(performance.now() - start);
         results.push({
           path: route.path,
@@ -243,7 +705,7 @@ const AdminTIPanel = () => {
         return result || r;
       }));
       
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await new Promise(resolve => setTimeout(resolve, 30));
     }
 
     setIsTestingRoutes(false);
@@ -261,7 +723,6 @@ const AdminTIPanel = () => {
 
       const start = performance.now();
       try {
-        // Test with OPTIONS request (CORS preflight)
         const response = await fetch(`${supabaseUrl}/functions/v1/${fn.name}`, {
           method: "OPTIONS",
         });
@@ -341,6 +802,10 @@ const AdminTIPanel = () => {
     toast({ title: "Teste de banco concluído!", description: `${results.filter(r => r.status === "success").length}/${results.length} tabelas OK` });
   };
 
+  // ================================
+  // UTILITÁRIOS
+  // ================================
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast({ title: "Copiado!" });
@@ -349,10 +814,14 @@ const AdminTIPanel = () => {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "success":
+      case "healthy":
         return <CheckCircle2 className="w-4 h-4 text-green-500" />;
       case "error":
         return <XCircle className="w-4 h-4 text-red-500" />;
+      case "warning":
+        return <AlertTriangle className="w-4 h-4 text-yellow-500" />;
       case "testing":
+      case "checking":
         return <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />;
       default:
         return <Clock className="w-4 h-4 text-muted-foreground" />;
@@ -362,79 +831,387 @@ const AdminTIPanel = () => {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "success":
+      case "healthy":
         return <Badge className="bg-green-500/10 text-green-500 border-green-500/20">OK</Badge>;
       case "error":
         return <Badge variant="destructive">Erro</Badge>;
+      case "warning":
+        return <Badge className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20">Aviso</Badge>;
       case "testing":
-        return <Badge variant="secondary">Testando...</Badge>;
+      case "checking":
+        return <Badge variant="secondary">Verificando...</Badge>;
       default:
         return <Badge variant="outline">Pendente</Badge>;
     }
   };
 
+  const getHealthOverallStatus = () => {
+    const statuses = Object.values(healthStatus);
+    if (statuses.includes("error")) return "error";
+    if (statuses.includes("warning")) return "warning";
+    if (statuses.includes("checking")) return "checking";
+    return "healthy";
+  };
+
+  const formatTimestamp = (timestamp: string) => {
+    return new Date(timestamp).toLocaleString("pt-BR");
+  };
+
+  const filteredRoutes = SYSTEM_ROUTES.filter(route => {
+    const matchesSearch = route.name.toLowerCase().includes(searchFilter.toLowerCase()) ||
+                          route.path.toLowerCase().includes(searchFilter.toLowerCase());
+    const matchesCategory = categoryFilter === "all" || route.category === categoryFilter;
+    return matchesSearch && matchesCategory;
+  });
+
+  const filteredTables = DATABASE_TABLES.filter(table => {
+    const matchesSearch = table.name.toLowerCase().includes(searchFilter.toLowerCase());
+    const matchesCategory = categoryFilter === "all" || table.category === categoryFilter;
+    return matchesSearch && matchesCategory;
+  });
+
+  const filteredFunctions = EDGE_FUNCTIONS.filter(fn => {
+    const matchesSearch = fn.name.toLowerCase().includes(searchFilter.toLowerCase());
+    const matchesCategory = categoryFilter === "all" || fn.category === categoryFilter;
+    return matchesSearch && matchesCategory;
+  });
+
+  // ================================
+  // RENDER
+  // ================================
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold">Painel T.I.</h2>
-          <p className="text-muted-foreground">Documentação técnica, testes e migração do sistema</p>
+          <h2 className="text-2xl font-bold flex items-center gap-2">
+            <Terminal className="w-6 h-6" />
+            Painel T.I. - Manutenção e Monitoramento
+          </h2>
+          <p className="text-muted-foreground">Sistema completo para gestão técnica e manutenção</p>
         </div>
-        <Badge variant="outline" className="gap-2">
-          <Activity className="w-3 h-3" />
-          {navigator.onLine ? "Online" : "Offline"}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="gap-2">
+            <Activity className="w-3 h-3" />
+            {navigator.onLine ? "Online" : "Offline"}
+          </Badge>
+          <Badge variant="outline" className="gap-2">
+            <Clock className="w-3 h-3" />
+            {new Date().toLocaleTimeString("pt-BR")}
+          </Badge>
+        </div>
       </div>
 
+      {/* Main Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid grid-cols-2 md:grid-cols-6 gap-1">
-          <TabsTrigger value="routes" className="gap-2 text-xs md:text-sm">
+        <TabsList className="flex flex-wrap h-auto gap-1 p-1">
+          <TabsTrigger value="health" className="gap-2 text-xs">
+            <HeartPulse className="w-4 h-4" />
+            <span className="hidden sm:inline">Health</span>
+          </TabsTrigger>
+          <TabsTrigger value="metrics" className="gap-2 text-xs">
+            <BarChart3 className="w-4 h-4" />
+            <span className="hidden sm:inline">Métricas</span>
+          </TabsTrigger>
+          <TabsTrigger value="routes" className="gap-2 text-xs">
             <Route className="w-4 h-4" />
-            <span className="hidden md:inline">Rotas</span>
+            <span className="hidden sm:inline">Rotas</span>
           </TabsTrigger>
-          <TabsTrigger value="functions" className="gap-2 text-xs md:text-sm">
+          <TabsTrigger value="functions" className="gap-2 text-xs">
             <Zap className="w-4 h-4" />
-            <span className="hidden md:inline">Funções</span>
+            <span className="hidden sm:inline">Funções</span>
           </TabsTrigger>
-          <TabsTrigger value="database" className="gap-2 text-xs md:text-sm">
+          <TabsTrigger value="database" className="gap-2 text-xs">
             <Database className="w-4 h-4" />
-            <span className="hidden md:inline">Banco</span>
+            <span className="hidden sm:inline">Banco</span>
           </TabsTrigger>
-          <TabsTrigger value="hosting" className="gap-2 text-xs md:text-sm">
+          <TabsTrigger value="logs" className="gap-2 text-xs">
+            <ScrollText className="w-4 h-4" />
+            <span className="hidden sm:inline">Logs</span>
+          </TabsTrigger>
+          <TabsTrigger value="troubleshoot" className="gap-2 text-xs">
+            <Bug className="w-4 h-4" />
+            <span className="hidden sm:inline">Debug</span>
+          </TabsTrigger>
+          <TabsTrigger value="maintenance" className="gap-2 text-xs">
+            <Wrench className="w-4 h-4" />
+            <span className="hidden sm:inline">Manutenção</span>
+          </TabsTrigger>
+          <TabsTrigger value="hosting" className="gap-2 text-xs">
             <Server className="w-4 h-4" />
-            <span className="hidden md:inline">Hospedagem</span>
+            <span className="hidden sm:inline">Hosting</span>
           </TabsTrigger>
-          <TabsTrigger value="migration" className="gap-2 text-xs md:text-sm">
+          <TabsTrigger value="migration" className="gap-2 text-xs">
             <GitBranch className="w-4 h-4" />
-            <span className="hidden md:inline">Migração</span>
+            <span className="hidden sm:inline">Migração</span>
           </TabsTrigger>
-          <TabsTrigger value="docs" className="gap-2 text-xs md:text-sm">
+          <TabsTrigger value="docs" className="gap-2 text-xs">
             <BookOpen className="w-4 h-4" />
-            <span className="hidden md:inline">Docs</span>
+            <span className="hidden sm:inline">Docs</span>
           </TabsTrigger>
         </TabsList>
+
+        {/* Tab: Health Check */}
+        <TabsContent value="health" className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {/* Overall Status */}
+            <Card className="md:col-span-2 lg:col-span-1">
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <HeartPulse className="w-5 h-5" />
+                    Status Geral
+                  </span>
+                  <Button variant="outline" size="sm" onClick={runHealthCheck}>
+                    <RefreshCw className="w-4 h-4" />
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-center py-6">
+                  <div className={`w-24 h-24 rounded-full flex items-center justify-center ${
+                    getHealthOverallStatus() === "healthy" ? "bg-green-500/10 text-green-500" :
+                    getHealthOverallStatus() === "warning" ? "bg-yellow-500/10 text-yellow-500" :
+                    getHealthOverallStatus() === "error" ? "bg-red-500/10 text-red-500" :
+                    "bg-muted text-muted-foreground"
+                  }`}>
+                    {getHealthOverallStatus() === "checking" ? (
+                      <Loader2 className="w-12 h-12 animate-spin" />
+                    ) : getHealthOverallStatus() === "healthy" ? (
+                      <CheckCircle2 className="w-12 h-12" />
+                    ) : getHealthOverallStatus() === "warning" ? (
+                      <AlertTriangle className="w-12 h-12" />
+                    ) : (
+                      <XCircle className="w-12 h-12" />
+                    )}
+                  </div>
+                </div>
+                <p className="text-center text-lg font-semibold">
+                  {getHealthOverallStatus() === "healthy" ? "Sistema Saudável" :
+                   getHealthOverallStatus() === "warning" ? "Atenção Necessária" :
+                   getHealthOverallStatus() === "error" ? "Problemas Detectados" :
+                   "Verificando..."}
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Individual Health Checks */}
+            <Card className="md:col-span-2">
+              <CardHeader>
+                <CardTitle>Verificação de Serviços</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {[
+                    { key: "database", label: "Banco de Dados", icon: Database },
+                    { key: "auth", label: "Autenticação", icon: Lock },
+                    { key: "storage", label: "Storage", icon: HardDrive },
+                    { key: "functions", label: "Edge Functions", icon: Zap },
+                    { key: "realtime", label: "Realtime", icon: Activity },
+                  ].map(service => (
+                    <div key={service.key} className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
+                      {getStatusIcon(healthStatus[service.key as keyof HealthStatus])}
+                      <div className="flex-1">
+                        <p className="text-sm font-medium flex items-center gap-2">
+                          <service.icon className="w-4 h-4" />
+                          {service.label}
+                        </p>
+                      </div>
+                      {getStatusBadge(healthStatus[service.key as keyof HealthStatus])}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Quick Actions */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Zap className="w-5 h-5" />
+                Ações Rápidas
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
+                <Button variant="outline" onClick={testRoutes} disabled={isTestingRoutes}>
+                  {isTestingRoutes ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Route className="w-4 h-4 mr-2" />}
+                  Testar Rotas
+                </Button>
+                <Button variant="outline" onClick={testEdgeFunctions} disabled={isTestingFunctions}>
+                  {isTestingFunctions ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Zap className="w-4 h-4 mr-2" />}
+                  Testar Funções
+                </Button>
+                <Button variant="outline" onClick={testDatabase} disabled={isTestingDb}>
+                  {isTestingDb ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Database className="w-4 h-4 mr-2" />}
+                  Testar Banco
+                </Button>
+                <Button variant="outline" onClick={() => { loadMetrics(); loadRecentLogs(); }}>
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Atualizar Dados
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab: Métricas */}
+        <TabsContent value="metrics" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold">Métricas do Sistema</h3>
+            <Button variant="outline" size="sm" onClick={loadMetrics} disabled={isLoadingMetrics}>
+              {isLoadingMetrics ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+            </Button>
+          </div>
+
+          {metrics && (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-blue-500/10 rounded-lg">
+                      <Users className="w-6 h-6 text-blue-500" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold">{metrics.totalUsers}</p>
+                      <p className="text-sm text-muted-foreground">Usuários ({metrics.activeUsers} online)</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-green-500/10 rounded-lg">
+                      <Workflow className="w-6 h-6 text-green-500" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold">{metrics.totalFunnels}</p>
+                      <p className="text-sm text-muted-foreground">Funis ({metrics.activeFunnels} ativos)</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-purple-500/10 rounded-lg">
+                      <CreditCard className="w-6 h-6 text-purple-500" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold">{metrics.totalTransactions}</p>
+                      <p className="text-sm text-muted-foreground">Transações</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-yellow-500/10 rounded-lg">
+                      <Clock className="w-6 h-6 text-yellow-500" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold">{metrics.pendingPayments}</p>
+                      <p className="text-sm text-muted-foreground">Pagamentos Pendentes</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-cyan-500/10 rounded-lg">
+                      <MessageSquare className="w-6 h-6 text-cyan-500" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold">{metrics.totalSessions}</p>
+                      <p className="text-sm text-muted-foreground">Sessões ({metrics.activeSessions} ativas)</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-orange-500/10 rounded-lg">
+                      <Route className="w-6 h-6 text-orange-500" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold">{SYSTEM_ROUTES.length}</p>
+                      <p className="text-sm text-muted-foreground">Rotas Configuradas</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-pink-500/10 rounded-lg">
+                      <Zap className="w-6 h-6 text-pink-500" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold">{EDGE_FUNCTIONS.length}</p>
+                      <p className="text-sm text-muted-foreground">Edge Functions</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-indigo-500/10 rounded-lg">
+                      <Database className="w-6 h-6 text-indigo-500" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold">{DATABASE_TABLES.length}</p>
+                      <p className="text-sm text-muted-foreground">Tabelas no Banco</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </TabsContent>
 
         {/* Tab: Rotas */}
         <TabsContent value="routes" className="space-y-4">
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                   <CardTitle className="flex items-center gap-2">
                     <Route className="w-5 h-5" />
-                    Teste de Rotas
+                    Rotas do Sistema ({filteredRoutes.length})
                   </CardTitle>
                   <CardDescription>
-                    Verifique todas as rotas do sistema ({SYSTEM_ROUTES.length} rotas)
+                    Mapeamento completo de todas as rotas
                   </CardDescription>
                 </div>
-                <Button onClick={testRoutes} disabled={isTestingRoutes}>
-                  {isTestingRoutes ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  ) : (
-                    <Play className="w-4 h-4 mr-2" />
-                  )}
-                  Testar Todas
-                </Button>
+                <div className="flex gap-2">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar rota..."
+                      value={searchFilter}
+                      onChange={(e) => setSearchFilter(e.target.value)}
+                      className="pl-9 w-48"
+                    />
+                  </div>
+                  <Button onClick={testRoutes} disabled={isTestingRoutes}>
+                    {isTestingRoutes ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Play className="w-4 h-4 mr-2" />}
+                    Testar
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -444,12 +1221,13 @@ const AdminTIPanel = () => {
                     <TableRow>
                       <TableHead>Rota</TableHead>
                       <TableHead>Nome</TableHead>
+                      <TableHead>Categoria</TableHead>
                       <TableHead>Autenticação</TableHead>
                       <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {SYSTEM_ROUTES.map((route, idx) => {
+                    {filteredRoutes.map((route, idx) => {
                       const test = routeTests.find(t => t.path === route.path);
                       return (
                         <TableRow key={idx}>
@@ -461,6 +1239,11 @@ const AdminTIPanel = () => {
                               <p className="font-medium text-sm">{route.name}</p>
                               <p className="text-xs text-muted-foreground">{route.description}</p>
                             </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-xs capitalize">
+                              {route.category}
+                            </Badge>
                           </TableCell>
                           <TableCell>
                             <div className="flex gap-1 flex-wrap">
@@ -500,26 +1283,22 @@ const AdminTIPanel = () => {
           </Card>
         </TabsContent>
 
-        {/* Tab: Funções */}
+        {/* Tab: Edge Functions */}
         <TabsContent value="functions" className="space-y-4">
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                   <CardTitle className="flex items-center gap-2">
                     <Zap className="w-5 h-5" />
-                    Edge Functions
+                    Edge Functions ({filteredFunctions.length})
                   </CardTitle>
                   <CardDescription>
-                    Teste de conectividade das funções ({EDGE_FUNCTIONS.length} funções)
+                    Funções serverless do backend
                   </CardDescription>
                 </div>
                 <Button onClick={testEdgeFunctions} disabled={isTestingFunctions}>
-                  {isTestingFunctions ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  ) : (
-                    <Play className="w-4 h-4 mr-2" />
-                  )}
+                  {isTestingFunctions ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Play className="w-4 h-4 mr-2" />}
                   Testar Todas
                 </Button>
               </div>
@@ -527,9 +1306,9 @@ const AdminTIPanel = () => {
             <CardContent>
               <Alert className="mb-4">
                 <Info className="w-4 h-4" />
-                <AlertDescription>
+                <AlertDescription className="flex items-center gap-2">
                   Base URL: <code className="text-xs bg-muted px-2 py-0.5 rounded">{supabaseUrl}/functions/v1/</code>
-                  <Button variant="ghost" size="sm" className="ml-2 h-6" onClick={() => copyToClipboard(`${supabaseUrl}/functions/v1/`)}>
+                  <Button variant="ghost" size="sm" className="h-6" onClick={() => copyToClipboard(`${supabaseUrl}/functions/v1/`)}>
                     <Copy className="w-3 h-3" />
                   </Button>
                 </AlertDescription>
@@ -540,6 +1319,7 @@ const AdminTIPanel = () => {
                     <TableRow>
                       <TableHead>Função</TableHead>
                       <TableHead>Descrição</TableHead>
+                      <TableHead>Categoria</TableHead>
                       <TableHead>Método</TableHead>
                       <TableHead>Auth</TableHead>
                       <TableHead>Status</TableHead>
@@ -547,7 +1327,7 @@ const AdminTIPanel = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {EDGE_FUNCTIONS.map((fn, idx) => {
+                    {filteredFunctions.map((fn, idx) => {
                       const test = edgeFunctionTests.find(t => t.name === fn.name);
                       return (
                         <TableRow key={idx}>
@@ -561,6 +1341,11 @@ const AdminTIPanel = () => {
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
                             {fn.description}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-xs capitalize">
+                              {fn.category}
+                            </Badge>
                           </TableCell>
                           <TableCell>
                             <Badge variant="outline" className="text-xs">{fn.method}</Badge>
@@ -582,28 +1367,60 @@ const AdminTIPanel = () => {
               </ScrollArea>
             </CardContent>
           </Card>
+
+          {/* Webhook URLs */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Webhook className="w-5 h-5" />
+                URLs de Webhook
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-3">
+                {[
+                  { name: "Telegram Bot", endpoint: "funnel-webhook", description: "Para bots do Telegram" },
+                  { name: "MercadoPago", endpoint: "mercadopago-webhook", description: "Notificações de pagamento MP" },
+                  { name: "Pagamento Genérico", endpoint: "payment-webhook", description: "Webhook genérico" },
+                  { name: "WhatsApp", endpoint: "wpp-webhook", description: "Webhook do WhatsApp" },
+                  { name: "UTMify", endpoint: "utmify-track", description: "Tracking UTMify" },
+                ].map((webhook, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                    <div>
+                      <p className="font-medium text-sm">{webhook.name}</p>
+                      <p className="text-xs text-muted-foreground">{webhook.description}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <code className="text-xs bg-muted px-2 py-1 rounded hidden md:block">
+                        {`${supabaseUrl}/functions/v1/${webhook.endpoint}`}
+                      </code>
+                      <Button variant="outline" size="sm" onClick={() => copyToClipboard(`${supabaseUrl}/functions/v1/${webhook.endpoint}`)}>
+                        <Copy className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* Tab: Banco de Dados */}
         <TabsContent value="database" className="space-y-4">
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                   <CardTitle className="flex items-center gap-2">
                     <Database className="w-5 h-5" />
-                    Tabelas do Banco
+                    Tabelas do Banco ({filteredTables.length})
                   </CardTitle>
                   <CardDescription>
-                    Verificar conexão com tabelas ({DATABASE_TABLES.length} tabelas)
+                    Estrutura do banco de dados
                   </CardDescription>
                 </div>
                 <Button onClick={testDatabase} disabled={isTestingDb}>
-                  {isTestingDb ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  ) : (
-                    <Play className="w-4 h-4 mr-2" />
-                  )}
+                  {isTestingDb ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Play className="w-4 h-4 mr-2" />}
                   Testar Todas
                 </Button>
               </div>
@@ -611,18 +1428,28 @@ const AdminTIPanel = () => {
             <CardContent>
               <ScrollArea className="h-[500px]">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {DATABASE_TABLES.map((table, idx) => {
+                  {filteredTables.map((table, idx) => {
                     const test = dbTests.find(t => t.table === table.name);
                     return (
-                      <div key={idx} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                      <div key={idx} className={`flex items-center justify-between p-3 rounded-lg ${
+                        table.critical ? "bg-red-500/5 border border-red-500/20" : "bg-muted/30"
+                      }`}>
                         <div className="flex items-center gap-3">
                           {test && getStatusIcon(test.status)}
                           <div>
-                            <code className="text-sm font-medium">{table.name}</code>
+                            <div className="flex items-center gap-2">
+                              <code className="text-sm font-medium">{table.name}</code>
+                              {table.critical && (
+                                <Badge variant="destructive" className="text-xs">Crítica</Badge>
+                              )}
+                            </div>
                             <p className="text-xs text-muted-foreground">{table.description}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-xs capitalize">
+                            {table.category}
+                          </Badge>
                           {table.rls ? (
                             <Badge variant="secondary" className="text-xs">
                               <Shield className="w-3 h-3 mr-1" />
@@ -642,6 +1469,207 @@ const AdminTIPanel = () => {
                   })}
                 </div>
               </ScrollArea>
+            </CardContent>
+          </Card>
+
+          {/* Storage Buckets */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <HardDrive className="w-5 h-5" />
+                Storage Buckets
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-3 md:grid-cols-2">
+                {STORAGE_BUCKETS.map((bucket, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <Folder className="w-5 h-5 text-muted-foreground" />
+                      <div>
+                        <code className="text-sm font-medium">{bucket.name}</code>
+                        <p className="text-xs text-muted-foreground">{bucket.description}</p>
+                      </div>
+                    </div>
+                    <Badge variant={bucket.public ? "secondary" : "outline"} className="text-xs">
+                      {bucket.public ? "Público" : "Privado"}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab: Logs */}
+        <TabsContent value="logs" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <ScrollText className="w-5 h-5" />
+                    Logs Recentes
+                  </CardTitle>
+                  <CardDescription>Últimos eventos do sistema</CardDescription>
+                </div>
+                <Button variant="outline" size="sm" onClick={loadRecentLogs} disabled={isLoadingLogs}>
+                  {isLoadingLogs ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-[500px]">
+                {recentLogs.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <ScrollText className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>Nenhum log recente encontrado</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {recentLogs.map((log) => (
+                      <div key={log.id} className="p-3 bg-muted/30 rounded-lg">
+                        <div className="flex items-center justify-between mb-1">
+                          <Badge variant="outline" className="text-xs">{log.type}</Badge>
+                          <span className="text-xs text-muted-foreground">{formatTimestamp(log.timestamp)}</span>
+                        </div>
+                        <p className="text-sm">{log.message}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab: Troubleshooting */}
+        <TabsContent value="troubleshoot" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Bug className="w-5 h-5" />
+                Guia de Troubleshooting
+              </CardTitle>
+              <CardDescription>Soluções para problemas comuns</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Accordion type="single" collapsible className="w-full">
+                {TROUBLESHOOTING_ITEMS.map((item) => (
+                  <AccordionItem key={item.id} value={item.id}>
+                    <AccordionTrigger>
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 text-yellow-500" />
+                        {item.title}
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="space-y-4">
+                      <div>
+                        <p className="text-sm font-semibold mb-2">Sintomas:</p>
+                        <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+                          {item.symptoms.map((s, i) => <li key={i}>{s}</li>)}
+                        </ul>
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold mb-2">Soluções:</p>
+                        <ol className="list-decimal list-inside text-sm space-y-1">
+                          {item.solutions.map((s, i) => <li key={i}>{s}</li>)}
+                        </ol>
+                      </div>
+                      {item.code && (
+                        <div>
+                          <p className="text-sm font-semibold mb-2">Código de Diagnóstico:</p>
+                          <div className="relative">
+                            <pre className="bg-muted p-3 rounded-lg text-xs overflow-x-auto">
+                              <code>{item.code}</code>
+                            </pre>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="absolute top-2 right-2 h-6"
+                              onClick={() => copyToClipboard(item.code)}
+                            >
+                              <Copy className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab: Manutenção */}
+        <TabsContent value="maintenance" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ClipboardList className="w-5 h-5" />
+                Checklist de Manutenção
+              </CardTitle>
+              <CardDescription>Tarefas periódicas de manutenção do sistema</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {MAINTENANCE_CHECKLIST.map((item) => (
+                  <div key={item.id} className={`flex items-center justify-between p-3 rounded-lg ${
+                    item.priority === "critical" ? "bg-red-500/5 border border-red-500/20" :
+                    item.priority === "high" ? "bg-yellow-500/5 border border-yellow-500/20" :
+                    "bg-muted/30"
+                  }`}>
+                    <div className="flex items-center gap-3">
+                      <Switch
+                        checked={maintenanceChecks[item.id] || false}
+                        onCheckedChange={(checked) => setMaintenanceChecks(prev => ({ ...prev, [item.id]: checked }))}
+                      />
+                      <div>
+                        <p className="font-medium text-sm">{item.title}</p>
+                        <p className="text-xs text-muted-foreground">Frequência: {item.frequency}</p>
+                      </div>
+                    </div>
+                    <Badge variant={
+                      item.priority === "critical" ? "destructive" :
+                      item.priority === "high" ? "default" :
+                      item.priority === "medium" ? "secondary" : "outline"
+                    } className="text-xs">
+                      {item.priority}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Secrets */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Key className="w-5 h-5" />
+                Secrets do Sistema
+              </CardTitle>
+              <CardDescription>Variáveis de ambiente configuradas</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-2 md:grid-cols-2">
+                {SYSTEM_SECRETS.map((secret, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <Lock className="w-4 h-4 text-muted-foreground" />
+                      <div>
+                        <code className="text-xs font-medium">{secret.name}</code>
+                        <p className="text-xs text-muted-foreground">{secret.description}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-xs capitalize">{secret.category}</Badge>
+                      {secret.required && <Badge variant="destructive" className="text-xs">Obrigatório</Badge>}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -716,13 +1744,10 @@ const AdminTIPanel = () => {
                       <p className="text-sm text-muted-foreground">Para usar um domínio personalizado:</p>
                       <div className="bg-muted p-3 rounded-lg space-y-2 text-xs font-mono">
                         <p><strong>Tipo A (root):</strong></p>
-                        <code>@ → 185.158.133.1</code>
-                        <p className="mt-2"><strong>Tipo A (www):</strong></p>
-                        <code>www → 185.158.133.1</code>
-                        <p className="mt-2"><strong>TXT (verificação):</strong></p>
-                        <code>_lovable → lovable_verify=XXX</code>
+                        <code>@ → [IP do servidor]</code>
+                        <p className="mt-2"><strong>Tipo CNAME (www):</strong></p>
+                        <code>www → seudominio.com</code>
                       </div>
-                      <p className="text-xs text-muted-foreground">Configure no painel do seu registrador de domínio.</p>
                     </AccordionContent>
                   </AccordionItem>
 
@@ -730,14 +1755,13 @@ const AdminTIPanel = () => {
                     <AccordionTrigger>
                       <div className="flex items-center gap-2">
                         <HardDrive className="w-4 h-4" />
-                        Configurar VPS (Opcional)
+                        Configurar VPS
                       </div>
                     </AccordionTrigger>
                     <AccordionContent className="space-y-3">
-                      <p className="text-sm text-muted-foreground">Se precisar de serviços externos à Lovable:</p>
                       <div className="space-y-2">
                         <div className="p-3 bg-muted rounded-lg">
-                          <p className="text-xs font-semibold">1. Acesse sua VPS via SSH</p>
+                          <p className="text-xs font-semibold">1. Acesse via SSH</p>
                           <code className="text-xs">ssh root@seu-ip-vps</code>
                         </div>
                         <div className="p-3 bg-muted rounded-lg">
@@ -745,7 +1769,7 @@ const AdminTIPanel = () => {
                           <code className="text-xs">curl -fsSL https://get.docker.com | sh</code>
                         </div>
                         <div className="p-3 bg-muted rounded-lg">
-                          <p className="text-xs font-semibold">3. Configure Nginx como proxy</p>
+                          <p className="text-xs font-semibold">3. Configure Nginx</p>
                           <code className="text-xs">apt install nginx certbot</code>
                         </div>
                       </div>
@@ -760,8 +1784,6 @@ const AdminTIPanel = () => {
                       </div>
                     </AccordionTrigger>
                     <AccordionContent className="space-y-3">
-                      <p className="text-sm text-muted-foreground">O Lovable Cloud fornece SSL automaticamente para domínios conectados.</p>
-                      <p className="text-sm text-muted-foreground">Para VPS externa, use Certbot:</p>
                       <div className="bg-muted p-3 rounded-lg">
                         <code className="text-xs">certbot --nginx -d seudominio.com</code>
                       </div>
@@ -796,15 +1818,19 @@ const AdminTIPanel = () => {
                     <p className="text-sm font-medium">{systemInfo.screenWidth}x{systemInfo.screenHeight}</p>
                   </div>
                   <div className="p-3 bg-muted/30 rounded-lg">
-                    <p className="text-xs text-muted-foreground">Status</p>
+                    <p className="text-xs text-muted-foreground">Conexão</p>
                     <div className="flex items-center gap-2">
-                      {systemInfo.onLine ? (
-                        <Wifi className="w-4 h-4 text-green-500" />
-                      ) : (
-                        <WifiOff className="w-4 h-4 text-red-500" />
-                      )}
+                      {systemInfo.onLine ? <Wifi className="w-4 h-4 text-green-500" /> : <WifiOff className="w-4 h-4 text-red-500" />}
                       <p className="text-sm font-medium">{systemInfo.onLine ? "Online" : "Offline"}</p>
                     </div>
+                  </div>
+                  <div className="p-3 bg-muted/30 rounded-lg">
+                    <p className="text-xs text-muted-foreground">Timezone</p>
+                    <p className="text-sm font-medium">{systemInfo.timezone}</p>
+                  </div>
+                  <div className="p-3 bg-muted/30 rounded-lg">
+                    <p className="text-xs text-muted-foreground">Cookies</p>
+                    <p className="text-sm font-medium">{systemInfo.cookieEnabled ? "Habilitados" : "Desabilitados"}</p>
                   </div>
                 </div>
               )}
@@ -818,86 +1844,15 @@ const AdminTIPanel = () => {
             <AlertTriangle className="w-4 h-4" />
             <AlertTitle>Atenção!</AlertTitle>
             <AlertDescription>
-              Migração de banco de dados é uma operação crítica. Faça backup de todos os dados antes de prosseguir.
+              Migração de sistema é uma operação crítica. Faça backup completo antes de prosseguir.
             </AlertDescription>
           </Alert>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Download className="w-5 h-5" />
-                  Exportar Dados
-                </CardTitle>
-                <CardDescription>Faça backup dos dados atuais</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <Database className="w-4 h-4" />
-                      <span className="text-sm">Exportar todas as tabelas</span>
-                    </div>
-                    <Button variant="outline" size="sm" disabled>
-                      <Download className="w-4 h-4 mr-2" />
-                      JSON
-                    </Button>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <FileJson className="w-4 h-4" />
-                      <span className="text-sm">Exportar configurações</span>
-                    </div>
-                    <Button variant="outline" size="sm" disabled>
-                      <Download className="w-4 h-4 mr-2" />
-                      Config
-                    </Button>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <FolderTree className="w-4 h-4" />
-                      <span className="text-sm">Exportar estrutura</span>
-                    </div>
-                    <Button variant="outline" size="sm" disabled>
-                      <Download className="w-4 h-4 mr-2" />
-                      Schema
-                    </Button>
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  * Funcionalidade de exportação em desenvolvimento. Use o backend do Lovable Cloud para backup.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Upload className="w-5 h-5" />
-                  Importar Dados
-                </CardTitle>
-                <CardDescription>Restaurar dados de backup</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="border-2 border-dashed border-muted rounded-lg p-6 text-center">
-                  <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-                  <p className="text-sm text-muted-foreground">Arraste arquivos de backup aqui</p>
-                  <Button variant="secondary" size="sm" className="mt-2" disabled>
-                    Selecionar Arquivos
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  * Funcionalidade de importação em desenvolvimento.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
 
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <GitBranch className="w-5 h-5" />
-                Guia de Migração Completa
+                Guia Completo de Migração
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -906,24 +1861,16 @@ const AdminTIPanel = () => {
                   <AccordionTrigger>
                     <div className="flex items-center gap-2">
                       <Badge variant="outline">1</Badge>
-                      Preparação do Ambiente Destino
+                      Preparação e Backup
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="space-y-3">
                     <ol className="list-decimal list-inside space-y-2 text-sm">
-                      <li>Crie um novo projeto no Lovable</li>
-                      <li>Ative o Lovable Cloud no novo projeto</li>
-                      <li>Copie as credenciais do novo projeto</li>
-                      <li>Configure as Edge Functions necessárias</li>
+                      <li>Exporte todos os dados das tabelas críticas</li>
+                      <li>Faça backup dos arquivos do Storage</li>
+                      <li>Documente todas as configurações atuais</li>
+                      <li>Liste todos os webhooks externos configurados</li>
                     </ol>
-                    <div className="bg-muted p-3 rounded-lg">
-                      <p className="text-xs font-semibold mb-2">Variáveis necessárias:</p>
-                      <ul className="text-xs space-y-1 font-mono">
-                        <li>SUPABASE_URL</li>
-                        <li>SUPABASE_ANON_KEY</li>
-                        <li>SUPABASE_SERVICE_ROLE_KEY</li>
-                      </ul>
-                    </div>
                   </AccordionContent>
                 </AccordionItem>
 
@@ -931,24 +1878,27 @@ const AdminTIPanel = () => {
                   <AccordionTrigger>
                     <div className="flex items-center gap-2">
                       <Badge variant="outline">2</Badge>
-                      Migrar Esquema do Banco
+                      Configurar Novo Ambiente
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="space-y-3">
-                    <p className="text-sm">Execute as migrações na ordem correta:</p>
                     <ol className="list-decimal list-inside space-y-2 text-sm">
-                      <li>Tabelas base (profiles, plans, etc)</li>
-                      <li>Tabelas de relacionamento</li>
-                      <li>Funções e triggers</li>
-                      <li>Políticas RLS</li>
-                      <li>Storage buckets</li>
+                      <li>Crie novo projeto Lovable</li>
+                      <li>Ative Lovable Cloud</li>
+                      <li>Configure todos os secrets necessários</li>
+                      <li>Aplique as migrações do banco de dados</li>
                     </ol>
-                    <Alert>
-                      <Info className="w-4 h-4" />
-                      <AlertDescription className="text-xs">
-                        As migrações estão em <code>supabase/migrations/</code>
-                      </AlertDescription>
-                    </Alert>
+                    <div className="bg-muted p-3 rounded-lg">
+                      <p className="text-xs font-semibold mb-2">Secrets necessários:</p>
+                      <div className="grid gap-1 text-xs font-mono">
+                        {SYSTEM_SECRETS.filter(s => s.required).map((s, i) => (
+                          <div key={i} className="flex items-center gap-2">
+                            <CheckCircle2 className="w-3 h-3 text-green-500" />
+                            {s.name}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </AccordionContent>
                 </AccordionItem>
 
@@ -956,19 +1906,21 @@ const AdminTIPanel = () => {
                   <AccordionTrigger>
                     <div className="flex items-center gap-2">
                       <Badge variant="outline">3</Badge>
-                      Migrar Dados
+                      Atualizar Webhooks
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="space-y-3">
-                    <p className="text-sm">Ordem recomendada para migração de dados:</p>
-                    <ol className="list-decimal list-inside space-y-1 text-sm">
-                      <li>profiles → user_roles → subscriptions</li>
-                      <li>plans → transactions</li>
-                      <li>admin_settings → admin_text_settings</li>
-                      <li>telegram_integrations → funnels → funnel_nodes</li>
-                      <li>smart_link_pages → smart_link_buttons</li>
-                      <li>Arquivos do Storage</li>
-                    </ol>
+                    <p className="text-sm">Atualize as URLs em:</p>
+                    <div className="space-y-2">
+                      <div className="p-3 bg-muted rounded-lg">
+                        <p className="text-xs font-semibold">Telegram</p>
+                        <code className="text-xs">https://api.telegram.org/bot[TOKEN]/setWebhook?url=[NOVA_URL]</code>
+                      </div>
+                      <div className="p-3 bg-muted rounded-lg">
+                        <p className="text-xs font-semibold">MercadoPago</p>
+                        <p className="text-xs">Painel → Desenvolvedor → Webhooks</p>
+                      </div>
+                    </div>
                   </AccordionContent>
                 </AccordionItem>
 
@@ -976,33 +1928,10 @@ const AdminTIPanel = () => {
                   <AccordionTrigger>
                     <div className="flex items-center gap-2">
                       <Badge variant="outline">4</Badge>
-                      Configurar Webhooks
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="space-y-3">
-                    <p className="text-sm">Atualize os webhooks externos:</p>
-                    <div className="space-y-2">
-                      <div className="p-3 bg-muted rounded-lg">
-                        <p className="text-xs font-semibold">Telegram</p>
-                        <code className="text-xs">https://api.telegram.org/bot{`<TOKEN>`}/setWebhook?url=NOVA_URL</code>
-                      </div>
-                      <div className="p-3 bg-muted rounded-lg">
-                        <p className="text-xs font-semibold">MercadoPago</p>
-                        <p className="text-xs">Atualize no painel → Desenvolvedor → Webhooks</p>
-                      </div>
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-
-                <AccordionItem value="step5">
-                  <AccordionTrigger>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline">5</Badge>
                       Verificação Final
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="space-y-3">
-                    <p className="text-sm">Checklist de verificação:</p>
                     <div className="space-y-2">
                       {[
                         "Todas as tabelas criadas",
@@ -1041,7 +1970,7 @@ const AdminTIPanel = () => {
                 <p><strong>Frontend:</strong> React + Vite + TypeScript</p>
                 <p><strong>Estilização:</strong> Tailwind CSS + shadcn/ui</p>
                 <p><strong>Estado:</strong> TanStack Query + Context</p>
-                <p><strong>Backend:</strong> Lovable Cloud (Supabase)</p>
+                <p><strong>Backend:</strong> Lovable Cloud</p>
                 <p><strong>Database:</strong> PostgreSQL</p>
                 <p><strong>Auth:</strong> Supabase Auth</p>
               </CardContent>
@@ -1072,61 +2001,24 @@ const AdminTIPanel = () => {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
-                  <Key className="w-5 h-5" />
-                  Secrets Configurados
+                  <Terminal className="w-5 h-5" />
+                  Comandos
                 </CardTitle>
               </CardHeader>
-              <CardContent className="text-xs space-y-1">
+              <CardContent className="text-xs space-y-2">
                 {[
-                  "SUPABASE_URL",
-                  "SUPABASE_ANON_KEY",
-                  "SUPABASE_SERVICE_ROLE_KEY",
-                  "BUCKPAY_API_TOKEN",
-                  "MERCADOPAGO_CLIENT_ID",
-                  "MERCADOPAGO_CLIENT_SECRET",
-                  "META_APP_ID",
-                  "META_APP_SECRET",
-                  "TWITTER_*",
-                ].map((secret, idx) => (
-                  <div key={idx} className="flex items-center gap-2">
-                    <Lock className="w-3 h-3 text-muted-foreground" />
-                    <code>{secret}</code>
+                  { cmd: "npm run dev", desc: "Dev server" },
+                  { cmd: "npm run build", desc: "Build produção" },
+                  { cmd: "npm run preview", desc: "Preview build" },
+                ].map((item, idx) => (
+                  <div key={idx} className="flex items-center justify-between">
+                    <code className="bg-muted px-2 py-1 rounded">{item.cmd}</code>
+                    <span className="text-muted-foreground">{item.desc}</span>
                   </div>
                 ))}
               </CardContent>
             </Card>
           </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Terminal className="w-5 h-5" />
-                Comandos Úteis
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-3 md:grid-cols-2">
-                {[
-                  { cmd: "npm run dev", desc: "Iniciar servidor de desenvolvimento" },
-                  { cmd: "npm run build", desc: "Build de produção" },
-                  { cmd: "npm run preview", desc: "Preview do build" },
-                  { cmd: "npx supabase functions serve", desc: "Testar Edge Functions localmente" },
-                  { cmd: "npx supabase db push", desc: "Aplicar migrações" },
-                  { cmd: "npx supabase gen types typescript", desc: "Gerar tipos TypeScript" },
-                ].map((item, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                    <div>
-                      <code className="text-xs font-medium">{item.cmd}</code>
-                      <p className="text-xs text-muted-foreground">{item.desc}</p>
-                    </div>
-                    <Button variant="ghost" size="sm" onClick={() => copyToClipboard(item.cmd)}>
-                      <Copy className="w-3 h-3" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
 
           <Card>
             <CardHeader>
