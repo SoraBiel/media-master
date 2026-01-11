@@ -346,6 +346,9 @@ const AdminDashboardPage = () => {
   const [editMediaName, setEditMediaName] = useState("");
   const [editMediaPackType, setEditMediaPackType] = useState("10k");
   const [editMediaMinPlan, setEditMediaMinPlan] = useState("basic");
+  const [editMediaCoverFile, setEditMediaCoverFile] = useState<File | null>(null);
+  const [editMediaCoverPreview, setEditMediaCoverPreview] = useState<string | null>(null);
+  const editMediaCoverInputRef = useRef<HTMLInputElement>(null);
   
   // Transfer media dialog state
   const [transferMediaDialogOpen, setTransferMediaDialogOpen] = useState(false);
@@ -1550,6 +1553,8 @@ const AdminDashboardPage = () => {
     setEditMediaName(media.name);
     setEditMediaPackType(media.pack_type || "10k");
     setEditMediaMinPlan(media.min_plan || "basic");
+    setEditMediaCoverFile(null);
+    setEditMediaCoverPreview(media.image_url || null);
     const existingFiles = Array.isArray(media.media_files) 
       ? media.media_files.map((f: any) => ({
           name: f.name || 'file',
@@ -1568,12 +1573,33 @@ const AdminDashboardPage = () => {
     
     setIsUploadingMedia(true);
     try {
+      let imageUrl = selectedMedia.image_url;
+      
+      // Upload new cover image if selected
+      if (editMediaCoverFile) {
+        const fileExt = editMediaCoverFile.name.split('.').pop();
+        const fileName = `cover-${selectedMedia.id}-${Date.now()}.${fileExt}`;
+        
+        const { error: uploadError, data: uploadData } = await supabase.storage
+          .from("media-packs")
+          .upload(fileName, editMediaCoverFile, { upsert: true });
+        
+        if (uploadError) throw uploadError;
+        
+        const { data: { publicUrl } } = supabase.storage
+          .from("media-packs")
+          .getPublicUrl(fileName);
+        
+        imageUrl = publicUrl;
+      }
+      
       const { error } = await supabase
         .from("admin_media")
         .update({
           name: editMediaName.trim() || selectedMedia.name,
           pack_type: editMediaPackType,
           min_plan: editMediaMinPlan,
+          image_url: imageUrl,
           media_files: bulkUploadedFiles.map(f => ({ url: f.url, name: f.name, type: f.type, size: f.size })),
           file_count: bulkUploadedFiles.length,
           updated_at: new Date().toISOString(),
@@ -1591,6 +1617,8 @@ const AdminDashboardPage = () => {
       setEditMediaName("");
       setEditMediaPackType("10k");
       setEditMediaMinPlan("basic");
+      setEditMediaCoverFile(null);
+      setEditMediaCoverPreview(null);
       setBulkUploadedFiles([]);
       setBulkFilesCount(0);
       fetchAdminMedia();
@@ -2701,6 +2729,8 @@ const AdminDashboardPage = () => {
                   setEditMediaName("");
                   setEditMediaPackType("10k");
                   setEditMediaMinPlan("basic");
+                  setEditMediaCoverFile(null);
+                  setEditMediaCoverPreview(null);
                   setBulkUploadedFiles([]);
                   setBulkFilesCount(0);
                 }
@@ -2718,6 +2748,59 @@ const AdminDashboardPage = () => {
                         onChange={(e) => setEditMediaName(e.target.value)}
                         placeholder="Nome do pacote de mídia"
                       />
+                    </div>
+                    
+                    {/* Cover Image Section */}
+                    <div className="space-y-2">
+                      <Label>Foto do Pacote</Label>
+                      <input
+                        type="file"
+                        ref={editMediaCoverInputRef}
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setEditMediaCoverFile(file);
+                            // Create preview URL
+                            const previewUrl = URL.createObjectURL(file);
+                            setEditMediaCoverPreview(previewUrl);
+                          }
+                        }}
+                      />
+                      <div className="flex items-center gap-4">
+                        {editMediaCoverPreview ? (
+                          <div className="relative w-24 h-24 rounded-lg overflow-hidden border border-border">
+                            <img 
+                              src={editMediaCoverPreview} 
+                              alt="Cover preview" 
+                              className="w-full h-full object-cover"
+                            />
+                            <Button
+                              variant="destructive"
+                              size="icon"
+                              className="absolute top-1 right-1 h-6 w-6"
+                              onClick={() => {
+                                setEditMediaCoverFile(null);
+                                setEditMediaCoverPreview(selectedMedia?.image_url || null);
+                              }}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="w-24 h-24 rounded-lg bg-muted flex items-center justify-center border border-dashed border-border">
+                            <Image className="w-8 h-8 text-muted-foreground" />
+                          </div>
+                        )}
+                        <Button 
+                          variant="outline" 
+                          onClick={() => editMediaCoverInputRef.current?.click()}
+                        >
+                          <Upload className="w-4 h-4 mr-2" />
+                          {editMediaCoverPreview ? "Alterar Foto" : "Adicionar Foto"}
+                        </Button>
+                      </div>
                     </div>
                     
                     <div className="grid grid-cols-2 gap-4">
