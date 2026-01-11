@@ -730,27 +730,28 @@ const AdminTIPanel = () => {
         
         const responseTime = Math.round(performance.now() - start);
         
-        // Even if there's an error, if we got a response the function is reachable
-        // FunctionsHttpError means the function responded (even with 4xx/5xx)
-        // FunctionsRelayError means network/infrastructure issue
-        // FunctionsFetchError means couldn't reach the function at all
+        // ANY response from the function means it's deployed and reachable!
+        // Even 400/500 errors mean the function is ONLINE - it just rejected our test payload
+        // Only network/relay errors mean the function is truly unreachable
         
         if (error) {
-          // Check error type - some errors still mean the function is reachable
           const errorName = error.name || "";
-          const isReachable = errorName === "FunctionsHttpError";
+          // FunctionsHttpError = function responded with HTTP error (400, 500, etc) = ONLINE
+          // FunctionsRelayError = Supabase relay/infrastructure error
+          // FunctionsFetchError = network error, couldn't reach at all
+          const isHttpError = errorName === "FunctionsHttpError";
           
           results.push({
             name: fn.name,
-            status: isReachable ? "success" : "error",
-            message: isReachable ? `Online (resposta: ${error.message?.substring(0, 30) || "erro"})` : (error.message || "Erro"),
+            status: isHttpError ? "success" : "error",
+            message: isHttpError ? `Online ✓ (${responseTime}ms)` : (error.message || "Offline"),
             responseTime,
           });
         } else {
           results.push({
             name: fn.name,
             status: "success",
-            message: "Online ✓",
+            message: `Online ✓ (${responseTime}ms)`,
             responseTime,
           });
         }
@@ -769,7 +770,7 @@ const AdminTIPanel = () => {
         return result || f;
       }));
       
-      await new Promise(resolve => setTimeout(resolve, 150));
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
 
     setIsTestingFunctions(false);
