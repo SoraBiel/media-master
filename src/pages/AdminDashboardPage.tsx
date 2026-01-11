@@ -344,6 +344,7 @@ const AdminDashboardPage = () => {
   const [editMediaDialogOpen, setEditMediaDialogOpen] = useState(false);
   const [selectedMedia, setSelectedMedia] = useState<AdminMedia | null>(null);
   const [editMediaName, setEditMediaName] = useState("");
+  const [editMediaDescription, setEditMediaDescription] = useState("");
   const [editMediaPackType, setEditMediaPackType] = useState("10k");
   const [editMediaMinPlan, setEditMediaMinPlan] = useState("basic");
   const [editMediaCoverFile, setEditMediaCoverFile] = useState<File | null>(null);
@@ -1551,6 +1552,7 @@ const AdminDashboardPage = () => {
   const handleEditMedia = (media: AdminMedia) => {
     setSelectedMedia(media);
     setEditMediaName(media.name);
+    setEditMediaDescription(media.description || "");
     setEditMediaPackType(media.pack_type || "10k");
     setEditMediaMinPlan(media.min_plan || "basic");
     setEditMediaCoverFile(null);
@@ -1597,6 +1599,7 @@ const AdminDashboardPage = () => {
         .from("admin_media")
         .update({
           name: editMediaName.trim() || selectedMedia.name,
+          description: editMediaDescription.trim() || null,
           pack_type: editMediaPackType,
           min_plan: editMediaMinPlan,
           image_url: imageUrl,
@@ -1615,6 +1618,7 @@ const AdminDashboardPage = () => {
       setEditMediaDialogOpen(false);
       setSelectedMedia(null);
       setEditMediaName("");
+      setEditMediaDescription("");
       setEditMediaPackType("10k");
       setEditMediaMinPlan("basic");
       setEditMediaCoverFile(null);
@@ -2727,6 +2731,7 @@ const AdminDashboardPage = () => {
                 if (!open) {
                   setSelectedMedia(null);
                   setEditMediaName("");
+                  setEditMediaDescription("");
                   setEditMediaPackType("10k");
                   setEditMediaMinPlan("basic");
                   setEditMediaCoverFile(null);
@@ -2747,6 +2752,17 @@ const AdminDashboardPage = () => {
                         value={editMediaName}
                         onChange={(e) => setEditMediaName(e.target.value)}
                         placeholder="Nome do pacote de mídia"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-media-description">Descrição / Bio</Label>
+                      <Textarea
+                        id="edit-media-description"
+                        value={editMediaDescription}
+                        onChange={(e) => setEditMediaDescription(e.target.value)}
+                        placeholder="Descrição do pacote de mídia..."
+                        rows={3}
                       />
                     </div>
                     
