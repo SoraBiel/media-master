@@ -1093,6 +1093,411 @@ export type Database = {
         }
         Relationships: []
       }
+      multilogin_facebook_accounts: {
+        Row: {
+          access_token: string
+          avatar_url: string | null
+          business_manager_id: string | null
+          business_manager_name: string | null
+          context_id: string | null
+          created_at: string
+          display_name: string | null
+          email: string | null
+          error_message: string | null
+          facebook_user_id: string
+          id: string
+          last_used_at: string | null
+          permissions: string[] | null
+          proxy_id: string | null
+          status: string | null
+          token_expires_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          avatar_url?: string | null
+          business_manager_id?: string | null
+          business_manager_name?: string | null
+          context_id?: string | null
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          error_message?: string | null
+          facebook_user_id: string
+          id?: string
+          last_used_at?: string | null
+          permissions?: string[] | null
+          proxy_id?: string | null
+          status?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          avatar_url?: string | null
+          business_manager_id?: string | null
+          business_manager_name?: string | null
+          context_id?: string | null
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          error_message?: string | null
+          facebook_user_id?: string
+          id?: string
+          last_used_at?: string | null
+          permissions?: string[] | null
+          proxy_id?: string | null
+          status?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_facebook_proxy"
+            columns: ["proxy_id"]
+            isOneToOne: false
+            referencedRelation: "multilogin_proxies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      multilogin_google_accounts: {
+        Row: {
+          access_token: string
+          avatar_url: string | null
+          context_id: string | null
+          created_at: string
+          display_name: string | null
+          email: string
+          error_message: string | null
+          id: string
+          last_used_at: string | null
+          proxy_id: string | null
+          refresh_token: string | null
+          scopes: string[] | null
+          status: string | null
+          token_expires_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          avatar_url?: string | null
+          context_id?: string | null
+          created_at?: string
+          display_name?: string | null
+          email: string
+          error_message?: string | null
+          id?: string
+          last_used_at?: string | null
+          proxy_id?: string | null
+          refresh_token?: string | null
+          scopes?: string[] | null
+          status?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          avatar_url?: string | null
+          context_id?: string | null
+          created_at?: string
+          display_name?: string | null
+          email?: string
+          error_message?: string | null
+          id?: string
+          last_used_at?: string | null
+          proxy_id?: string | null
+          refresh_token?: string | null
+          scopes?: string[] | null
+          status?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_google_proxy"
+            columns: ["proxy_id"]
+            isOneToOne: false
+            referencedRelation: "multilogin_proxies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      multilogin_instagram_accounts: {
+        Row: {
+          access_token: string | null
+          avatar_url: string | null
+          context_id: string | null
+          created_at: string
+          display_name: string | null
+          error_message: string | null
+          facebook_account_id: string | null
+          id: string
+          instagram_id: string
+          last_used_at: string | null
+          page_id: string | null
+          page_name: string | null
+          proxy_id: string | null
+          status: string | null
+          updated_at: string
+          user_id: string
+          username: string
+        }
+        Insert: {
+          access_token?: string | null
+          avatar_url?: string | null
+          context_id?: string | null
+          created_at?: string
+          display_name?: string | null
+          error_message?: string | null
+          facebook_account_id?: string | null
+          id?: string
+          instagram_id: string
+          last_used_at?: string | null
+          page_id?: string | null
+          page_name?: string | null
+          proxy_id?: string | null
+          status?: string | null
+          updated_at?: string
+          user_id: string
+          username: string
+        }
+        Update: {
+          access_token?: string | null
+          avatar_url?: string | null
+          context_id?: string | null
+          created_at?: string
+          display_name?: string | null
+          error_message?: string | null
+          facebook_account_id?: string | null
+          id?: string
+          instagram_id?: string
+          last_used_at?: string | null
+          page_id?: string | null
+          page_name?: string | null
+          proxy_id?: string | null
+          status?: string | null
+          updated_at?: string
+          user_id?: string
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_instagram_proxy"
+            columns: ["proxy_id"]
+            isOneToOne: false
+            referencedRelation: "multilogin_proxies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "multilogin_instagram_accounts_facebook_account_id_fkey"
+            columns: ["facebook_account_id"]
+            isOneToOne: false
+            referencedRelation: "multilogin_facebook_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      multilogin_logs: {
+        Row: {
+          account_id: string | null
+          account_type: string | null
+          action: string
+          country: string | null
+          created_at: string
+          details: Json | null
+          event_type: string
+          id: string
+          ip_used: string | null
+          message: string | null
+          proxy_id: string | null
+          status: string | null
+          user_id: string
+          worker_id: string | null
+        }
+        Insert: {
+          account_id?: string | null
+          account_type?: string | null
+          action: string
+          country?: string | null
+          created_at?: string
+          details?: Json | null
+          event_type: string
+          id?: string
+          ip_used?: string | null
+          message?: string | null
+          proxy_id?: string | null
+          status?: string | null
+          user_id: string
+          worker_id?: string | null
+        }
+        Update: {
+          account_id?: string | null
+          account_type?: string | null
+          action?: string
+          country?: string | null
+          created_at?: string
+          details?: Json | null
+          event_type?: string
+          id?: string
+          ip_used?: string | null
+          message?: string | null
+          proxy_id?: string | null
+          status?: string | null
+          user_id?: string
+          worker_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "multilogin_logs_proxy_id_fkey"
+            columns: ["proxy_id"]
+            isOneToOne: false
+            referencedRelation: "multilogin_proxies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "multilogin_logs_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "multilogin_workers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      multilogin_proxies: {
+        Row: {
+          country: string | null
+          created_at: string
+          detected_ip: string | null
+          host: string
+          id: string
+          is_active: boolean | null
+          last_test_success: boolean | null
+          last_tested_at: string | null
+          name: string
+          password: string | null
+          port: number
+          protocol: string
+          test_error: string | null
+          updated_at: string
+          user_id: string
+          username: string | null
+        }
+        Insert: {
+          country?: string | null
+          created_at?: string
+          detected_ip?: string | null
+          host: string
+          id?: string
+          is_active?: boolean | null
+          last_test_success?: boolean | null
+          last_tested_at?: string | null
+          name: string
+          password?: string | null
+          port: number
+          protocol: string
+          test_error?: string | null
+          updated_at?: string
+          user_id: string
+          username?: string | null
+        }
+        Update: {
+          country?: string | null
+          created_at?: string
+          detected_ip?: string | null
+          host?: string
+          id?: string
+          is_active?: boolean | null
+          last_test_success?: boolean | null
+          last_tested_at?: string | null
+          name?: string
+          password?: string | null
+          port?: number
+          protocol?: string
+          test_error?: string | null
+          updated_at?: string
+          user_id?: string
+          username?: string | null
+        }
+        Relationships: []
+      }
+      multilogin_workers: {
+        Row: {
+          account_id: string
+          account_type: string
+          config: Json | null
+          created_at: string
+          error_count: number | null
+          id: string
+          is_active: boolean | null
+          last_error: string | null
+          last_run_at: string | null
+          name: string
+          next_run_at: string | null
+          proxy_id: string | null
+          run_count: number | null
+          schedule_cron: string | null
+          status: string | null
+          task_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          account_type: string
+          config?: Json | null
+          created_at?: string
+          error_count?: number | null
+          id?: string
+          is_active?: boolean | null
+          last_error?: string | null
+          last_run_at?: string | null
+          name: string
+          next_run_at?: string | null
+          proxy_id?: string | null
+          run_count?: number | null
+          schedule_cron?: string | null
+          status?: string | null
+          task_type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          account_type?: string
+          config?: Json | null
+          created_at?: string
+          error_count?: number | null
+          id?: string
+          is_active?: boolean | null
+          last_error?: string | null
+          last_run_at?: string | null
+          name?: string
+          next_run_at?: string | null
+          proxy_id?: string | null
+          run_count?: number | null
+          schedule_cron?: string | null
+          status?: string | null
+          task_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "multilogin_workers_proxy_id_fkey"
+            columns: ["proxy_id"]
+            isOneToOne: false
+            referencedRelation: "multilogin_proxies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string
