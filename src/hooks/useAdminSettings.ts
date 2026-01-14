@@ -14,6 +14,7 @@ export interface AdminSettings {
   automation_module_enabled: boolean;
   smart_links_enabled: boolean;
   referrals_enabled: boolean;
+  multilogin_enabled: boolean;
 }
 
 export interface SettingsHistoryEntry {
@@ -38,6 +39,7 @@ const defaultSettings: AdminSettings = {
   automation_module_enabled: true,
   smart_links_enabled: true,
   referrals_enabled: true,
+  multilogin_enabled: true,
 };
 
 const settingLabels: Record<keyof AdminSettings, string> = {
@@ -52,6 +54,7 @@ const settingLabels: Record<keyof AdminSettings, string> = {
   automation_module_enabled: "Automação de Publicações",
   smart_links_enabled: "Smart Links",
   referrals_enabled: "Indique & Ganhe",
+  multilogin_enabled: "Multilogin",
 };
 
 export const getSettingLabel = (key: string): string => {

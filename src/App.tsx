@@ -38,6 +38,7 @@ import SmartLinkEditorPage from "./pages/SmartLinkEditorPage";
 import SmartLinkPublicPage from "./pages/SmartLinkPublicPage";
 import ReferralsPage from "./pages/ReferralsPage";
 import ReferralRedirectPage from "./pages/ReferralRedirectPage";
+import MultiloginPage from "./pages/MultiloginPage";
 import NotFound from "./pages/NotFound";
 
 
@@ -125,6 +126,13 @@ const App = () => (
                 <ProtectedRoute>
                   <FeatureProtectedRoute featureKey="referrals_enabled">
                     <ReferralsPage />
+                  </FeatureProtectedRoute>
+                </ProtectedRoute>
+              } />
+              <Route path="/multilogin" element={
+                <ProtectedRoute>
+                  <FeatureProtectedRoute featureKey="multilogin_enabled">
+                    <MultiloginPage />
                   </FeatureProtectedRoute>
                 </ProtectedRoute>
               } />
