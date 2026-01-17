@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCloaker, useAllCloakerStats, useCloakerClicks, CloakerLink } from "@/hooks/useCloaker";
-import { Plus, Link as LinkIcon, Shield, ShieldOff, Globe, Smartphone, Monitor, Copy, Trash2, Edit2, Eye, BarChart3, ShieldCheck, ShieldX, MapPin, CheckCircle2 } from "lucide-react";
+import { Plus, Link as LinkIcon, Shield, ShieldOff, Globe, Smartphone, Monitor, Copy, Trash2, Edit2, Eye, BarChart3, ShieldCheck, ShieldX, MapPin, CheckCircle2, Image, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -113,16 +114,24 @@ const CloakerPage = () => {
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-2xl font-bold">Cloaker</h1>
+            <h1 className="text-2xl font-bold">Cloaker de Links</h1>
             <p className="text-muted-foreground">Proteja seus links de anúncios contra revisores e bots</p>
           </div>
-          <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-            <DialogTrigger asChild>
-              <Button onClick={resetForm}>
-                <Plus className="w-4 h-4 mr-2" />
-                Novo Link
+          <div className="flex gap-2">
+            <Link to="/cloaker-media">
+              <Button variant="outline">
+                <Image className="w-4 h-4 mr-2" />
+                Cloaker de Mídia
+                <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
-            </DialogTrigger>
+            </Link>
+            <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+              <DialogTrigger asChild>
+                <Button onClick={resetForm}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Novo Link
+                </Button>
+              </DialogTrigger>
             <DialogContent className="max-w-md">
               <DialogHeader>
                 <DialogTitle>Criar Link Cloakado</DialogTitle>
@@ -197,7 +206,8 @@ const CloakerPage = () => {
                 </Button>
               </div>
             </DialogContent>
-          </Dialog>
+            </Dialog>
+          </div>
         </div>
 
         <Tabs defaultValue="links">

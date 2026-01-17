@@ -415,6 +415,125 @@ export type Database = {
         }
         Relationships: []
       }
+      cloaker_media: {
+        Row: {
+          allowed_countries: string[] | null
+          block_bots: boolean | null
+          block_vpn: boolean | null
+          created_at: string
+          id: string
+          is_active: boolean | null
+          media_type: string
+          name: string
+          offer_file_path: string | null
+          offer_url: string | null
+          safe_file_path: string | null
+          safe_url: string | null
+          slug: string
+          total_views: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          allowed_countries?: string[] | null
+          block_bots?: boolean | null
+          block_vpn?: boolean | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          media_type?: string
+          name: string
+          offer_file_path?: string | null
+          offer_url?: string | null
+          safe_file_path?: string | null
+          safe_url?: string | null
+          slug: string
+          total_views?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          allowed_countries?: string[] | null
+          block_bots?: boolean | null
+          block_vpn?: boolean | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          media_type?: string
+          name?: string
+          offer_file_path?: string | null
+          offer_url?: string | null
+          safe_file_path?: string | null
+          safe_url?: string | null
+          slug?: string
+          total_views?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      cloaker_media_views: {
+        Row: {
+          browser: string | null
+          city: string | null
+          country: string | null
+          device_type: string | null
+          id: string
+          ip_address: string | null
+          is_bot: boolean | null
+          is_vpn: boolean | null
+          media_id: string
+          os: string | null
+          referrer: string | null
+          served_type: string | null
+          user_agent: string | null
+          viewed_at: string
+          was_blocked: boolean | null
+        }
+        Insert: {
+          browser?: string | null
+          city?: string | null
+          country?: string | null
+          device_type?: string | null
+          id?: string
+          ip_address?: string | null
+          is_bot?: boolean | null
+          is_vpn?: boolean | null
+          media_id: string
+          os?: string | null
+          referrer?: string | null
+          served_type?: string | null
+          user_agent?: string | null
+          viewed_at?: string
+          was_blocked?: boolean | null
+        }
+        Update: {
+          browser?: string | null
+          city?: string | null
+          country?: string | null
+          device_type?: string | null
+          id?: string
+          ip_address?: string | null
+          is_bot?: boolean | null
+          is_vpn?: boolean | null
+          media_id?: string
+          os?: string | null
+          referrer?: string | null
+          served_type?: string | null
+          user_agent?: string | null
+          viewed_at?: string
+          was_blocked?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cloaker_media_views_media_id_fkey"
+            columns: ["media_id"]
+            isOneToOne: false
+            referencedRelation: "cloaker_media"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       commissions: {
         Row: {
           amount_cents: number
