@@ -142,6 +142,10 @@ const ResellerPage = () => {
   const [modelFunnelFile, setModelFunnelFile] = useState<File | null>(null);
   const [modelFunnelJson, setModelFunnelJson] = useState<any>(null);
 
+  // Success screen state
+  const [showSuccessScreen, setShowSuccessScreen] = useState(false);
+  const [successMessage, setSuccessMessage] = useState({ title: "", subtitle: "" });
+
   // Instagram accounts
   const [instagramAccounts, setInstagramAccounts] = useState<InstagramAccount[]>([]);
   const [loadingInstagram, setLoadingInstagram] = useState(true);
@@ -361,13 +365,19 @@ const ResellerPage = () => {
 
       if (error) throw error;
 
-      toast({ title: "Sucesso", description: "Conta Instagram adicionada!" });
       setInstagramDialogOpen(false);
       setInstagramImageFile(null);
       resetInstagramForm();
       fetchInstagramAccounts();
+      
+      // Show success screen
+      setSuccessMessage({
+        title: "Conta Instagram adicionada com sucesso!",
+        subtitle: `@${instagramForm.username} está agora disponível na vitrine`
+      });
+      setShowSuccessScreen(true);
     } catch (error: any) {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
+      toast({ title: "Erro ao adicionar", description: error.message, variant: "destructive" });
     } finally {
       setIsAddingInstagram(false);
     }
@@ -477,13 +487,19 @@ const ResellerPage = () => {
 
       if (error) throw error;
 
-      toast({ title: "Sucesso", description: "Conta TikTok adicionada!" });
       setTiktokDialogOpen(false);
       setTiktokImageFile(null);
       resetTiktokForm();
       fetchTiktokAccounts();
+      
+      // Show success screen
+      setSuccessMessage({
+        title: "Conta TikTok adicionada com sucesso!",
+        subtitle: `@${tiktokForm.username} está agora disponível na vitrine`
+      });
+      setShowSuccessScreen(true);
     } catch (error: any) {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
+      toast({ title: "Erro ao adicionar", description: error.message, variant: "destructive" });
     } finally {
       setIsAddingTiktok(false);
     }
@@ -598,13 +614,19 @@ const ResellerPage = () => {
 
       if (error) throw error;
 
-      toast({ title: "Sucesso", description: "Grupo Telegram adicionado!" });
       setTelegramDialogOpen(false);
       setTelegramImageFile(null);
       resetTelegramForm();
       fetchTelegramGroups();
+      
+      // Show success screen
+      setSuccessMessage({
+        title: "Grupo Telegram adicionado com sucesso!",
+        subtitle: `${telegramForm.group_name} está agora disponível na vitrine`
+      });
+      setShowSuccessScreen(true);
     } catch (error: any) {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
+      toast({ title: "Erro ao adicionar", description: error.message, variant: "destructive" });
     } finally {
       setIsAddingTelegram(false);
     }
@@ -716,15 +738,21 @@ const ResellerPage = () => {
 
       if (error) throw error;
 
-      toast({ title: "Sucesso", description: `Modelo adicionado${modelFunnelJson ? " com funil incluso" : ""}!` });
       setModelDialogOpen(false);
       setModelImageFile(null);
       setModelFunnelFile(null);
       setModelFunnelJson(null);
       resetModelForm();
       fetchModels();
+      
+      // Show success screen
+      setSuccessMessage({
+        title: "Modelo adicionado com sucesso!",
+        subtitle: `${modelForm.name} está agora disponível na vitrine${modelFunnelJson ? " (com funil incluso)" : ""}`
+      });
+      setShowSuccessScreen(true);
     } catch (error: any) {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
+      toast({ title: "Erro ao adicionar", description: error.message, variant: "destructive" });
     } finally {
       setIsAddingModel(false);
     }
@@ -2065,6 +2093,29 @@ const ResellerPage = () => {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Success Screen Dialog */}
+        <Dialog open={showSuccessScreen} onOpenChange={setShowSuccessScreen}>
+          <DialogContent className="sm:max-w-md">
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
+                <CheckCircle className="h-12 w-12 text-green-600 dark:text-green-400" />
+              </div>
+              <DialogTitle className="mb-2 text-xl">{successMessage.title}</DialogTitle>
+              <DialogDescription className="mb-6 text-muted-foreground">
+                {successMessage.subtitle}
+              </DialogDescription>
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => setShowSuccessScreen(false)}>
+                  Adicionar outro
+                </Button>
+                <Button onClick={() => setShowSuccessScreen(false)}>
+                  Ver meus produtos
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
