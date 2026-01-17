@@ -144,7 +144,11 @@ const ResellerPage = () => {
 
   // Success screen state
   const [showSuccessScreen, setShowSuccessScreen] = useState(false);
-  const [successMessage, setSuccessMessage] = useState({ title: "", subtitle: "" });
+  const [successMessage, setSuccessMessage] = useState({ 
+    title: "", 
+    subtitle: "",
+    productType: "" as "" | "instagram" | "tiktok" | "telegram" | "model"
+  });
 
   // Instagram accounts
   const [instagramAccounts, setInstagramAccounts] = useState<InstagramAccount[]>([]);
@@ -373,7 +377,8 @@ const ResellerPage = () => {
       // Show success screen
       setSuccessMessage({
         title: "Conta Instagram adicionada com sucesso!",
-        subtitle: `@${instagramForm.username} está agora disponível na vitrine`
+        subtitle: `@${instagramForm.username} está agora disponível na vitrine`,
+        productType: "instagram"
       });
       setShowSuccessScreen(true);
     } catch (error: any) {
@@ -495,7 +500,8 @@ const ResellerPage = () => {
       // Show success screen
       setSuccessMessage({
         title: "Conta TikTok adicionada com sucesso!",
-        subtitle: `@${tiktokForm.username} está agora disponível na vitrine`
+        subtitle: `@${tiktokForm.username} está agora disponível na vitrine`,
+        productType: "tiktok"
       });
       setShowSuccessScreen(true);
     } catch (error: any) {
@@ -622,7 +628,8 @@ const ResellerPage = () => {
       // Show success screen
       setSuccessMessage({
         title: "Grupo Telegram adicionado com sucesso!",
-        subtitle: `${telegramForm.group_name} está agora disponível na vitrine`
+        subtitle: `${telegramForm.group_name} está agora disponível na vitrine`,
+        productType: "telegram"
       });
       setShowSuccessScreen(true);
     } catch (error: any) {
@@ -748,7 +755,8 @@ const ResellerPage = () => {
       // Show success screen
       setSuccessMessage({
         title: "Modelo adicionado com sucesso!",
-        subtitle: `${modelForm.name} está agora disponível na vitrine${modelFunnelJson ? " (com funil incluso)" : ""}`
+        subtitle: `${modelForm.name} está agora disponível na vitrine${modelFunnelJson ? " (com funil incluso)" : ""}`,
+        productType: "model"
       });
       setShowSuccessScreen(true);
     } catch (error: any) {
@@ -916,7 +924,7 @@ const ResellerPage = () => {
       <div className="space-y-6">
         {/* Vendor Role Banner */}
         <Card className="bg-gradient-to-r from-primary/10 to-secondary/10 border-primary/20">
-          <CardContent className="flex items-center justify-between py-4">
+          <CardContent className="flex flex-col md:flex-row items-start md:items-center justify-between py-4 gap-4">
             <div className="flex items-center gap-3">
               <Shield className="h-6 w-6 text-primary" />
               <div>
@@ -924,56 +932,99 @@ const ResellerPage = () => {
                 <p className="text-sm text-muted-foreground">Gerencie seus produtos e vendas</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              {getVendorRoleBadges().map((badge, idx) => (
-                <Badge key={idx} className={`${badge.color} text-white`}>
-                  {badge.label}
-                </Badge>
-              ))}
+            <div className="flex flex-col md:flex-row items-start md:items-center gap-3">
+              <span className="text-sm text-muted-foreground">Você pode vender:</span>
+              <div className="flex flex-wrap items-center gap-2">
+                {canSellInstagram && (
+                  <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white gap-1">
+                    <Instagram className="h-3 w-3" />
+                    Instagram
+                  </Badge>
+                )}
+                {canSellTiktok && (
+                  <Badge className="bg-black text-white gap-1">
+                    <Music2 className="h-3 w-3" />
+                    TikTok
+                  </Badge>
+                )}
+                {canSellTelegram && (
+                  <Badge className="bg-blue-500 text-white gap-1">
+                    <MessageSquare className="h-3 w-3" />
+                    Telegram
+                  </Badge>
+                )}
+                {canSellModels && (
+                  <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white gap-1">
+                    <Sparkles className="h-3 w-3" />
+                    Modelos
+                  </Badge>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Header Stats */}
-        <div className="grid gap-4 md:grid-cols-5">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Contas Instagram</CardTitle>
-              <Instagram className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{instagramAccounts.length}</div>
-              <p className="text-xs text-muted-foreground">
-                {instagramAccounts.filter(a => a.is_sold).length} vendidas
-              </p>
-            </CardContent>
-          </Card>
+        {/* Header Stats - Only show stats for products user can sell */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+          {canSellInstagram && (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Contas Instagram</CardTitle>
+                <Instagram className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{instagramAccounts.length}</div>
+                <p className="text-xs text-muted-foreground">
+                  {instagramAccounts.filter(a => a.is_sold).length} vendidas
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Contas TikTok</CardTitle>
-              <Music2 className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{tiktokAccounts.length}</div>
-              <p className="text-xs text-muted-foreground">
-                {tiktokAccounts.filter(a => a.is_sold).length} vendidas
-              </p>
-            </CardContent>
-          </Card>
+          {canSellTiktok && (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Contas TikTok</CardTitle>
+                <Music2 className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{tiktokAccounts.length}</div>
+                <p className="text-xs text-muted-foreground">
+                  {tiktokAccounts.filter(a => a.is_sold).length} vendidas
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Grupos Telegram</CardTitle>
-              <MessageSquare className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{telegramGroups.length}</div>
-              <p className="text-xs text-muted-foreground">
-                {telegramGroups.filter(g => g.is_sold).length} vendidos
-              </p>
-            </CardContent>
-          </Card>
+          {canSellTelegram && (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Grupos Telegram</CardTitle>
+                <MessageSquare className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{telegramGroups.length}</div>
+                <p className="text-xs text-muted-foreground">
+                  {telegramGroups.filter(g => g.is_sold).length} vendidos
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {canSellModels && (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Modelos IA</CardTitle>
+                <Sparkles className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{models.length}</div>
+                <p className="text-xs text-muted-foreground">
+                  {models.filter(m => m.is_sold).length} vendidos
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -2094,24 +2145,54 @@ const ResellerPage = () => {
           </TabsContent>
         </Tabs>
 
-        {/* Success Screen Dialog */}
         <Dialog open={showSuccessScreen} onOpenChange={setShowSuccessScreen}>
           <DialogContent className="sm:max-w-md">
             <div className="flex flex-col items-center justify-center py-8 text-center">
-              <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
-                <CheckCircle className="h-12 w-12 text-green-600 dark:text-green-400" />
+              <div className={`mb-6 flex h-20 w-20 items-center justify-center rounded-full ${
+                successMessage.productType === "instagram" ? "bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30" :
+                successMessage.productType === "tiktok" ? "bg-gray-100 dark:bg-gray-800" :
+                successMessage.productType === "telegram" ? "bg-blue-100 dark:bg-blue-900/30" :
+                successMessage.productType === "model" ? "bg-gradient-to-r from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30" :
+                "bg-green-100 dark:bg-green-900/30"
+              }`}>
+                {successMessage.productType === "instagram" ? (
+                  <Instagram className="h-12 w-12 text-pink-600 dark:text-pink-400" />
+                ) : successMessage.productType === "tiktok" ? (
+                  <Music2 className="h-12 w-12 text-gray-800 dark:text-gray-200" />
+                ) : successMessage.productType === "telegram" ? (
+                  <MessageSquare className="h-12 w-12 text-blue-600 dark:text-blue-400" />
+                ) : successMessage.productType === "model" ? (
+                  <Sparkles className="h-12 w-12 text-amber-600 dark:text-amber-400" />
+                ) : (
+                  <CheckCircle className="h-12 w-12 text-green-600 dark:text-green-400" />
+                )}
               </div>
               <DialogTitle className="mb-2 text-xl">{successMessage.title}</DialogTitle>
               <DialogDescription className="mb-6 text-muted-foreground">
                 {successMessage.subtitle}
               </DialogDescription>
-              <div className="flex gap-3">
-                <Button variant="outline" onClick={() => setShowSuccessScreen(false)}>
-                  Adicionar outro
-                </Button>
-                <Button onClick={() => setShowSuccessScreen(false)}>
-                  Ver meus produtos
-                </Button>
+              <div className="w-full space-y-3">
+                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <span>Produto adicionado à vitrine</span>
+                </div>
+                <div className="flex gap-3 justify-center">
+                  <Button variant="outline" onClick={() => setShowSuccessScreen(false)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Adicionar outro
+                  </Button>
+                  <Button onClick={() => {
+                    setShowSuccessScreen(false);
+                    // Navigate to corresponding public page
+                    if (successMessage.productType === "tiktok") {
+                      navigate("/contas-tiktok");
+                    } else if (successMessage.productType === "model") {
+                      navigate("/model-hub");
+                    }
+                  }}>
+                    Ver na vitrine
+                  </Button>
+                </div>
               </div>
             </div>
           </DialogContent>
