@@ -39,6 +39,8 @@ import SmartLinkPublicPage from "./pages/SmartLinkPublicPage";
 import ReferralsPage from "./pages/ReferralsPage";
 import ReferralRedirectPage from "./pages/ReferralRedirectPage";
 import MultiloginPage from "./pages/MultiloginPage";
+import CloakerPage from "./pages/CloakerPage";
+import UTMTrackingPage from "./pages/UTMTrackingPage";
 import NotFound from "./pages/NotFound";
 
 
@@ -133,6 +135,20 @@ const App = () => (
                 <ProtectedRoute>
                   <FeatureProtectedRoute featureKey="multilogin_enabled">
                     <MultiloginPage />
+                  </FeatureProtectedRoute>
+                </ProtectedRoute>
+              } />
+              <Route path="/cloaker" element={
+                <ProtectedRoute>
+                  <FeatureProtectedRoute featureKey="cloaker_enabled">
+                    <CloakerPage />
+                  </FeatureProtectedRoute>
+                </ProtectedRoute>
+              } />
+              <Route path="/utm-tracking" element={
+                <ProtectedRoute>
+                  <FeatureProtectedRoute featureKey="utm_tracking_enabled">
+                    <UTMTrackingPage />
                   </FeatureProtectedRoute>
                 </ProtectedRoute>
               } />
