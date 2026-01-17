@@ -40,6 +40,7 @@ import ReferralsPage from "./pages/ReferralsPage";
 import ReferralRedirectPage from "./pages/ReferralRedirectPage";
 import MultiloginPage from "./pages/MultiloginPage";
 import CloakerPage from "./pages/CloakerPage";
+import CloakerMediaPage from "./pages/CloakerMediaPage";
 import UTMTrackingPage from "./pages/UTMTrackingPage";
 import NotFound from "./pages/NotFound";
 
@@ -142,6 +143,13 @@ const App = () => (
                 <ProtectedRoute>
                   <FeatureProtectedRoute featureKey="cloaker_enabled">
                     <CloakerPage />
+                  </FeatureProtectedRoute>
+                </ProtectedRoute>
+              } />
+              <Route path="/cloaker-media" element={
+                <ProtectedRoute>
+                  <FeatureProtectedRoute featureKey="cloaker_enabled">
+                    <CloakerMediaPage />
                   </FeatureProtectedRoute>
                 </ProtectedRoute>
               } />
