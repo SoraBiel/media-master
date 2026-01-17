@@ -10,12 +10,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useUTMPixel, useUTMEvents, useUTMifyIntegration, UTMEvent } from "@/hooks/useUTMTracking";
-import { Code, Copy, BarChart3, Activity, Zap, Globe, Smartphone, CheckCircle2, XCircle, Settings, ExternalLink, Eye, DollarSign, TrendingUp } from "lucide-react";
+import { Code, Copy, BarChart3, Activity, Zap, Globe, Smartphone, CheckCircle2, XCircle, Settings, ExternalLink, Eye, DollarSign, TrendingUp, Flame } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { DateRangePicker } from "@/components/DateRangePicker";
 import { subDays } from "date-fns";
+import { PixelWarmingTab } from "@/components/utm/PixelWarmingTab";
 
 const UTMTrackingPage = () => {
   const { pixel, isLoading: isLoadingPixel, createPixel, togglePixel } = useUTMPixel();
@@ -87,7 +88,7 @@ const UTMTrackingPage = () => {
         </div>
 
         <Tabs defaultValue="dashboard">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="dashboard">
               <BarChart3 className="w-4 h-4 mr-2" />
               Dashboard
@@ -95,6 +96,10 @@ const UTMTrackingPage = () => {
             <TabsTrigger value="pixel">
               <Code className="w-4 h-4 mr-2" />
               Pixel
+            </TabsTrigger>
+            <TabsTrigger value="warming">
+              <Flame className="w-4 h-4 mr-2" />
+              Aquecer
             </TabsTrigger>
             <TabsTrigger value="utmify">
               <Zap className="w-4 h-4 mr-2" />
@@ -288,9 +293,14 @@ const UTMTrackingPage = () => {
                       </ol>
                     </div>
                   </>
-                )}
+              )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Pixel Warming Tab */}
+          <TabsContent value="warming" className="space-y-4">
+            <PixelWarmingTab />
           </TabsContent>
 
           {/* UTMify Tab */}

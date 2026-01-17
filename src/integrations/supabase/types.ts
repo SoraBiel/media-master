@@ -1775,6 +1775,86 @@ export type Database = {
         }
         Relationships: []
       }
+      pixel_warming_configs: {
+        Row: {
+          access_token: string | null
+          created_at: string
+          events_sent: number | null
+          id: string
+          is_active: boolean | null
+          last_warmed_at: string | null
+          pixel_id: string
+          platform: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token?: string | null
+          created_at?: string
+          events_sent?: number | null
+          id?: string
+          is_active?: boolean | null
+          last_warmed_at?: string | null
+          pixel_id: string
+          platform: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string | null
+          created_at?: string
+          events_sent?: number | null
+          id?: string
+          is_active?: boolean | null
+          last_warmed_at?: string | null
+          pixel_id?: string
+          platform?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      pixel_warming_logs: {
+        Row: {
+          config_id: string
+          created_at: string
+          error_message: string | null
+          event_data: Json | null
+          event_type: string
+          id: string
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          config_id: string
+          created_at?: string
+          error_message?: string | null
+          event_data?: Json | null
+          event_type: string
+          id?: string
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          config_id?: string
+          created_at?: string
+          error_message?: string | null
+          event_data?: Json | null
+          event_type?: string
+          id?: string
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pixel_warming_logs_config_id_fkey"
+            columns: ["config_id"]
+            isOneToOne: false
+            referencedRelation: "pixel_warming_configs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       plans: {
         Row: {
           created_at: string | null
