@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { Link } from "react-router-dom";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -181,13 +182,20 @@ const CloakerMediaPage = () => {
             <h1 className="text-2xl font-bold">Cloaker de Mídia</h1>
             <p className="text-muted-foreground">Proteja suas imagens e vídeos contra bots e revisores</p>
           </div>
-          <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-            <DialogTrigger asChild>
-              <Button onClick={resetForm}>
-                <Plus className="w-4 h-4 mr-2" />
-                Nova Mídia
+          <div className="flex gap-2">
+            <Link to="/cloaker">
+              <Button variant="outline">
+                <LinkIcon className="w-4 h-4 mr-2" />
+                Cloaker de Links
               </Button>
-            </DialogTrigger>
+            </Link>
+            <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+              <DialogTrigger asChild>
+                <Button onClick={resetForm}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Nova Mídia
+                </Button>
+              </DialogTrigger>
             <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Criar Mídia Cloakada</DialogTitle>
@@ -366,7 +374,8 @@ const CloakerMediaPage = () => {
                 </Button>
               </div>
             </DialogContent>
-          </Dialog>
+            </Dialog>
+          </div>
         </div>
 
         <Tabs defaultValue="media">
