@@ -77,9 +77,8 @@ const UTMTrackingPage = () => {
             <p className="text-muted-foreground">Rastreie a origem dos seus clientes e conversões</p>
           </div>
           <DateRangePicker
-            from={dateRange.from}
-            to={dateRange.to}
-            onSelect={(range) => {
+            dateRange={dateRange}
+            onDateRangeChange={(range) => {
               if (range?.from && range?.to) {
                 setDateRange({ from: range.from, to: range.to });
               }
