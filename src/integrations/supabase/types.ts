@@ -308,6 +308,113 @@ export type Database = {
         }
         Relationships: []
       }
+      cloaker_clicks: {
+        Row: {
+          browser: string | null
+          city: string | null
+          clicked_at: string
+          country: string | null
+          device_type: string | null
+          id: string
+          ip_address: string | null
+          is_bot: boolean | null
+          is_vpn: boolean | null
+          link_id: string
+          os: string | null
+          redirect_target: string | null
+          referrer: string | null
+          user_agent: string | null
+          was_blocked: boolean | null
+        }
+        Insert: {
+          browser?: string | null
+          city?: string | null
+          clicked_at?: string
+          country?: string | null
+          device_type?: string | null
+          id?: string
+          ip_address?: string | null
+          is_bot?: boolean | null
+          is_vpn?: boolean | null
+          link_id: string
+          os?: string | null
+          redirect_target?: string | null
+          referrer?: string | null
+          user_agent?: string | null
+          was_blocked?: boolean | null
+        }
+        Update: {
+          browser?: string | null
+          city?: string | null
+          clicked_at?: string
+          country?: string | null
+          device_type?: string | null
+          id?: string
+          ip_address?: string | null
+          is_bot?: boolean | null
+          is_vpn?: boolean | null
+          link_id?: string
+          os?: string | null
+          redirect_target?: string | null
+          referrer?: string | null
+          user_agent?: string | null
+          was_blocked?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cloaker_clicks_link_id_fkey"
+            columns: ["link_id"]
+            isOneToOne: false
+            referencedRelation: "cloaker_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cloaker_links: {
+        Row: {
+          allowed_countries: string[] | null
+          block_bots: boolean | null
+          block_vpn: boolean | null
+          created_at: string
+          id: string
+          is_active: boolean | null
+          name: string
+          offer_url: string
+          safe_url: string
+          slug: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          allowed_countries?: string[] | null
+          block_bots?: boolean | null
+          block_vpn?: boolean | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          offer_url: string
+          safe_url: string
+          slug: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          allowed_countries?: string[] | null
+          block_bots?: boolean | null
+          block_vpn?: boolean | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          offer_url?: string
+          safe_url?: string
+          slug?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       commissions: {
         Row: {
           amount_cents: number
@@ -2725,6 +2832,108 @@ export type Database = {
           created_at?: string | null
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      utm_events: {
+        Row: {
+          browser: string | null
+          country: string | null
+          created_at: string
+          device_type: string | null
+          event_data: Json | null
+          event_type: string
+          event_value: number | null
+          fbclid: string | null
+          gclid: string | null
+          id: string
+          ip_address: string | null
+          os: string | null
+          page_url: string | null
+          pixel_id: string
+          referrer: string | null
+          session_id: string | null
+          user_agent: string | null
+          utm_campaign: string | null
+          utm_content: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          utm_term: string | null
+        }
+        Insert: {
+          browser?: string | null
+          country?: string | null
+          created_at?: string
+          device_type?: string | null
+          event_data?: Json | null
+          event_type?: string
+          event_value?: number | null
+          fbclid?: string | null
+          gclid?: string | null
+          id?: string
+          ip_address?: string | null
+          os?: string | null
+          page_url?: string | null
+          pixel_id: string
+          referrer?: string | null
+          session_id?: string | null
+          user_agent?: string | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+        }
+        Update: {
+          browser?: string | null
+          country?: string | null
+          created_at?: string
+          device_type?: string | null
+          event_data?: Json | null
+          event_type?: string
+          event_value?: number | null
+          fbclid?: string | null
+          gclid?: string | null
+          id?: string
+          ip_address?: string | null
+          os?: string | null
+          page_url?: string | null
+          pixel_id?: string
+          referrer?: string | null
+          session_id?: string | null
+          user_agent?: string | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+        }
+        Relationships: []
+      }
+      utm_pixels: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean | null
+          pixel_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          pixel_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          pixel_id?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []

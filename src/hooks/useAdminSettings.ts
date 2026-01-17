@@ -15,6 +15,8 @@ export interface AdminSettings {
   smart_links_enabled: boolean;
   referrals_enabled: boolean;
   multilogin_enabled: boolean;
+  cloaker_enabled: boolean;
+  utm_tracking_enabled: boolean;
 }
 
 export interface SettingsHistoryEntry {
@@ -40,6 +42,8 @@ const defaultSettings: AdminSettings = {
   smart_links_enabled: true,
   referrals_enabled: true,
   multilogin_enabled: true,
+  cloaker_enabled: true,
+  utm_tracking_enabled: true,
 };
 
 const settingLabels: Record<keyof AdminSettings, string> = {
@@ -55,6 +59,8 @@ const settingLabels: Record<keyof AdminSettings, string> = {
   smart_links_enabled: "Smart Links",
   referrals_enabled: "Indique & Ganhe",
   multilogin_enabled: "Multilogin",
+  cloaker_enabled: "Cloaker",
+  utm_tracking_enabled: "UTM Tracking",
 };
 
 export const getSettingLabel = (key: string): string => {
