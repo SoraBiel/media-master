@@ -41,6 +41,7 @@ const CloakerMediaPage = () => {
     media_type: "image" as "image" | "video",
     safe_url: "",
     offer_url: "",
+    destination_url: "",
     block_bots: true,
     block_vpn: false,
     allowed_countries: [] as string[],
@@ -59,6 +60,7 @@ const CloakerMediaPage = () => {
       media_type: "image",
       safe_url: "",
       offer_url: "",
+      destination_url: "",
       block_bots: true,
       block_vpn: false,
       allowed_countries: [],
@@ -89,6 +91,7 @@ const CloakerMediaPage = () => {
       safe_file: sourceType.safe === "file" ? safeFile! : undefined,
       offer_url: sourceType.offer === "url" ? formData.offer_url : undefined,
       offer_file: sourceType.offer === "file" ? offerFile! : undefined,
+      destination_url: formData.destination_url || undefined,
       block_bots: formData.block_bots,
       block_vpn: formData.block_vpn,
       allowed_countries: formData.allowed_countries.length > 0 ? formData.allowed_countries : undefined,
@@ -105,6 +108,7 @@ const CloakerMediaPage = () => {
 
     const updates: any = {
       name: formData.name,
+      destination_url: formData.destination_url || null,
       block_bots: formData.block_bots,
       block_vpn: formData.block_vpn,
       allowed_countries: formData.allowed_countries.length > 0 ? formData.allowed_countries : null,
@@ -167,6 +171,7 @@ const CloakerMediaPage = () => {
       media_type: media.media_type,
       safe_url: media.safe_url || "",
       offer_url: media.offer_url || "",
+      destination_url: media.destination_url || "",
       block_bots: media.block_bots,
       block_vpn: media.block_vpn,
       allowed_countries: media.allowed_countries || [],
@@ -448,6 +453,22 @@ const CloakerMediaPage = () => {
                   )}
                 </div>
 
+                {/* Destination URL */}
+                <div className="border rounded-lg p-4 space-y-3 border-primary/30 bg-primary/5">
+                  <div className="flex items-center gap-2">
+                    <Globe className="w-4 h-4 text-primary" />
+                    <Label className="font-medium">URL de Destino (sua página de vendas)</Label>
+                  </div>
+                  <Input
+                    placeholder="https://suapagina.com/vendas"
+                    value={formData.destination_url}
+                    onChange={(e) => setFormData({ ...formData, destination_url: e.target.value })}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Leads reais serão redirecionados para esta URL. Deixe em branco para mostrar apenas a mídia.
+                  </p>
+                </div>
+
                 {/* Blocking options */}
                 <div className="flex items-center justify-between">
                   <div>
@@ -692,6 +713,23 @@ const CloakerMediaPage = () => {
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 />
               </div>
+              
+              {/* Destination URL */}
+              <div className="border rounded-lg p-4 space-y-2 border-primary/30 bg-primary/5">
+                <div className="flex items-center gap-2">
+                  <Globe className="w-4 h-4 text-primary" />
+                  <Label className="font-medium">URL de Destino</Label>
+                </div>
+                <Input
+                  placeholder="https://suapagina.com/vendas"
+                  value={formData.destination_url}
+                  onChange={(e) => setFormData({ ...formData, destination_url: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Leads reais serão redirecionados para esta URL.
+                </p>
+              </div>
+
               <div className="flex items-center justify-between">
                 <Label>Bloquear Bots</Label>
                 <Switch

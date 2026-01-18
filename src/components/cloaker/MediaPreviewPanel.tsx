@@ -236,7 +236,8 @@ const MediaPreviewPanel = ({ media, onClose }: MediaPreviewPanelProps) => {
 
   // Download tab - Main action for sellers
   const renderDownloadTab = () => {
-    const embedUrl = `${import.meta.env.VITE_SUPABASE_URL || ""}/functions/v1/cloaker-media?slug=${media.slug}&redirect=true`;
+    const embedUrl = `${import.meta.env.VITE_SUPABASE_URL || ""}/functions/v1/cloaker-media?slug=${media.slug}`;
+    const hasDestination = !!media.destination_url;
     
     if (!safeUrl) {
       return (
@@ -249,6 +250,25 @@ const MediaPreviewPanel = ({ media, onClose }: MediaPreviewPanelProps) => {
 
     return (
       <div className="flex flex-col items-center space-y-6">
+        {/* Destination URL Info */}
+        {hasDestination ? (
+          <Alert className="max-w-xl border-primary/30 bg-primary/5">
+            <Globe className="h-4 w-4 text-primary" />
+            <AlertTitle className="text-primary">Página de Destino Configurada ✅</AlertTitle>
+            <AlertDescription className="text-sm mt-1">
+              Leads reais serão redirecionados para: <strong className="break-all">{media.destination_url}</strong>
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <Alert className="max-w-xl border-yellow-500/30 bg-yellow-500/5">
+            <AlertTriangle className="h-4 w-4 text-yellow-600" />
+            <AlertTitle className="text-yellow-700 dark:text-yellow-400">URL de Destino não configurada</AlertTitle>
+            <AlertDescription className="text-sm mt-1">
+              Edite esta mídia e adicione sua <strong>URL de destino</strong> (sua página de vendas) para que leads sejam redirecionados.
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Main Educational Card */}
         <Card className="w-full max-w-xl border-green-500/30 bg-gradient-to-br from-green-500/5 to-transparent">
           <CardHeader className="text-center pb-2">
@@ -299,10 +319,10 @@ const MediaPreviewPanel = ({ media, onClose }: MediaPreviewPanelProps) => {
             {/* Simple explanation */}
             <Alert className="border-green-500/30 bg-green-500/5">
               <CheckCircle className="h-4 w-4 text-green-600" />
-              <AlertTitle className="text-green-700 dark:text-green-400">Por que esta imagem?</AlertTitle>
+              <AlertTitle className="text-green-700 dark:text-green-400">Como funciona o Cloaker</AlertTitle>
               <AlertDescription className="text-sm mt-1">
-                Esta é a <strong>imagem segura</strong> que passa na revisão do Facebook/TikTok. 
-                Quando o lead clicar, ele verá automaticamente a <strong>imagem real</strong> da sua oferta.
+                <strong>Revisor/Bot:</strong> Vê a imagem segura acima<br/>
+                <strong>Lead Real:</strong> É redirecionado para sua página de vendas
               </AlertDescription>
             </Alert>
           </CardContent>
@@ -335,11 +355,21 @@ const MediaPreviewPanel = ({ media, onClose }: MediaPreviewPanelProps) => {
               <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary text-primary-foreground text-sm font-bold shrink-0">3</div>
               <div className="flex-1">
                 <p className="text-sm font-medium">Cole este link como destino do anúncio:</p>
-                <div className="mt-2 flex items-center gap-2">
-                  <code className="flex-1 text-xs bg-muted p-2 rounded truncate font-mono">{embedUrl}</code>
-                  <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(embedUrl); toast.success("Link copiado!"); }}>
-                    <Copy className="w-3 h-3" />
-                  </Button>
+                <div className="mt-2 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 bg-muted p-2.5 rounded-lg border">
+                      <code className="text-xs font-mono break-all">{embedUrl}</code>
+                    </div>
+                    <Button 
+                      variant="default" 
+                      size="sm" 
+                      className="shrink-0"
+                      onClick={() => { navigator.clipboard.writeText(embedUrl); toast.success("Link copiado!"); }}
+                    >
+                      <Copy className="w-4 h-4 mr-1" />
+                      Copiar
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -347,7 +377,12 @@ const MediaPreviewPanel = ({ media, onClose }: MediaPreviewPanelProps) => {
               <div className="flex items-center justify-center w-7 h-7 rounded-full bg-green-600 text-white text-sm font-bold shrink-0">✓</div>
               <div>
                 <p className="text-sm font-medium text-green-700 dark:text-green-400">Pronto! Sua campanha está protegida</p>
-                <p className="text-xs text-muted-foreground">O revisor verá a imagem segura, o lead verá sua oferta real</p>
+                <p className="text-xs text-muted-foreground">
+                  {hasDestination 
+                    ? `O revisor verá a imagem segura. O lead será redirecionado para sua página.`
+                    : `Configure a URL de destino para redirecionar leads para sua página.`
+                  }
+                </p>
               </div>
             </div>
           </CardContent>

@@ -421,6 +421,7 @@ export type Database = {
           block_bots: boolean | null
           block_vpn: boolean | null
           created_at: string
+          destination_url: string | null
           id: string
           is_active: boolean | null
           media_type: string
@@ -439,6 +440,7 @@ export type Database = {
           block_bots?: boolean | null
           block_vpn?: boolean | null
           created_at?: string
+          destination_url?: string | null
           id?: string
           is_active?: boolean | null
           media_type?: string
@@ -457,6 +459,7 @@ export type Database = {
           block_bots?: boolean | null
           block_vpn?: boolean | null
           created_at?: string
+          destination_url?: string | null
           id?: string
           is_active?: boolean | null
           media_type?: string

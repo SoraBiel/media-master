@@ -140,11 +140,12 @@ Deno.serve(async (req) => {
       .update({ total_views: (media.total_views || 0) + 1 })
       .eq('id', media.id);
 
-    // Determine which URL to serve
+    // Determine what to serve
     let mediaUrl: string | null = null;
+    let shouldRedirectToDestination = false;
 
     if (serveType === 'safe') {
-      // Serve safe media
+      // Serve safe media for bots/blocked
       if (media.safe_url) {
         mediaUrl = media.safe_url;
       } else if (media.safe_file_path) {
@@ -154,8 +155,11 @@ Deno.serve(async (req) => {
         mediaUrl = data.publicUrl;
       }
     } else {
-      // Serve offer media
-      if (media.offer_url) {
+      // For real users: redirect to destination URL if available
+      if (media.destination_url) {
+        shouldRedirectToDestination = true;
+        mediaUrl = media.destination_url;
+      } else if (media.offer_url) {
         mediaUrl = media.offer_url;
       } else if (media.offer_file_path) {
         const { data } = supabase.storage
@@ -172,8 +176,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Option 1: Redirect to media
-    if (url.searchParams.get('redirect') === 'true') {
+    // Redirect to destination or media
+    if (url.searchParams.get('redirect') === 'true' || shouldRedirectToDestination) {
       return new Response(null, {
         status: 302,
         headers: {
