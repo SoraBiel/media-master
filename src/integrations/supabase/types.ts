@@ -3560,6 +3560,7 @@ export type Database = {
         | "vendor_tiktok"
         | "vendor_model"
         | "indicador"
+        | "gerente_contas"
       plan_type: "free" | "basic" | "pro" | "agency"
       subscription_status: "active" | "pending" | "cancelled" | "expired"
       transaction_status: "pending" | "paid" | "failed" | "refunded"
@@ -3698,6 +3699,7 @@ export const Constants = {
         "vendor_tiktok",
         "vendor_model",
         "indicador",
+        "gerente_contas",
       ],
       plan_type: ["free", "basic", "pro", "agency"],
       subscription_status: ["active", "pending", "cancelled", "expired"],
