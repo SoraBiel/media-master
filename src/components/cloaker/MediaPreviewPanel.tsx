@@ -56,7 +56,7 @@ const MediaPreviewPanel = ({ media, onClose }: MediaPreviewPanelProps) => {
   const [safeMetadata, setSafeMetadata] = useState<MediaMetadata>({});
   const [offerMetadata, setOfferMetadata] = useState<MediaMetadata>({});
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"lead" | "bot" | "test">("lead");
+  const [activeTab, setActiveTab] = useState<"download" | "lead" | "bot" | "test">("download");
   const [testResult, setTestResult] = useState<TestResult>({ status: "idle" });
 
   useEffect(() => {
@@ -232,6 +232,113 @@ const MediaPreviewPanel = ({ media, onClose }: MediaPreviewPanelProps) => {
       return media.safe_file_path ? "upload" : "link";
     }
     return media.offer_file_path ? "upload" : "link";
+  };
+
+  // Download tab - Main action for sellers
+  const renderDownloadTab = () => {
+    if (!offerUrl) {
+      return (
+        <div className="flex flex-col items-center justify-center h-64 bg-muted rounded-xl">
+          <XCircle className="w-12 h-12 text-muted-foreground mb-3" />
+          <p className="text-muted-foreground">Configure a mídia da oferta primeiro</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex flex-col items-center space-y-6">
+        {/* Main Educational Card */}
+        <Card className="w-full max-w-xl border-primary/30 bg-gradient-to-br from-primary/5 to-transparent">
+          <CardHeader className="text-center pb-2">
+            <div className="mx-auto p-3 rounded-full bg-primary/10 w-fit mb-2">
+              <Download className="w-8 h-8 text-primary" />
+            </div>
+            <CardTitle className="text-xl">Baixar para sua Campanha 🚀</CardTitle>
+            <CardDescription>
+              Esta é a {media.media_type === "image" ? "imagem" : "vídeo"} que você deve usar no seu anúncio
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Preview */}
+            <div className="relative bg-black/5 dark:bg-white/5 rounded-xl overflow-hidden flex items-center justify-center aspect-video shadow-lg">
+              {media.media_type === "image" ? (
+                <img
+                  src={offerUrl}
+                  alt={`Oferta - ${media.name}`}
+                  className="max-w-full max-h-full object-contain"
+                  onLoad={(e) => handleImageLoad(e, "offer")}
+                />
+              ) : (
+                <video
+                  src={offerUrl}
+                  controls
+                  className="max-w-full max-h-full"
+                  onLoadedMetadata={(e) => handleVideoLoad(e, "offer")}
+                />
+              )}
+            </div>
+
+            {/* Download Button */}
+            <Button 
+              size="lg" 
+              className="w-full gap-3 h-14 text-lg" 
+              onClick={() => downloadMedia(offerUrl, "offer")}
+            >
+              <Download className="w-6 h-6" />
+              Baixar {media.media_type === "image" ? "Imagem" : "Vídeo"}
+            </Button>
+
+            {/* Step by Step Instructions */}
+            <div className="space-y-3 pt-2">
+              <h4 className="font-semibold text-sm flex items-center gap-2">
+                <Layers className="w-4 h-4 text-primary" />
+                Como usar:
+              </h4>
+              <div className="space-y-2">
+                <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold shrink-0">1</div>
+                  <p className="text-sm">Clique em <strong>"Baixar"</strong> para salvar a {media.media_type === "image" ? "imagem" : "vídeo"} no seu dispositivo</p>
+                </div>
+                <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold shrink-0">2</div>
+                  <p className="text-sm">Acesse o <strong>Gerenciador de Anúncios</strong> (Facebook, TikTok, etc.)</p>
+                </div>
+                <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold shrink-0">3</div>
+                  <p className="text-sm">Crie um novo anúncio e <strong>faça upload desta mídia</strong></p>
+                </div>
+                <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold shrink-0">4</div>
+                  <p className="text-sm">Configure o link do anúncio com o <strong>código embed</strong> do cloaker</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Copy Embed */}
+            <div className="pt-2">
+              <Button variant="outline" className="w-full gap-2" onClick={copyEmbedCode}>
+                <Copy className="w-4 h-4" />
+                Copiar Código Embed
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Info Alert */}
+        <Alert className="max-w-xl">
+          <ShieldCheck className="h-4 w-4" />
+          <AlertTitle>Sobre as duas mídias</AlertTitle>
+          <AlertDescription className="text-sm mt-2">
+            <p>Você precisa configurar <strong>duas mídias</strong>:</p>
+            <ul className="list-disc list-inside mt-2 space-y-1">
+              <li><strong>Mídia da Oferta</strong> (esta) - Exibida para leads reais</li>
+              <li><strong>Mídia Segura</strong> - Exibida para bots/revisores (evita bloqueios)</li>
+            </ul>
+            <p className="mt-2 text-muted-foreground">Use as abas "Lead" e "Bot" para visualizar cada uma.</p>
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
   };
 
   // Simplified preview for lead view (offer media)
@@ -627,21 +734,29 @@ const MediaPreviewPanel = ({ media, onClose }: MediaPreviewPanelProps) => {
       </Card>
 
       {/* Media Tabs */}
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "lead" | "bot" | "test")} className="w-full">
-        <TabsList className="grid grid-cols-3 w-full">
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "download" | "lead" | "bot" | "test")} className="w-full">
+        <TabsList className="grid grid-cols-4 w-full">
+          <TabsTrigger value="download" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <Download className="w-4 h-4" />
+            <span className="hidden sm:inline">Baixar</span>
+          </TabsTrigger>
           <TabsTrigger value="lead" className="gap-2">
             <User className="w-4 h-4" />
-            <span className="hidden sm:inline">Visão do</span> Lead
+            <span className="hidden sm:inline">Lead</span>
           </TabsTrigger>
           <TabsTrigger value="bot" className="gap-2">
             <Bot className="w-4 h-4" />
-            <span className="hidden sm:inline">Visão do</span> Bot
+            <span className="hidden sm:inline">Bot</span>
           </TabsTrigger>
           <TabsTrigger value="test" className="gap-2">
             <Search className="w-4 h-4" />
-            <span className="hidden sm:inline">Testar</span> Segurança
+            <span className="hidden sm:inline">Teste</span>
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="download" className="mt-6">
+          {renderDownloadTab()}
+        </TabsContent>
 
         <TabsContent value="lead" className="mt-6">
           {renderLeadPreview()}
