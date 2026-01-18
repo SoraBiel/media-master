@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { 
   Image, Video, Shield, ShieldCheck, ShieldX, Link as LinkIcon, 
   Copy, Eye, Calendar, Hash, FileType, HardDrive, Maximize, 
-  Layers, Clock, Globe, Upload, ExternalLink
+  Layers, Clock, Globe, Upload, ExternalLink, Download
 } from "lucide-react";
 import { CloakerMedia } from "@/hooks/useCloakerMedia";
 import { supabase } from "@/integrations/supabase/client";
@@ -122,6 +122,38 @@ const MediaPreviewPanel = ({ media, onClose }: MediaPreviewPanelProps) => {
   const copyUrl = (url: string) => {
     navigator.clipboard.writeText(url);
     toast.success("URL copiada!");
+  };
+
+  const downloadMedia = async (url: string, type: "safe" | "offer") => {
+    try {
+      toast.info("Iniciando download...");
+      
+      const response = await fetch(url);
+      const blob = await response.blob();
+      
+      // Determine file extension
+      const contentType = response.headers.get("content-type") || "";
+      let extension = media.media_type === "image" ? "jpg" : "mp4";
+      if (contentType.includes("png")) extension = "png";
+      else if (contentType.includes("gif")) extension = "gif";
+      else if (contentType.includes("webp")) extension = "webp";
+      else if (contentType.includes("webm")) extension = "webm";
+      
+      // Create download link
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.download = `${media.name}-${type}-${media.slug}.${extension}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+      
+      toast.success("Download concluído!");
+    } catch (error) {
+      console.error("Download error:", error);
+      toast.error("Erro ao fazer download. Tente abrir a mídia e salvar manualmente.");
+    }
   };
 
   const copyEmbedCode = () => {
@@ -285,9 +317,18 @@ const MediaPreviewPanel = ({ media, onClose }: MediaPreviewPanelProps) => {
               </div>
             </div>
 
-            {/* URL Info */}
+            {/* Download Button */}
             <Separator className="my-4" />
-            <div className="space-y-2">
+            <Button 
+              className="w-full gap-2" 
+              onClick={() => downloadMedia(url, type)}
+            >
+              <Download className="w-4 h-4" />
+              Baixar {media.media_type === "image" ? "Imagem" : "Vídeo"} ({type === "safe" ? "Segura" : "Oferta"})
+            </Button>
+
+            {/* URL Info */}
+            <div className="mt-4 space-y-2">
               <div className="flex items-center justify-between">
                 <p className="text-xs text-muted-foreground">URL da Mídia</p>
                 <div className="flex gap-1">
