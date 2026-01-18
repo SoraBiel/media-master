@@ -236,11 +236,13 @@ const MediaPreviewPanel = ({ media, onClose }: MediaPreviewPanelProps) => {
 
   // Download tab - Main action for sellers
   const renderDownloadTab = () => {
-    if (!offerUrl) {
+    const embedUrl = `${import.meta.env.VITE_SUPABASE_URL || ""}/functions/v1/cloaker-media?slug=${media.slug}&redirect=true`;
+    
+    if (!safeUrl) {
       return (
         <div className="flex flex-col items-center justify-center h-64 bg-muted rounded-xl">
           <XCircle className="w-12 h-12 text-muted-foreground mb-3" />
-          <p className="text-muted-foreground">Configure a mídia da oferta primeiro</p>
+          <p className="text-muted-foreground text-center px-4">Configure a <strong>mídia segura</strong> primeiro.<br/>Esta é a imagem que você vai subir na campanha.</p>
         </div>
       );
     }
@@ -248,95 +250,108 @@ const MediaPreviewPanel = ({ media, onClose }: MediaPreviewPanelProps) => {
     return (
       <div className="flex flex-col items-center space-y-6">
         {/* Main Educational Card */}
-        <Card className="w-full max-w-xl border-primary/30 bg-gradient-to-br from-primary/5 to-transparent">
+        <Card className="w-full max-w-xl border-green-500/30 bg-gradient-to-br from-green-500/5 to-transparent">
           <CardHeader className="text-center pb-2">
-            <div className="mx-auto p-3 rounded-full bg-primary/10 w-fit mb-2">
-              <Download className="w-8 h-8 text-primary" />
+            <div className="mx-auto p-3 rounded-full bg-green-500/10 w-fit mb-2">
+              <Download className="w-8 h-8 text-green-600" />
             </div>
-            <CardTitle className="text-xl">Baixar para sua Campanha 🚀</CardTitle>
+            <CardTitle className="text-xl">Imagem para o Anúncio ✅</CardTitle>
             <CardDescription>
-              Esta é a {media.media_type === "image" ? "imagem" : "vídeo"} que você deve usar no seu anúncio
+              Baixe esta {media.media_type === "image" ? "imagem" : "vídeo"} e suba diretamente no Gerenciador de Anúncios
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Preview */}
-            <div className="relative bg-black/5 dark:bg-white/5 rounded-xl overflow-hidden flex items-center justify-center aspect-video shadow-lg">
+            {/* Preview - SAFE IMAGE */}
+            <div className="relative bg-black/5 dark:bg-white/5 rounded-xl overflow-hidden flex items-center justify-center aspect-video shadow-lg border-2 border-green-500/30">
               {media.media_type === "image" ? (
                 <img
-                  src={offerUrl}
-                  alt={`Oferta - ${media.name}`}
+                  src={safeUrl}
+                  alt={`Segura - ${media.name}`}
                   className="max-w-full max-h-full object-contain"
-                  onLoad={(e) => handleImageLoad(e, "offer")}
+                  onLoad={(e) => handleImageLoad(e, "safe")}
                 />
               ) : (
                 <video
-                  src={offerUrl}
+                  src={safeUrl}
                   controls
                   className="max-w-full max-h-full"
-                  onLoadedMetadata={(e) => handleVideoLoad(e, "offer")}
+                  onLoadedMetadata={(e) => handleVideoLoad(e, "safe")}
                 />
               )}
+              <div className="absolute top-2 right-2">
+                <Badge className="bg-green-500 text-white gap-1">
+                  <ShieldCheck className="w-3 h-3" />
+                  Aprovada
+                </Badge>
+              </div>
             </div>
 
             {/* Download Button */}
             <Button 
               size="lg" 
-              className="w-full gap-3 h-14 text-lg" 
-              onClick={() => downloadMedia(offerUrl, "offer")}
+              className="w-full gap-3 h-14 text-lg bg-green-600 hover:bg-green-700" 
+              onClick={() => downloadMedia(safeUrl, "safe")}
             >
               <Download className="w-6 h-6" />
-              Baixar {media.media_type === "image" ? "Imagem" : "Vídeo"}
+              Baixar {media.media_type === "image" ? "Imagem" : "Vídeo"} para Campanha
             </Button>
 
-            {/* Step by Step Instructions */}
-            <div className="space-y-3 pt-2">
-              <h4 className="font-semibold text-sm flex items-center gap-2">
-                <Layers className="w-4 h-4 text-primary" />
-                Como usar:
-              </h4>
-              <div className="space-y-2">
-                <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold shrink-0">1</div>
-                  <p className="text-sm">Clique em <strong>"Baixar"</strong> para salvar a {media.media_type === "image" ? "imagem" : "vídeo"} no seu dispositivo</p>
-                </div>
-                <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold shrink-0">2</div>
-                  <p className="text-sm">Acesse o <strong>Gerenciador de Anúncios</strong> (Facebook, TikTok, etc.)</p>
-                </div>
-                <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold shrink-0">3</div>
-                  <p className="text-sm">Crie um novo anúncio e <strong>faça upload desta mídia</strong></p>
-                </div>
-                <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold shrink-0">4</div>
-                  <p className="text-sm">Configure o link do anúncio com o <strong>código embed</strong> do cloaker</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Copy Embed */}
-            <div className="pt-2">
-              <Button variant="outline" className="w-full gap-2" onClick={copyEmbedCode}>
-                <Copy className="w-4 h-4" />
-                Copiar Código Embed
-              </Button>
-            </div>
+            {/* Simple explanation */}
+            <Alert className="border-green-500/30 bg-green-500/5">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+              <AlertTitle className="text-green-700 dark:text-green-400">Por que esta imagem?</AlertTitle>
+              <AlertDescription className="text-sm mt-1">
+                Esta é a <strong>imagem segura</strong> que passa na revisão do Facebook/TikTok. 
+                Quando o lead clicar, ele verá automaticamente a <strong>imagem real</strong> da sua oferta.
+              </AlertDescription>
+            </Alert>
           </CardContent>
         </Card>
 
-        {/* Info Alert */}
-        <Alert className="max-w-xl">
-          <ShieldCheck className="h-4 w-4" />
-          <AlertTitle>Sobre as duas mídias</AlertTitle>
-          <AlertDescription className="text-sm mt-2">
-            <p>Você precisa configurar <strong>duas mídias</strong>:</p>
-            <ul className="list-disc list-inside mt-2 space-y-1">
-              <li><strong>Mídia da Oferta</strong> (esta) - Exibida para leads reais</li>
-              <li><strong>Mídia Segura</strong> - Exibida para bots/revisores (evita bloqueios)</li>
-            </ul>
-            <p className="mt-2 text-muted-foreground">Use as abas "Lead" e "Bot" para visualizar cada uma.</p>
-          </AlertDescription>
-        </Alert>
+        {/* Step by Step Instructions */}
+        <Card className="w-full max-w-xl">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Layers className="w-5 h-5 text-primary" />
+              Passo a Passo
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+              <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary text-primary-foreground text-sm font-bold shrink-0">1</div>
+              <div>
+                <p className="text-sm font-medium">Baixe a imagem acima</p>
+                <p className="text-xs text-muted-foreground">Esta imagem é segura e passa na revisão</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+              <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary text-primary-foreground text-sm font-bold shrink-0">2</div>
+              <div>
+                <p className="text-sm font-medium">Suba a imagem no Gerenciador de Anúncios</p>
+                <p className="text-xs text-muted-foreground">Facebook Ads, TikTok Ads, etc.</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-primary/5 border border-primary/20">
+              <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary text-primary-foreground text-sm font-bold shrink-0">3</div>
+              <div className="flex-1">
+                <p className="text-sm font-medium">Cole este link como destino do anúncio:</p>
+                <div className="mt-2 flex items-center gap-2">
+                  <code className="flex-1 text-xs bg-muted p-2 rounded truncate font-mono">{embedUrl}</code>
+                  <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(embedUrl); toast.success("Link copiado!"); }}>
+                    <Copy className="w-3 h-3" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+              <div className="flex items-center justify-center w-7 h-7 rounded-full bg-green-600 text-white text-sm font-bold shrink-0">✓</div>
+              <div>
+                <p className="text-sm font-medium text-green-700 dark:text-green-400">Pronto! Sua campanha está protegida</p>
+                <p className="text-xs text-muted-foreground">O revisor verá a imagem segura, o lead verá sua oferta real</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   };
