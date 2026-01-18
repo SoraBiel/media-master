@@ -119,7 +119,7 @@ const DashboardPage = () => {
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <h1 className="text-2xl font-bold">
-              Olá, {profile?.full_name?.split(" ")[0] || "usuário"}! 👋
+              Olá, {profile?.full_name?.split(" ")[0] || "usuário"}!
             </h1>
             <p className="text-muted-foreground text-sm">
               Dados dos últimos 7 dias
