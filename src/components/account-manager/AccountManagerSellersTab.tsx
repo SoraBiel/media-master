@@ -18,7 +18,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { 
@@ -27,13 +26,15 @@ import {
   Edit,
   Crown,
   Mail,
-  Calendar
+  Calendar,
+  UserCog
 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { SellerDetailsDialog } from "./SellerDetailsDialog";
 
 interface AssignedSeller {
   id: string;
@@ -77,6 +78,8 @@ export const AccountManagerSellersTab = ({
 }: AccountManagerSellersTabProps) => {
   const { user } = useAuth();
   const [selectedSeller, setSelectedSeller] = useState<AssignedSeller | null>(null);
+  const [selectedSellerId, setSelectedSellerId] = useState<string | null>(null);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [notes, setNotes] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -85,6 +88,11 @@ export const AccountManagerSellersTab = ({
     setSelectedSeller(seller);
     setNotes(seller.notes || "");
     setDialogOpen(true);
+  };
+
+  const handleOpenDetails = (sellerId: string) => {
+    setSelectedSellerId(sellerId);
+    setDetailsDialogOpen(true);
   };
 
   const handleSaveNotes = async () => {
@@ -232,7 +240,16 @@ export const AccountManagerSellersTab = ({
                         <Button 
                           variant="ghost" 
                           size="icon-sm"
+                          onClick={() => handleOpenDetails(seller.seller_id)}
+                          title="Ver detalhes"
+                        >
+                          <UserCog className="w-4 h-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon-sm"
                           onClick={() => handleOpenNotes(seller)}
+                          title="Observações"
                         >
                           <Edit className="w-4 h-4" />
                         </Button>
@@ -272,6 +289,14 @@ export const AccountManagerSellersTab = ({
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Seller Details Dialog */}
+        <SellerDetailsDialog 
+          sellerId={selectedSellerId}
+          open={detailsDialogOpen}
+          onOpenChange={setDetailsDialogOpen}
+          onUpdate={onRefresh}
+        />
       </CardContent>
     </Card>
   );
