@@ -13,6 +13,7 @@ export interface CloakerMedia {
   safe_file_path: string | null;
   offer_url: string | null;
   offer_file_path: string | null;
+  destination_url: string | null;
   is_active: boolean;
   block_bots: boolean;
   block_vpn: boolean;
@@ -117,6 +118,7 @@ export function useCloakerMedia() {
     safe_file?: File;
     offer_url?: string;
     offer_file?: File;
+    destination_url?: string;
     block_bots?: boolean;
     block_vpn?: boolean;
     allowed_countries?: string[];
@@ -146,6 +148,7 @@ export function useCloakerMedia() {
           safe_file_path,
           offer_url: mediaData.offer_url || null,
           offer_file_path,
+          destination_url: mediaData.destination_url || null,
           block_bots: mediaData.block_bots ?? true,
           block_vpn: mediaData.block_vpn ?? false,
           allowed_countries: mediaData.allowed_countries || null,
