@@ -108,6 +108,7 @@ import { BulkMediaUploader } from "@/components/admin/BulkMediaUploader";
 import AdminReferralsPanel from "@/components/admin/AdminReferralsPanel";
 import AdminSystemConfigPanel from "@/components/admin/AdminSystemConfigPanel";
 import AdminTIPanel from "@/components/admin/AdminTIPanel";
+import AdminAccountManagersPanel from "@/components/admin/AdminAccountManagersPanel";
 import { useAdminSettings, getSettingLabel } from "@/hooks/useAdminSettings";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -1964,6 +1965,10 @@ const AdminDashboardPage = () => {
             <TabsTrigger value="ti" className="flex items-center gap-1">
               <Terminal className="h-4 w-4" />
               T.I.
+            </TabsTrigger>
+            <TabsTrigger value="account-managers" className="flex items-center gap-1">
+              <UserCog className="h-4 w-4" />
+              Gerentes de Contas
             </TabsTrigger>
           </TabsList>
 
@@ -4496,6 +4501,11 @@ const AdminDashboardPage = () => {
           {/* T.I. Panel Tab */}
           <TabsContent value="ti" className="space-y-4">
             <AdminTIPanel />
+          </TabsContent>
+
+          {/* Account Managers Tab */}
+          <TabsContent value="account-managers" className="space-y-4">
+            <AdminAccountManagersPanel />
           </TabsContent>
         </Tabs>
 
