@@ -14,6 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_manager_logs: {
+        Row: {
+          action: string
+          action_type: string
+          created_at: string | null
+          details: Json | null
+          id: string
+          ip_address: string | null
+          manager_id: string
+          target_user_id: string | null
+        }
+        Insert: {
+          action: string
+          action_type: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          manager_id: string
+          target_user_id?: string | null
+        }
+        Update: {
+          action?: string
+          action_type?: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          manager_id?: string
+          target_user_id?: string | null
+        }
+        Relationships: []
+      }
+      account_manager_sellers: {
+        Row: {
+          assigned_at: string | null
+          created_at: string | null
+          id: string
+          manager_id: string
+          notes: string | null
+          seller_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_at?: string | null
+          created_at?: string | null
+          id?: string
+          manager_id: string
+          notes?: string | null
+          seller_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_at?: string | null
+          created_at?: string | null
+          id?: string
+          manager_id?: string
+          notes?: string | null
+          seller_id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       admin_media: {
         Row: {
           created_at: string

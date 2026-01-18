@@ -1,7 +1,7 @@
 import { ReactNode, useState, useEffect, useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, CreditCard, MessageCircle, Settings, LogOut, ChevronLeft, ChevronRight, Bell, BellOff, User, Shield, Menu, Crown, Headphones, GitBranch, MessageSquare, Plug, Wallet, Users, Store, Package, Share2, Link2, Gift, ShoppingBag, Fingerprint, Eye, BarChart3 } from "lucide-react";
+import { LayoutDashboard, CreditCard, MessageCircle, Settings, LogOut, ChevronLeft, ChevronRight, Bell, BellOff, User, Shield, Menu, Crown, Headphones, GitBranch, MessageSquare, Plug, Wallet, Users, Store, Package, Share2, Link2, Gift, ShoppingBag, Fingerprint, Eye, BarChart3, UserCog } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/AuthContext";
@@ -26,6 +26,7 @@ const DashboardLayout = ({
     isAdmin,
     isVendor,
     isIndicador,
+    isAccountManager,
     profile
   } = useAuth();
   const {
@@ -199,7 +200,23 @@ const DashboardLayout = ({
       path: "/referrals"
     }
   ];
-  const allNavItems = [...navItems, ...((isIndicador || isAdmin) ? indicadorItems : []), ...(isVendor || isAdmin ? vendorItems : []), ...(isAdmin ? adminItems : [])];
+
+  // Account Manager items
+  const accountManagerItems = [
+    {
+      icon: UserCog,
+      label: "Gerente de Contas",
+      path: "/account-manager"
+    }
+  ];
+
+  const allNavItems = [
+    ...navItems, 
+    ...((isIndicador || isAdmin) ? indicadorItems : []), 
+    ...((isAccountManager || isAdmin) ? accountManagerItems : []),
+    ...(isVendor || isAdmin ? vendorItems : []), 
+    ...(isAdmin ? adminItems : [])
+  ];
   const handleSignOut = async () => {
     await signOut();
     navigate("/login");

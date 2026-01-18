@@ -5,10 +5,16 @@ interface ProtectedRouteProps {
   children: React.ReactNode;
   requireAdmin?: boolean;
   requireVendor?: boolean;
+  requireAccountManager?: boolean;
 }
 
-export const ProtectedRoute = ({ children, requireAdmin = false, requireVendor = false }: ProtectedRouteProps) => {
-  const { user, isAdmin, isVendor, isLoading, profile } = useAuth();
+export const ProtectedRoute = ({ 
+  children, 
+  requireAdmin = false, 
+  requireVendor = false,
+  requireAccountManager = false 
+}: ProtectedRouteProps) => {
+  const { user, isAdmin, isVendor, isAccountManager, isLoading, profile } = useAuth();
   const location = useLocation();
 
   if (isLoading) {
@@ -33,6 +39,10 @@ export const ProtectedRoute = ({ children, requireAdmin = false, requireVendor =
   }
 
   if (requireVendor && !isVendor && !isAdmin) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  if (requireAccountManager && !isAccountManager && !isAdmin) {
     return <Navigate to="/dashboard" replace />;
   }
 
