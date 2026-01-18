@@ -12,18 +12,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
 import { 
   Search, 
-  Eye,
-  Edit,
   Crown,
   Mail,
   Calendar,
@@ -31,31 +21,22 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-import { useAuth } from "@/contexts/AuthContext";
 import { SellerDetailsDialog } from "./SellerDetailsDialog";
 
-interface AssignedSeller {
+interface UserProfile {
   id: string;
-  manager_id: string;
-  seller_id: string;
-  notes: string | null;
-  assigned_at: string;
-  profile: {
-    user_id: string;
-    email: string;
-    full_name: string | null;
-    current_plan: string | null;
-    is_online: boolean;
-    is_suspended: boolean;
-    last_seen_at: string | null;
-    created_at: string | null;
-  } | null;
+  user_id: string;
+  email: string;
+  full_name: string | null;
+  current_plan: string | null;
+  is_online: boolean;
+  is_suspended: boolean;
+  last_seen_at: string | null;
+  created_at: string | null;
 }
 
 interface AccountManagerSellersTabProps {
-  sellers: AssignedSeller[];
+  users: UserProfile[];
   isLoading: boolean;
   searchTerm: string;
   onSearchChange: (value: string) => void;
@@ -70,61 +51,18 @@ const planColors: Record<string, string> = {
 };
 
 export const AccountManagerSellersTab = ({ 
-  sellers, 
+  users, 
   isLoading, 
   searchTerm, 
   onSearchChange,
   onRefresh 
 }: AccountManagerSellersTabProps) => {
-  const { user } = useAuth();
-  const [selectedSeller, setSelectedSeller] = useState<AssignedSeller | null>(null);
-  const [selectedSellerId, setSelectedSellerId] = useState<string | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
-  const [notes, setNotes] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
-  const [dialogOpen, setDialogOpen] = useState(false);
 
-  const handleOpenNotes = (seller: AssignedSeller) => {
-    setSelectedSeller(seller);
-    setNotes(seller.notes || "");
-    setDialogOpen(true);
-  };
-
-  const handleOpenDetails = (sellerId: string) => {
-    setSelectedSellerId(sellerId);
+  const handleOpenDetails = (userId: string) => {
+    setSelectedUserId(userId);
     setDetailsDialogOpen(true);
-  };
-
-  const handleSaveNotes = async () => {
-    if (!selectedSeller || !user) return;
-    
-    setIsSaving(true);
-    try {
-      const { error } = await supabase
-        .from("account_manager_sellers")
-        .update({ notes })
-        .eq("id", selectedSeller.id);
-
-      if (error) throw error;
-
-      // Log the action
-      await supabase.from("account_manager_logs").insert({
-        manager_id: user.id,
-        target_user_id: selectedSeller.seller_id,
-        action: "Atualizou observações do seller",
-        action_type: "notes_update",
-        details: { notes_length: notes.length }
-      });
-
-      toast.success("Observações salvas!");
-      setDialogOpen(false);
-      onRefresh();
-    } catch (error) {
-      console.error("Error saving notes:", error);
-      toast.error("Erro ao salvar observações");
-    } finally {
-      setIsSaving(false);
-    }
   };
 
   if (isLoading) {
@@ -145,9 +83,9 @@ export const AccountManagerSellersTab = ({
       <CardHeader>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <CardTitle>Meus Sellers</CardTitle>
+            <CardTitle>Todos os Usuários</CardTitle>
             <CardDescription>
-              Lista de sellers vinculados à sua conta
+              Lista completa de usuários da plataforma
             </CardDescription>
           </div>
           <div className="relative w-full sm:w-72">
@@ -162,9 +100,9 @@ export const AccountManagerSellersTab = ({
         </div>
       </CardHeader>
       <CardContent>
-        {sellers.length === 0 ? (
+        {users.length === 0 ? (
           <p className="text-center text-muted-foreground py-8">
-            {searchTerm ? "Nenhum seller encontrado com este termo" : "Nenhum seller vinculado"}
+            {searchTerm ? "Nenhum usuário encontrado com este termo" : "Nenhum usuário cadastrado"}
           </p>
         ) : (
           <div className="overflow-x-auto">
@@ -172,29 +110,29 @@ export const AccountManagerSellersTab = ({
               <TableHeader>
                 <TableRow>
                   <TableHead>Status</TableHead>
-                  <TableHead>Seller</TableHead>
+                  <TableHead>Usuário</TableHead>
                   <TableHead>Plano</TableHead>
                   <TableHead>Último Acesso</TableHead>
-                  <TableHead>Desde</TableHead>
+                  <TableHead>Cadastro</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sellers.map((seller) => (
-                  <TableRow key={seller.id}>
+                {users.map((user) => (
+                  <TableRow key={user.id} className={user.is_suspended ? "opacity-60" : ""}>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <div className={`w-2 h-2 rounded-full ${
-                          seller.profile?.is_suspended 
+                          user.is_suspended 
                             ? "bg-destructive" 
-                            : seller.profile?.is_online 
+                            : user.is_online 
                               ? "bg-success" 
                               : "bg-muted-foreground"
                         }`} />
                         <span className="text-xs text-muted-foreground">
-                          {seller.profile?.is_suspended 
+                          {user.is_suspended 
                             ? "Suspenso" 
-                            : seller.profile?.is_online 
+                            : user.is_online 
                               ? "Online" 
                               : "Offline"}
                         </span>
@@ -203,25 +141,25 @@ export const AccountManagerSellersTab = ({
                     <TableCell>
                       <div>
                         <p className="font-medium">
-                          {seller.profile?.full_name || "Sem nome"}
+                          {user.full_name || "Sem nome"}
                         </p>
                         <p className="text-xs text-muted-foreground flex items-center gap-1">
                           <Mail className="w-3 h-3" />
-                          {seller.profile?.email}
+                          {user.email}
                         </p>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge className={planColors[seller.profile?.current_plan || "free"]}>
+                      <Badge className={planColors[user.current_plan || "free"]}>
                         <Crown className="w-3 h-3 mr-1" />
-                        {(seller.profile?.current_plan || "free").charAt(0).toUpperCase() + 
-                         (seller.profile?.current_plan || "free").slice(1)}
+                        {(user.current_plan || "free").charAt(0).toUpperCase() + 
+                         (user.current_plan || "free").slice(1)}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <span className="text-sm text-muted-foreground">
-                        {seller.profile?.last_seen_at 
-                          ? formatDistanceToNow(new Date(seller.profile.last_seen_at), { 
+                        {user.last_seen_at 
+                          ? formatDistanceToNow(new Date(user.last_seen_at), { 
                               addSuffix: true, 
                               locale: ptBR 
                             })
@@ -232,28 +170,22 @@ export const AccountManagerSellersTab = ({
                     <TableCell>
                       <span className="text-sm text-muted-foreground flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
-                        {format(new Date(seller.assigned_at), "dd/MM/yyyy", { locale: ptBR })}
+                        {user.created_at 
+                          ? format(new Date(user.created_at), "dd/MM/yyyy", { locale: ptBR })
+                          : "—"
+                        }
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button 
-                          variant="ghost" 
-                          size="icon-sm"
-                          onClick={() => handleOpenDetails(seller.seller_id)}
-                          title="Ver detalhes"
-                        >
-                          <UserCog className="w-4 h-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon-sm"
-                          onClick={() => handleOpenNotes(seller)}
-                          title="Observações"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleOpenDetails(user.user_id)}
+                        title="Ver detalhes e ações"
+                      >
+                        <UserCog className="w-4 h-4 mr-1" />
+                        Gerenciar
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -262,37 +194,9 @@ export const AccountManagerSellersTab = ({
           </div>
         )}
 
-        {/* Notes Dialog */}
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Observações do Seller</DialogTitle>
-              <DialogDescription>
-                {selectedSeller?.profile?.full_name || selectedSeller?.profile?.email}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <Textarea
-                placeholder="Adicione observações sobre este seller..."
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={6}
-              />
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button onClick={handleSaveNotes} disabled={isSaving}>
-                  {isSaving ? "Salvando..." : "Salvar"}
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-
         {/* Seller Details Dialog */}
         <SellerDetailsDialog 
-          sellerId={selectedSellerId}
+          sellerId={selectedUserId}
           open={detailsDialogOpen}
           onOpenChange={setDetailsDialogOpen}
           onUpdate={onRefresh}

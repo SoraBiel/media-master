@@ -5,10 +5,23 @@ import {
   Users, 
   TrendingUp, 
   Clock,
-  Crown
+  Crown,
+  Activity
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+
+interface UserProfile {
+  id: string;
+  user_id: string;
+  email: string;
+  full_name: string | null;
+  current_plan: string | null;
+  is_online: boolean;
+  is_suspended: boolean;
+  last_seen_at: string | null;
+  created_at: string | null;
+}
 
 interface SellerStats {
   total: number;
@@ -16,26 +29,8 @@ interface SellerStats {
   inactive: number;
 }
 
-interface AssignedSeller {
-  id: string;
-  manager_id: string;
-  seller_id: string;
-  notes: string | null;
-  assigned_at: string;
-  profile: {
-    user_id: string;
-    email: string;
-    full_name: string | null;
-    current_plan: string | null;
-    is_online: boolean;
-    is_suspended: boolean;
-    last_seen_at: string | null;
-    created_at: string | null;
-  } | null;
-}
-
 interface AccountManagerOverviewTabProps {
-  sellers: AssignedSeller[];
+  users: UserProfile[];
   isLoading: boolean;
   stats: SellerStats;
 }
@@ -47,7 +42,7 @@ const planColors: Record<string, string> = {
   agency: "bg-amber-500/10 text-amber-500"
 };
 
-export const AccountManagerOverviewTab = ({ sellers, isLoading, stats }: AccountManagerOverviewTabProps) => {
+export const AccountManagerOverviewTab = ({ users, isLoading, stats }: AccountManagerOverviewTabProps) => {
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -57,22 +52,25 @@ export const AccountManagerOverviewTab = ({ sellers, isLoading, stats }: Account
     );
   }
 
-  // Get recent activity - sellers sorted by last seen
-  const recentActivity = [...sellers]
-    .filter(s => s.profile?.last_seen_at)
+  // Get recent activity - users sorted by last seen
+  const recentActivity = [...users]
+    .filter(u => u.last_seen_at)
     .sort((a, b) => {
-      const dateA = new Date(a.profile?.last_seen_at || 0);
-      const dateB = new Date(b.profile?.last_seen_at || 0);
+      const dateA = new Date(a.last_seen_at || 0);
+      const dateB = new Date(b.last_seen_at || 0);
       return dateB.getTime() - dateA.getTime();
     })
     .slice(0, 5);
 
   // Group by plan
-  const planDistribution = sellers.reduce((acc, seller) => {
-    const plan = seller.profile?.current_plan || "free";
+  const planDistribution = users.reduce((acc, user) => {
+    const plan = user.current_plan || "free";
     acc[plan] = (acc[plan] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
+
+  // Online users
+  const onlineUsers = users.filter(u => u.is_online && !u.is_suspended);
 
   return (
     <div className="grid gap-4 md:grid-cols-2">
@@ -84,7 +82,7 @@ export const AccountManagerOverviewTab = ({ sellers, isLoading, stats }: Account
             Atividade Recente
           </CardTitle>
           <CardDescription>
-            Últimos sellers online
+            Últimos usuários online
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -92,22 +90,22 @@ export const AccountManagerOverviewTab = ({ sellers, isLoading, stats }: Account
             <p className="text-muted-foreground text-sm">Nenhuma atividade recente</p>
           ) : (
             <div className="space-y-3">
-              {recentActivity.map(seller => (
-                <div key={seller.id} className="flex items-center justify-between py-2 border-b last:border-0">
+              {recentActivity.map(user => (
+                <div key={user.id} className="flex items-center justify-between py-2 border-b last:border-0">
                   <div className="flex items-center gap-3">
-                    <div className={`w-2 h-2 rounded-full ${seller.profile?.is_online ? "bg-success" : "bg-muted"}`} />
+                    <div className={`w-2 h-2 rounded-full ${user.is_online ? "bg-success" : "bg-muted"}`} />
                     <div>
                       <p className="font-medium text-sm">
-                        {seller.profile?.full_name || "Sem nome"}
+                        {user.full_name || "Sem nome"}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {seller.profile?.email}
+                        {user.email}
                       </p>
                     </div>
                   </div>
                   <span className="text-xs text-muted-foreground">
-                    {seller.profile?.last_seen_at 
-                      ? formatDistanceToNow(new Date(seller.profile.last_seen_at), { 
+                    {user.last_seen_at 
+                      ? formatDistanceToNow(new Date(user.last_seen_at), { 
                           addSuffix: true, 
                           locale: ptBR 
                         })
@@ -129,7 +127,7 @@ export const AccountManagerOverviewTab = ({ sellers, isLoading, stats }: Account
             Distribuição por Plano
           </CardTitle>
           <CardDescription>
-            Planos dos seus sellers
+            Planos dos usuários
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -152,7 +150,7 @@ export const AccountManagerOverviewTab = ({ sellers, isLoading, stats }: Account
           </div>
 
           {Object.keys(planDistribution).length === 0 && (
-            <p className="text-muted-foreground text-sm">Nenhum seller vinculado</p>
+            <p className="text-muted-foreground text-sm">Nenhum usuário cadastrado</p>
           )}
         </CardContent>
       </Card>
@@ -162,29 +160,29 @@ export const AccountManagerOverviewTab = ({ sellers, isLoading, stats }: Account
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <Users className="w-5 h-5" />
-            Status dos Sellers
+            Status dos Usuários
           </CardTitle>
           <CardDescription>
-            Visão geral do status dos seus sellers
+            Visão geral do status de todos os usuários
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center p-4 bg-success/10 rounded-lg">
               <p className="text-3xl font-bold text-success">
-                {sellers.filter(s => s.profile?.is_online).length}
+                {onlineUsers.length}
               </p>
               <p className="text-sm text-muted-foreground">Online Agora</p>
             </div>
             <div className="text-center p-4 bg-muted rounded-lg">
               <p className="text-3xl font-bold">
-                {sellers.filter(s => !s.profile?.is_online && !s.profile?.is_suspended).length}
+                {users.filter(u => !u.is_online && !u.is_suspended).length}
               </p>
               <p className="text-sm text-muted-foreground">Offline</p>
             </div>
             <div className="text-center p-4 bg-destructive/10 rounded-lg">
               <p className="text-3xl font-bold text-destructive">
-                {sellers.filter(s => s.profile?.is_suspended).length}
+                {users.filter(u => u.is_suspended).length}
               </p>
               <p className="text-sm text-muted-foreground">Suspensos</p>
             </div>
