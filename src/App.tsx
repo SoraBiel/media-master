@@ -42,6 +42,7 @@ import MultiloginPage from "./pages/MultiloginPage";
 import CloakerPage from "./pages/CloakerPage";
 import CloakerMediaPage from "./pages/CloakerMediaPage";
 import UTMTrackingPage from "./pages/UTMTrackingPage";
+import AccountManagerPage from "./pages/AccountManagerPage";
 import NotFound from "./pages/NotFound";
 
 
@@ -158,6 +159,11 @@ const App = () => (
                   <FeatureProtectedRoute featureKey="utm_tracking_enabled">
                     <UTMTrackingPage />
                   </FeatureProtectedRoute>
+                </ProtectedRoute>
+              } />
+              <Route path="/account-manager" element={
+                <ProtectedRoute requireAccountManager>
+                  <AccountManagerPage />
                 </ProtectedRoute>
               } />
               {/* Redirect old /indicador to /referrals */}
