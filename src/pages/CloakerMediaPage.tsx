@@ -13,14 +13,23 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCloakerMedia, useCloakerMediaViews, CloakerMedia } from "@/hooks/useCloakerMedia";
-import { Plus, Image, Video, Shield, ShieldOff, Copy, Trash2, Edit2, Eye, BarChart3, ShieldCheck, ShieldX, MapPin, Smartphone, Monitor, Globe, Upload, Link as LinkIcon, CheckCircle2, Layers } from "lucide-react";
+import { useSubscription } from "@/hooks/useSubscription";
+import { useAuth } from "@/contexts/AuthContext";
+import { Plus, Image, Video, Shield, ShieldOff, Copy, Trash2, Edit2, Eye, BarChart3, ShieldCheck, ShieldX, MapPin, Smartphone, Monitor, Globe, Upload, Link as LinkIcon, CheckCircle2, Layers, Lock, Crown } from "lucide-react";
 import MediaPreviewPanel from "@/components/cloaker/MediaPreviewPanel";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useNavigate } from "react-router-dom";
 
 const CloakerMediaPage = () => {
   const { mediaList, isLoading, createMedia, updateMedia, deleteMedia, getPublicUrl } = useCloakerMedia();
+  const { currentPlan } = useSubscription();
+  const { isAdmin } = useAuth();
+  const navigate = useNavigate();
+  
+  // Check if user has access to media cloaker (basic plan or higher)
+  const hasMediaCloakerAccess = isAdmin || (currentPlan && currentPlan.slug !== "free");
   
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingMedia, setEditingMedia] = useState<CloakerMedia | null>(null);
@@ -173,6 +182,97 @@ const CloakerMediaPage = () => {
 
   // Calculate totals
   const totalViews = mediaList.reduce((acc, m) => acc + (m.total_views || 0), 0);
+
+  // If user doesn't have access, show upgrade prompt
+  if (!hasMediaCloakerAccess) {
+    return (
+      <DashboardLayout>
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h1 className="text-2xl font-bold">Cloaker de Mídia</h1>
+              <p className="text-muted-foreground">Proteja suas imagens e vídeos contra bots e revisores</p>
+            </div>
+            <Link to="/cloaker">
+              <Button variant="outline">
+                <LinkIcon className="w-4 h-4 mr-2" />
+                Cloaker de Links
+              </Button>
+            </Link>
+          </div>
+
+          {/* Plan Required Card */}
+          <Card className="border-2 border-dashed">
+            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="p-4 rounded-full bg-primary/10 mb-4">
+                <Lock className="w-10 h-10 text-primary" />
+              </div>
+              <h2 className="text-2xl font-bold mb-2">Recurso Exclusivo</h2>
+              <p className="text-muted-foreground mb-6 max-w-md">
+                O Cloaker de Mídia (imagens e vídeos) está disponível a partir do plano <strong>Basic</strong>.
+                Com o plano Free, você pode usar apenas o <strong>Cloaker de Links</strong>.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button onClick={() => navigate("/billing")} className="gap-2">
+                  <Crown className="w-4 h-4" />
+                  Fazer Upgrade
+                </Button>
+                <Button variant="outline" onClick={() => navigate("/cloaker")}>
+                  <LinkIcon className="w-4 h-4 mr-2" />
+                  Usar Cloaker de Links
+                </Button>
+              </div>
+
+              {/* Feature comparison */}
+              <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4 text-left max-w-lg">
+                <Card className="p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <LinkIcon className="w-4 h-4 text-muted-foreground" />
+                    <span className="font-medium">Plano Free</span>
+                  </div>
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="w-3 h-3 text-green-500" />
+                      Cloaker de Links
+                    </li>
+                    <li className="flex items-center gap-2 opacity-50">
+                      <Lock className="w-3 h-3" />
+                      Cloaker de Imagens
+                    </li>
+                    <li className="flex items-center gap-2 opacity-50">
+                      <Lock className="w-3 h-3" />
+                      Cloaker de Vídeos
+                    </li>
+                  </ul>
+                </Card>
+                <Card className="p-4 border-primary/50 bg-primary/5">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Crown className="w-4 h-4 text-primary" />
+                    <span className="font-medium">Plano Basic+</span>
+                  </div>
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="w-3 h-3 text-green-500" />
+                      Cloaker de Links
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="w-3 h-3 text-green-500" />
+                      Cloaker de Imagens
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="w-3 h-3 text-green-500" />
+                      Cloaker de Vídeos
+                    </li>
+                  </ul>
+                </Card>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
