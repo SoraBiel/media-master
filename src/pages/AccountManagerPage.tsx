@@ -1,20 +1,16 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { 
   Users, 
-  TrendingUp, 
-  DollarSign, 
   UserCheck,
   UserX,
-  Search,
   RefreshCw,
-  AlertCircle
+  LayoutDashboard,
+  History
 } from "lucide-react";
 import { toast } from "sonner";
 import { AccountManagerSellersTab } from "@/components/account-manager/AccountManagerSellersTab";
@@ -27,94 +23,68 @@ interface SellerStats {
   inactive: number;
 }
 
-interface AssignedSeller {
+interface UserProfile {
   id: string;
-  manager_id: string;
-  seller_id: string;
-  notes: string | null;
-  assigned_at: string;
-  profile: {
-    user_id: string;
-    email: string;
-    full_name: string | null;
-    current_plan: string | null;
-    is_online: boolean;
-    is_suspended: boolean;
-    last_seen_at: string | null;
-    created_at: string | null;
-  } | null;
+  user_id: string;
+  email: string;
+  full_name: string | null;
+  current_plan: string | null;
+  is_online: boolean;
+  is_suspended: boolean;
+  last_seen_at: string | null;
+  created_at: string | null;
 }
 
 const AccountManagerPage = () => {
-  const { user, isAdmin } = useAuth();
-  const [assignedSellers, setAssignedSellers] = useState<AssignedSeller[]>([]);
+  const { user } = useAuth();
+  const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [stats, setStats] = useState<SellerStats>({ total: 0, active: 0, inactive: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
 
-  const fetchAssignedSellers = async () => {
+  const fetchAllUsers = async () => {
     if (!user) return;
     
     setIsLoading(true);
     try {
-      // Fetch sellers assigned to this manager
-      const { data: assignments, error: assignError } = await supabase
-        .from("account_manager_sellers")
-        .select("*")
-        .eq("manager_id", user.id);
-
-      if (assignError) throw assignError;
-
-      if (!assignments || assignments.length === 0) {
-        setAssignedSellers([]);
-        setStats({ total: 0, active: 0, inactive: 0 });
-        setIsLoading(false);
-        return;
-      }
-
-      // Fetch profiles for assigned sellers
-      const sellerIds = assignments.map(a => a.seller_id);
+      // Fetch all user profiles (gerente de contas has access to all)
       const { data: profiles, error: profileError } = await supabase
         .from("profiles")
         .select("*")
-        .in("user_id", sellerIds);
+        .order("created_at", { ascending: false });
 
       if (profileError) throw profileError;
 
-      // Merge assignments with profiles
-      const sellersWithProfiles: AssignedSeller[] = assignments.map(assignment => ({
-        ...assignment,
-        profile: profiles?.find(p => p.user_id === assignment.seller_id) || null
-      }));
-
-      setAssignedSellers(sellersWithProfiles);
+      setAllUsers(profiles || []);
 
       // Calculate stats
-      const activeCount = sellersWithProfiles.filter(s => s.profile && !s.profile.is_suspended).length;
+      const activeCount = profiles?.filter(p => !p.is_suspended).length || 0;
+      const inactiveCount = profiles?.filter(p => p.is_suspended).length || 0;
+      
       setStats({
-        total: sellersWithProfiles.length,
+        total: profiles?.length || 0,
         active: activeCount,
-        inactive: sellersWithProfiles.length - activeCount
+        inactive: inactiveCount
       });
 
     } catch (error) {
-      console.error("Error fetching assigned sellers:", error);
-      toast.error("Erro ao carregar sellers");
+      console.error("Error fetching users:", error);
+      toast.error("Erro ao carregar usuários");
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchAssignedSellers();
+    fetchAllUsers();
   }, [user]);
 
-  const filteredSellers = assignedSellers.filter(seller => {
+  const filteredUsers = allUsers.filter(userProfile => {
     if (!searchTerm) return true;
     const search = searchTerm.toLowerCase();
     return (
-      seller.profile?.full_name?.toLowerCase().includes(search) ||
-      seller.profile?.email?.toLowerCase().includes(search)
+      userProfile.full_name?.toLowerCase().includes(search) ||
+      userProfile.email?.toLowerCase().includes(search)
     );
   });
 
@@ -125,10 +95,10 @@ const AccountManagerPage = () => {
         <div>
           <h1 className="text-2xl font-bold">Gerente de Contas</h1>
           <p className="text-muted-foreground">
-            Gerencie os sellers vinculados à sua conta
+            Gerencie todos os usuários da plataforma
           </p>
         </div>
-        <Button onClick={fetchAssignedSellers} variant="outline" size="sm">
+        <Button onClick={fetchAllUsers} variant="outline" size="sm">
           <RefreshCw className="w-4 h-4 mr-2" />
           Atualizar
         </Button>
@@ -143,7 +113,7 @@ const AccountManagerPage = () => {
                 <Users className="w-6 h-6 text-primary" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Total de Sellers</p>
+                <p className="text-sm text-muted-foreground">Total de Usuários</p>
                 <p className="text-2xl font-bold">{stats.total}</p>
               </div>
             </div>
@@ -157,7 +127,7 @@ const AccountManagerPage = () => {
                 <UserCheck className="w-6 h-6 text-success" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Sellers Ativos</p>
+                <p className="text-sm text-muted-foreground">Usuários Ativos</p>
                 <p className="text-2xl font-bold">{stats.active}</p>
               </div>
             </div>
@@ -171,7 +141,7 @@ const AccountManagerPage = () => {
                 <UserX className="w-6 h-6 text-destructive" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Sellers Inativos</p>
+                <p className="text-sm text-muted-foreground">Usuários Suspensos</p>
                 <p className="text-2xl font-bold">{stats.inactive}</p>
               </div>
             </div>
@@ -182,26 +152,35 @@ const AccountManagerPage = () => {
       {/* Main Content */}
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="overview">Visão Geral</TabsTrigger>
-          <TabsTrigger value="sellers">Sellers</TabsTrigger>
-          <TabsTrigger value="logs">Logs</TabsTrigger>
+          <TabsTrigger value="overview" className="gap-2">
+            <LayoutDashboard className="w-4 h-4" />
+            Visão Geral
+          </TabsTrigger>
+          <TabsTrigger value="users" className="gap-2">
+            <Users className="w-4 h-4" />
+            Usuários
+          </TabsTrigger>
+          <TabsTrigger value="logs" className="gap-2">
+            <History className="w-4 h-4" />
+            Logs
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
           <AccountManagerOverviewTab 
-            sellers={filteredSellers} 
+            users={filteredUsers} 
             isLoading={isLoading}
             stats={stats}
           />
         </TabsContent>
 
-        <TabsContent value="sellers">
+        <TabsContent value="users">
           <AccountManagerSellersTab 
-            sellers={filteredSellers}
+            users={filteredUsers}
             isLoading={isLoading}
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
-            onRefresh={fetchAssignedSellers}
+            onRefresh={fetchAllUsers}
           />
         </TabsContent>
 
@@ -209,20 +188,6 @@ const AccountManagerPage = () => {
           <AccountManagerLogsTab />
         </TabsContent>
       </Tabs>
-
-      {/* Empty State */}
-      {!isLoading && assignedSellers.length === 0 && (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <AlertCircle className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">Nenhum seller vinculado</h3>
-            <p className="text-muted-foreground">
-              Você ainda não possui sellers vinculados à sua conta.
-              {isAdmin && " Como admin, você pode vincular sellers no painel administrativo."}
-            </p>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 };
