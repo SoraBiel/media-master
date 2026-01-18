@@ -13,7 +13,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCloakerMedia, useCloakerMediaViews, CloakerMedia } from "@/hooks/useCloakerMedia";
-import { Plus, Image, Video, Shield, ShieldOff, Copy, Trash2, Edit2, Eye, BarChart3, ShieldCheck, ShieldX, MapPin, Smartphone, Monitor, Globe, Upload, Link as LinkIcon, CheckCircle2 } from "lucide-react";
+import { Plus, Image, Video, Shield, ShieldOff, Copy, Trash2, Edit2, Eye, BarChart3, ShieldCheck, ShieldX, MapPin, Smartphone, Monitor, Globe, Upload, Link as LinkIcon, CheckCircle2, Layers } from "lucide-react";
+import MediaPreviewPanel from "@/components/cloaker/MediaPreviewPanel";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -612,13 +613,16 @@ const CloakerMediaPage = () => {
           </DialogContent>
         </Dialog>
 
-        {/* View Analytics Dialog */}
+        {/* View Media Preview Dialog */}
         <Dialog open={!!viewingMedia} onOpenChange={(open) => !open && setViewingMedia(null)}>
-          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Analytics: {viewingMedia?.name}</DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                <Layers className="w-5 h-5" />
+                Preview: {viewingMedia?.name}
+              </DialogTitle>
             </DialogHeader>
-            {viewingMedia && <MediaViewsTable mediaId={viewingMedia.id} />}
+            {viewingMedia && <MediaPreviewPanel media={viewingMedia} />}
           </DialogContent>
         </Dialog>
       </div>
