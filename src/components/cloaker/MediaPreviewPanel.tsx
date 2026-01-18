@@ -247,6 +247,19 @@ const MediaPreviewPanel = ({ media, onClose }: MediaPreviewPanelProps) => {
 
     return (
       <div className="flex flex-col items-center space-y-6">
+        {/* Educational Alert */}
+        <Alert className="max-w-lg border-primary/30 bg-primary/5">
+          <User className="h-4 w-4 text-primary" />
+          <AlertTitle className="text-primary">Esta é a mídia para sua campanha! 🎯</AlertTitle>
+          <AlertDescription className="text-sm space-y-2 mt-2">
+            <p>Esta {media.media_type === "image" ? "imagem" : "vídeo"} será exibida para <strong>usuários reais</strong> que clicarem no seu anúncio.</p>
+            <div className="flex items-start gap-2 mt-2 p-2 bg-background/50 rounded-lg">
+              <Download className="w-4 h-4 mt-0.5 text-primary shrink-0" />
+              <span><strong>Baixe esta mídia</strong> e use-a para criar sua campanha no Facebook/TikTok Ads.</span>
+            </div>
+          </AlertDescription>
+        </Alert>
+
         {/* Visual indicator */}
         <div className="flex items-center gap-3 text-sm bg-primary/10 text-primary px-4 py-2 rounded-full">
           <User className="w-4 h-4" />
@@ -320,6 +333,19 @@ const MediaPreviewPanel = ({ media, onClose }: MediaPreviewPanelProps) => {
 
     return (
       <div className="flex flex-col items-center space-y-6">
+        {/* Educational Alert */}
+        <Alert className="max-w-lg border-green-500/30 bg-green-500/5">
+          <Bot className="h-4 w-4 text-green-600" />
+          <AlertTitle className="text-green-600">Esta mídia é para os revisores 🤖</AlertTitle>
+          <AlertDescription className="text-sm space-y-2 mt-2">
+            <p>Esta {media.media_type === "image" ? "imagem" : "vídeo"} será exibida para <strong>bots e revisores</strong> das plataformas de anúncios.</p>
+            <div className="flex items-start gap-2 mt-2 p-2 bg-background/50 rounded-lg">
+              <ShieldCheck className="w-4 h-4 mt-0.5 text-green-600 shrink-0" />
+              <span>Use uma mídia <strong>segura e não polêmica</strong> aqui para evitar bloqueios.</span>
+            </div>
+          </AlertDescription>
+        </Alert>
+
         {/* Visual indicator */}
         <div className="flex items-center gap-3 text-sm bg-green-500/10 text-green-600 dark:text-green-400 px-4 py-2 rounded-full">
           <Bot className="w-4 h-4" />
